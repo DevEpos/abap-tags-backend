@@ -320,8 +320,8 @@ CLASS zcl_abaptags_adt_res_tags IMPLEMENTATION.
     SELECT name
       FROM zabaptags_tags
       FOR ALL ENTRIES IN @mt_tags
-      WHERE owner IS INITIAL
-        AND parent_tag_id IS INITIAL
+      WHERE owner = ''
+        AND parent_tag_id = '00000000000000000000000000000000'
         AND name_upper = @mt_tags-name_upper
     INTO TABLE @DATA(lt_existing_global).
 
