@@ -1,0 +1,36 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<abapGit version="v1.0.0" serializer="LCL_OBJECT_CLAS" serializer_version="v1.0.0">
+ <asx:abap xmlns:asx="http://www.sap.com/abapxml" version="1.0">
+  <asx:values>
+   <VSEOCLASS>
+    <CLSNAME>ZCL_ABAPTAGS_ADT_DISC_APP</CLSNAME>
+    <LANGU>E</LANGU>
+    <DESCRIPT>Router for ABAP Tags</DESCRIPT>
+    <STATE>1</STATE>
+    <CLSCCINCL>X</CLSCCINCL>
+    <FIXPT>X</FIXPT>
+    <UNICODE>X</UNICODE>
+   </VSEOCLASS>
+   <DESCRIPTIONS>
+    <SEOCOMPOTX>
+     <CLSNAME>ZCL_ABAPTAGS_ADT_DISC_APP</CLSNAME>
+     <CMPNAME>REGISTER_OBJECT_TAGGING_RES</CMPNAME>
+     <LANGU>E</LANGU>
+     <DESCRIPT>Register resources for tagging objects</DESCRIPT>
+    </SEOCOMPOTX>
+    <SEOCOMPOTX>
+     <CLSNAME>ZCL_ABAPTAGS_ADT_DISC_APP</CLSNAME>
+     <CMPNAME>REGISTER_TAG_MANAGEMENT</CMPNAME>
+     <LANGU>E</LANGU>
+     <DESCRIPT>Register resources for managing abap tags</DESCRIPT>
+    </SEOCOMPOTX>
+    <SEOCOMPOTX>
+     <CLSNAME>ZCL_ABAPTAGS_ADT_DISC_APP</CLSNAME>
+     <CMPNAME>REGISTER_TAG_SEARCH</CMPNAME>
+     <LANGU>E</LANGU>
+     <DESCRIPT>Register resources for abap tag search</DESCRIPT>
+    </SEOCOMPOTX>
+   </DESCRIPTIONS>
+  </asx:values>
+ </asx:abap>
+</abapGit>

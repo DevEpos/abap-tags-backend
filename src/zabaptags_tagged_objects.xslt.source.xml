@@ -1,0 +1,20 @@
+<?sap.transform simple?>
+<tt:transform
+  xmlns:tt="http://www.sap.com/transformation-templates"
+  xmlns:ddic="http://www.sap.com/abapxml/types/dictionary"
+  xmlns:atm="http://www.devepos.com/adt/atm">
+
+  <tt:root name="TAGGED_OBJECTS" type="ddic:ZABAPTAGS_TAGGED_OBJECT_T" />
+  <tt:include name="ZABAPTAGS_TAGGED_OBJECT" template="taggedObject" />
+
+  <tt:template>
+    <atm:taggedObjects tt:extensible="deep">
+      <tt:loop ref="TAGGED_OBJECTS">
+        <tt:apply name="taggedObject">
+          <tt:with-root name="TAGGED_OBJECT" ref="$ref"/>
+        </tt:apply>
+      </tt:loop>
+    </atm:taggedObjects>
+  </tt:template>
+
+</tt:transform>

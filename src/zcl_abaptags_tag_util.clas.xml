@@ -1,0 +1,48 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<abapGit version="v1.0.0" serializer="LCL_OBJECT_CLAS" serializer_version="v1.0.0">
+ <asx:abap xmlns:asx="http://www.sap.com/abapxml" version="1.0">
+  <asx:values>
+   <VSEOCLASS>
+    <CLSNAME>ZCL_ABAPTAGS_TAG_UTIL</CLSNAME>
+    <LANGU>E</LANGU>
+    <DESCRIPT>Utility methods for ABAP Tags</DESCRIPT>
+    <STATE>1</STATE>
+    <CLSCCINCL>X</CLSCCINCL>
+    <FIXPT>X</FIXPT>
+    <UNICODE>X</UNICODE>
+   </VSEOCLASS>
+   <DESCRIPTIONS>
+    <SEOCOMPOTX>
+     <CLSNAME>ZCL_ABAPTAGS_TAG_UTIL</CLSNAME>
+     <CMPNAME>BUILD_HIERARCHICAL_TAGS</CMPNAME>
+     <LANGU>E</LANGU>
+     <DESCRIPT>Builds hierarchical tags from flat tags table</DESCRIPT>
+    </SEOCOMPOTX>
+    <SEOCOMPOTX>
+     <CLSNAME>ZCL_ABAPTAGS_TAG_UTIL</CLSNAME>
+     <CMPNAME>DETERMINE_ALL_CHILD_TAGS</CMPNAME>
+     <LANGU>E</LANGU>
+     <DESCRIPT>Determines all child tags for the given tags</DESCRIPT>
+    </SEOCOMPOTX>
+    <SEOCOMPOTX>
+     <CLSNAME>ZCL_ABAPTAGS_TAG_UTIL</CLSNAME>
+     <CMPNAME>GET_TAGS_LOCK_ENTRY</CMPNAME>
+     <LANGU>E</LANGU>
+     <DESCRIPT>Retrieves Lock Entry for Tags</DESCRIPT>
+    </SEOCOMPOTX>
+    <SEOCOMPOTX>
+     <CLSNAME>ZCL_ABAPTAGS_TAG_UTIL</CLSNAME>
+     <CMPNAME>LOCK_TAGS</CMPNAME>
+     <LANGU>E</LANGU>
+     <DESCRIPT>Locks Tags against foreign access</DESCRIPT>
+    </SEOCOMPOTX>
+    <SEOCOMPOTX>
+     <CLSNAME>ZCL_ABAPTAGS_TAG_UTIL</CLSNAME>
+     <CMPNAME>UNLOCK_TAGS</CMPNAME>
+     <LANGU>E</LANGU>
+     <DESCRIPT>Unlocks tags</DESCRIPT>
+    </SEOCOMPOTX>
+   </DESCRIPTIONS>
+  </asx:values>
+ </asx:abap>
+</abapGit>

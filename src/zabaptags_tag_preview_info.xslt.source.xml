@@ -1,0 +1,44 @@
+<?sap.transform simple?>
+<tt:transform
+  xmlns:tt="http://www.sap.com/transformation-templates"
+  xmlns:ddic="http://www.sap.com/abapxml/types/dictionary"
+  xmlns:atm="http://www.devepos.com/adt/atm">
+
+  <tt:root name="TAG_PREVIEW_INFO" type="ddic:ZABAPTAGS_TAG_PREVIEW_INFO"/>
+  <tt:include name="ZABAPTAGS_ADT_OBJ_REF" template="adtObjRefs"/>
+  <tt:include name="ZABAPTAGS_TAG" template="tags"/>
+
+  <tt:template>
+    <tt:apply name="tagPreviewInfo">
+      <tt:with-root name="TAG_PREVIEW_INFO" ref="TAG_PREVIEW_INFO"/>
+    </tt:apply>
+  </tt:template>
+
+  <tt:template name="tagPreviewInfo">
+    <tt:context>
+      <tt:root name="TAG_PREVIEW_INFO"/>
+    </tt:context>
+
+    <atm:tagPreviewInfo tt:extensible="deep">
+      <!-- Tag information -->
+      <tt:cond check="exist(TAG_PREVIEW_INFO.TAGS)">
+        <tt:cond check="not-initial(TAG_PREVIEW_INFO.TAGS)">
+          <tt:apply name="tags">
+            <tt:with-root name="TAGS" ref="TAG_PREVIEW_INFO.TAGS"/>
+          </tt:apply>
+        </tt:cond>
+      </tt:cond>
+
+      <!-- ADT Object information -->
+      <tt:cond check="exist(TAG_PREVIEW_INFO.OBJECT_REFS)">
+        <tt:cond check="not-initial(TAG_PREVIEW_INFO.OBJECT_REFS)">
+          <tt:apply name="adtObjRefs">
+            <tt:with-root name="ADT_OBJ_REFS" ref="TAG_PREVIEW_INFO.OBJECT_REFS" />
+          </tt:apply>
+        </tt:cond>
+      </tt:cond>
+
+    </atm:tagPreviewInfo>
+  </tt:template>
+
+</tt:transform>

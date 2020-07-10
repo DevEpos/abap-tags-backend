@@ -1,0 +1,66 @@
+<?sap.transform simple?>
+<tt:transform
+  xmlns:tt="http://www.sap.com/transformation-templates"
+  xmlns:ddic="http://www.sap.com/abapxml/types/dictionary"
+  xmlns:atm="http://www.devepos.com/adt/atm">
+
+  <tt:root name="SEARCH_PARAMS" type="ddic:ZABAPTAGS_TGOBJ_SEARCH_PARAMS"/>
+
+  <tt:template>
+    <tt:apply name="taggedObjectSearchParams">
+      <tt:with-root name="SEARCH_PARAMS" ref="SEARCH_PARAMS"/>
+    </tt:apply>
+  </tt:template>
+
+  <tt:template name="taggedObjectSearchParams">
+    <tt:context>
+      <tt:root name="SEARCH_PARAMS"/>
+    </tt:context>
+
+    <atm:taggedObjectSearchParams tt:extensible="deep">
+
+      <tt:cond s-check="not-initial(SEARCH_PARAMS.SEARCH_SCOPE)">
+        <tt:attribute name="atm:searchScope" value-ref="SEARCH_PARAMS.SEARCH_SCOPE"/>
+      </tt:cond>
+
+      <tt:cond s-check="not-initial(SEARCH_PARAMS.QUERY)">
+        <tt:attribute name="atm:query" value-ref="SEARCH_PARAMS.QUERY"/>
+      </tt:cond>
+
+      <tt:cond s-check="not-initial(SEARCH_PARAMS.QUERY_TYPE)">
+        <tt:attribute name="atm:queryType" value-ref="SEARCH_PARAMS.QUERY_TYPE"/>
+      </tt:cond>
+
+      <tt:cond s-check="not-initial(SEARCH_PARAMS.QUERY_FOCUS)">
+        <tt:attribute name="atm:queryFocus" value-ref="SEARCH_PARAMS.QUERY_FOCUS"/>
+      </tt:cond>
+
+      <tt:cond s-check="not-initial(SEARCH_PARAMS.MAX_RESULTS)">
+        <tt:attribute name="atm:maxResults" value-ref="SEARCH_PARAMS.MAX_RESULTS"/>
+      </tt:cond>
+
+      <tt:cond s-check="not-initial(SEARCH_PARAMS.MATCHES_ALL_TAGS)">
+        <tt:attribute name="atm:matchesAllTags" value-ref="SEARCH_PARAMS.MATCHES_ALL_TAGS" option="format(boolean)"/>
+      </tt:cond>
+
+      <tt:cond s-check="not-initial(SEARCH_PARAMS.WITH_TAG_INFO)">
+        <tt:attribute name="atm:withTagInfo" value-ref="SEARCH_PARAMS.WITH_TAG_INFO" option="format(boolean)"/>
+      </tt:cond>
+
+      <tt:cond s-check="not-initial(SEARCH_PARAMS.TAG_INFO_TYPE)">
+        <tt:attribute name="atm:tagInfoType" value-ref="SEARCH_PARAMS.TAG_INFO_TYPE"/>
+      </tt:cond>
+
+      <tt:cond s-check="not-initial(SEARCH_PARAMS.TAG_ID)">
+        <tt:loop name="tag" ref="SEARCH_PARAMS.TAG_ID">
+          <atm:tagId>
+            <tt:value ref="$tag" option="format(guid)" />
+          </atm:tagId>
+        </tt:loop>
+      </tt:cond>
+
+    </atm:taggedObjectSearchParams>
+  </tt:template>
+
+
+</tt:transform>

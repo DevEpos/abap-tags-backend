@@ -1,0 +1,50 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<abapGit version="v1.0.0" serializer="LCL_OBJECT_MSAG" serializer_version="v1.0.0">
+ <asx:abap xmlns:asx="http://www.sap.com/abapxml" version="1.0">
+  <asx:values>
+   <T100A>
+    <ARBGB>ZABAPTAGS</ARBGB>
+    <MASTERLANG>E</MASTERLANG>
+    <STEXT>Messages for ABAP Tags</STEXT>
+   </T100A>
+   <T100>
+    <T100>
+     <SPRSL>E</SPRSL>
+     <ARBGB>ZABAPTAGS</ARBGB>
+     <MSGNR>000</MSGNR>
+     <TEXT>Global Tags are currently locked by &amp;1</TEXT>
+    </T100>
+    <T100>
+     <SPRSL>E</SPRSL>
+     <ARBGB>ZABAPTAGS</ARBGB>
+     <MSGNR>001</MSGNR>
+     <TEXT>User Tags of &amp;1 are currently locked by &amp;2</TEXT>
+    </T100>
+    <T100>
+     <SPRSL>E</SPRSL>
+     <ARBGB>ZABAPTAGS</ARBGB>
+     <MSGNR>002</MSGNR>
+     <TEXT>Error during persisting of new ABAP Tags</TEXT>
+    </T100>
+    <T100>
+     <SPRSL>E</SPRSL>
+     <ARBGB>ZABAPTAGS</ARBGB>
+     <MSGNR>003</MSGNR>
+     <TEXT>No ABAP Tag for Name: &apos;&amp;1&apos;, Owner: &apos;&amp;2&apos; exists</TEXT>
+    </T100>
+    <T100>
+     <SPRSL>E</SPRSL>
+     <ARBGB>ZABAPTAGS</ARBGB>
+     <MSGNR>004</MSGNR>
+     <TEXT>A Tag with the Name &apos;&amp;1&apos;, Owner: &apos;&amp;2&apos; already exists</TEXT>
+    </T100>
+    <T100>
+     <SPRSL>E</SPRSL>
+     <ARBGB>ZABAPTAGS</ARBGB>
+     <MSGNR>005</MSGNR>
+     <TEXT>There already exists a global tag with the name &apos;&amp;1&apos;</TEXT>
+    </T100>
+   </T100>
+  </asx:values>
+ </asx:abap>
+</abapGit>

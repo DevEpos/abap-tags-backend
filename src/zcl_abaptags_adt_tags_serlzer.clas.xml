@@ -1,0 +1,30 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<abapGit version="v1.0.0" serializer="LCL_OBJECT_CLAS" serializer_version="v1.0.0">
+ <asx:abap xmlns:asx="http://www.sap.com/abapxml" version="1.0">
+  <asx:values>
+   <VSEOCLASS>
+    <CLSNAME>ZCL_ABAPTAGS_ADT_TAGS_SERLZER</CLSNAME>
+    <LANGU>E</LANGU>
+    <DESCRIPT>Serializer for child tags of ABAP Tag</DESCRIPT>
+    <STATE>1</STATE>
+    <CLSCCINCL>X</CLSCCINCL>
+    <FIXPT>X</FIXPT>
+    <UNICODE>X</UNICODE>
+   </VSEOCLASS>
+   <DESCRIPTIONS>
+    <SEOCOMPOTX>
+     <CLSNAME>ZCL_ABAPTAGS_ADT_TAGS_SERLZER</CLSNAME>
+     <CMPNAME>DESERIALIZE</CMPNAME>
+     <LANGU>E</LANGU>
+     <DESCRIPT>Deserializes child tags of tag</DESCRIPT>
+    </SEOCOMPOTX>
+    <SEOCOMPOTX>
+     <CLSNAME>ZCL_ABAPTAGS_ADT_TAGS_SERLZER</CLSNAME>
+     <CMPNAME>SERIALIZE</CMPNAME>
+     <LANGU>E</LANGU>
+     <DESCRIPT>Serializes child tags of tag</DESCRIPT>
+    </SEOCOMPOTX>
+   </DESCRIPTIONS>
+  </asx:values>
+ </asx:abap>
+</abapGit>

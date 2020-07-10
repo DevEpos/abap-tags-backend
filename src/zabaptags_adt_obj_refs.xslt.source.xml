@@ -1,0 +1,18 @@
+<?sap.transform simple?>
+<tt:transform
+  xmlns:tt="http://www.sap.com/transformation-templates"
+  xmlns:ddic="http://www.sap.com/abapxml/types/dictionary"
+  xmlns:adtbase="http://www.devepos.com/adt/base">
+
+  <tt:root name="ADT_OBJ_REFS" type="ddic:ZABAPTAGS_ADT_OBJ_REF_T"/>
+  <tt:include name="ZABAPTAGS_ADT_OBJ_REF" template="adtObjRefs"/>
+
+  <tt:template>
+    <adtbase:adtObjRefs tt:extensible="deep">
+      <tt:apply name="adtObjRefs">
+        <tt:with-root name="ADT_OBJ_REFS" ref="ADT_OBJ_REFS"/>
+      </tt:apply>
+    </adtbase:adtObjRefs>
+  </tt:template>
+
+</tt:transform>

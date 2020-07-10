@@ -1,0 +1,102 @@
+<?sap.transform simple?>
+<tt:transform
+  xmlns:tt="http://www.sap.com/transformation-templates"
+  xmlns:ddic="http://www.sap.com/abapxml/types/dictionary"
+  xmlns:atm="http://www.devepos.com/adt/atm">
+
+  <tt:root name="TAGGED_OBJECT" type="ddic:ZABAPTAGS_TAGGED_OBJECT"/>
+  <tt:root name="OBJECT_TAG" type="ddic:ZABAPTAGS_ADT_OBJECT_TAG" />
+  <tt:root name="OBJECT_TAGS" type="ddic:ZABAPTAGS_ADT_OBJECT_TAG_T" />
+  <tt:include name="ZABAPTAGS_ADT_OBJ_REF" template="adtObjRef"/>
+
+  <tt:template>
+    <tt:apply name="taggedObject">
+      <tt:with-root name="TAGGED_OBJECT" ref="TAGGED_OBJECT"/>
+    </tt:apply>
+  </tt:template>
+
+  <tt:template name="taggedObject">
+    <tt:context>
+      <tt:root name="TAGGED_OBJECT"/>
+    </tt:context>
+
+    <atm:taggedObject tt:extensible="deep">
+      <!-- ADT Object information -->
+      <tt:cond check="exist(TAGGED_OBJECT.ADT_OBJ_REF)">
+        <tt:cond check="not-initial(TAGGED_OBJECT.ADT_OBJ_REF)">
+          <tt:apply name="adtObjRef">
+            <tt:with-root name="ADT_OBJ_REF" ref="TAGGED_OBJECT.ADT_OBJ_REF" />
+          </tt:apply>
+        </tt:cond>
+      </tt:cond>
+
+      <!-- Tags information -->
+      <tt:cond check="exist(TAGGED_OBJECT.TAGS)">
+        <tt:cond check="not-initial(TAGGED_OBJECT.TAGS)">
+          <tt:apply name="objectTags">
+            <tt:with-root name="OBJECT_TAGS" ref="TAGGED_OBJECT.TAGS"/>
+          </tt:apply>
+        </tt:cond>
+      </tt:cond>
+
+    </atm:taggedObject>
+  </tt:template>
+
+
+  <!-- PUBLIC TEMPLATES (can be called from other transformations) -->
+  <tt:template name="objectTag">
+    <tt:context>
+      <tt:root name="OBJECT_TAG"/>
+    </tt:context>
+
+    <atm:adtObjectTag tt:extensible="deep">
+      <tt:apply name="objectTagAttributes">
+        <tt:with-root name="OBJECT_TAG" ref="OBJECT_TAG"/>
+      </tt:apply>
+    </atm:adtObjectTag>
+  </tt:template>
+
+  <!-- PUBLIC TEMPLATES (can be called from other transformations) -->
+  <tt:template name="objectTagAttributes">
+    <tt:context>
+      <tt:root name="OBJECT_TAG"/>
+    </tt:context>
+
+    <tt:cond check="not-initial(OBJECT_TAG.TAG_ID)">
+      <tt:attribute name="atm:id" value-ref="OBJECT_TAG.TAG_ID" option="format(guid)"/>
+    </tt:cond>
+
+    <tt:cond check="not-initial(OBJECT_TAG.TAG_NAME)">
+      <tt:attribute name="atm:name" value-ref="OBJECT_TAG.TAG_NAME"/>
+    </tt:cond>
+
+    <tt:cond check="not-initial(OBJECT_TAG.OWNER)">
+      <tt:attribute name="atm:owner" value-ref="OBJECT_TAG.OWNER"/>
+    </tt:cond>
+
+    <tt:cond check="not-initial(OBJECT_TAG.PARENT_URI)">
+      <tt:attribute name="atm:parentObjectUri" value-ref="OBJECT_TAG.PARENT_URI"/>
+    </tt:cond>
+
+    <tt:cond check="not-initial(OBJECT_TAG.PARENT_TYPE)">
+      <tt:attribute name="atm:parentObjectType" value-ref="OBJECT_TAG.PARENT_TYPE"/>
+    </tt:cond>
+
+    <tt:cond check="not-initial(OBJECT_TAG.PARENT_NAME)">
+      <tt:attribute name="atm:parentObjectName" value-ref="OBJECT_TAG.PARENT_NAME"/>
+    </tt:cond>
+  </tt:template>
+
+  <tt:template name="objectTags">
+    <tt:context>
+      <tt:root name="OBJECT_TAGS" />
+    </tt:context>
+    <tt:cond check="not-initial(OBJECT_TAGS)">
+      <tt:loop ref="OBJECT_TAGS">
+        <tt:apply name="objectTag">
+          <tt:with-root name="OBJECT_TAG" ref="$ref"/>
+        </tt:apply>
+      </tt:loop>
+    </tt:cond>
+  </tt:template>
+</tt:transform>
