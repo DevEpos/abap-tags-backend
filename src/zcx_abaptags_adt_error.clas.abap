@@ -7,6 +7,51 @@ CLASS zcx_abaptags_adt_error DEFINITION
 
   PUBLIC SECTION.
     CONSTANTS:
+      BEGIN OF chosen_tags_no_longer_exist,
+        msgid TYPE symsgid VALUE 'ZABAPTAGS',
+        msgno TYPE symsgno VALUE '009',
+        attr1 TYPE scx_attrname VALUE '',
+        attr2 TYPE scx_attrname VALUE '',
+        attr3 TYPE scx_attrname VALUE '',
+        attr4 TYPE scx_attrname VALUE '',
+      END OF chosen_tags_no_longer_exist .
+    CONSTANTS:
+      BEGIN OF parents_of_chs_tags_deleted,
+        msgid TYPE symsgid VALUE 'ZABPATAGS',
+        msgno TYPE symsgno VALUE '010',
+        attr1 TYPE scx_attrname VALUE '',
+        attr2 TYPE scx_attrname VALUE '',
+        attr3 TYPE scx_attrname VALUE '',
+        attr4 TYPE scx_attrname VALUE '',
+      END OF parents_of_chs_tags_deleted .
+    CONSTANTS:
+      BEGIN OF tag_parent_tag_already_exists,
+        msgid TYPE symsgid VALUE 'ZABAPTAGS',
+        msgno TYPE symsgno VALUE '008',
+        attr1 TYPE scx_attrname VALUE 'MSGV1',
+        attr2 TYPE scx_attrname VALUE 'MSGV2',
+        attr3 TYPE scx_attrname VALUE 'MSGV3',
+        attr4 TYPE scx_attrname VALUE '',
+      END OF tag_parent_tag_already_exists .
+    CONSTANTS:
+      BEGIN OF tag_no_longer_exists,
+        msgid TYPE symsgid VALUE 'ZABAPTAGS',
+        msgno TYPE symsgno VALUE '006',
+        attr1 TYPE scx_attrname VALUE 'MSGV1',
+        attr2 TYPE scx_attrname VALUE 'MSGV2',
+        attr3 TYPE scx_attrname VALUE '',
+        attr4 TYPE scx_attrname VALUE '',
+      END OF tag_no_longer_exists .
+    CONSTANTS:
+      BEGIN OF parent_tag_no_longer_exists,
+        msgid TYPE symsgid VALUE 'ZABAPTAGS',
+        msgno TYPE symsgno VALUE '007',
+        attr1 TYPE scx_attrname VALUE 'MSGV1',
+        attr2 TYPE scx_attrname VALUE 'MSGV2',
+        attr3 TYPE scx_attrname VALUE '',
+        attr4 TYPE scx_attrname VALUE '',
+      END OF parent_tag_no_longer_exists .
+    CONSTANTS:
       BEGIN OF global_tag_already_exists,
         msgid TYPE symsgid VALUE 'ZABAPTAGS',
         msgno TYPE symsgno VALUE '005',

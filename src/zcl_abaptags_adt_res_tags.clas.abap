@@ -64,12 +64,9 @@ CLASS zcl_abaptags_adt_res_tags DEFINITION
       EXPORTING
         et_tags TYPE ty_t_tag_id.
 
-    METHODS create_or_update_tags.
-    METHODS update_tag
-      IMPORTING
-        iv_parent_tag_id TYPE zabaptags_tag_id OPTIONAL
-      CHANGING
-        cs_tag           TYPE zabaptags_tag_data.
+    METHODS create_or_update_tags
+      RAISING
+        cx_adt_rest.
 
     METHODS set_result
       IMPORTING
@@ -78,6 +75,11 @@ CLASS zcl_abaptags_adt_res_tags DEFINITION
       RAISING
         cx_adt_rest.
     METHODS make_tags_global
+      RAISING
+        cx_adt_rest.
+    METHODS validate_tag
+      IMPORTING
+        is_tag TYPE zabaptags_tag_data
       RAISING
         cx_adt_rest.
 ENDCLASS.
@@ -252,20 +254,22 @@ CLASS zcl_abaptags_adt_res_tags IMPLEMENTATION.
   ENDMETHOD.
 
   METHOD create_or_update_tags.
-    DATA: lt_update TYPE TABLE OF zabaptags_tags.
+    DATA: lt_update             TYPE TABLE OF zabaptags_tags,
+          lt_existing_tag_range TYPE RANGE OF zabaptags_tag_id,
+          lt_existing_tag_id    TYPE TABLE OF zabaptags_tag_id.
 
     LOOP AT mt_tags ASSIGNING FIELD-SYMBOL(<ls_tag>).
+      <ls_tag>-name_upper = to_upper( <ls_tag>-name ).
+      validate_tag( <ls_tag> ).
       IF <ls_tag>-tag_id IS INITIAL.
         <ls_tag>-tag_id = cl_uuid_factory=>create_system_uuid( )->create_uuid_x16( ).
         <ls_tag>-created_by = sy-uname.
         GET TIME STAMP FIELD <ls_tag>-created_date_time.
-        <ls_tag>-owner = mv_owner.
-      ELSEIF <ls_tag>-is_changed = abap_true.
+      ELSE.
         <ls_tag>-changed_by = sy-uname.
         GET TIME STAMP FIELD <ls_tag>-changed_date_time.
       ENDIF.
 
-      <ls_tag>-name_upper = to_upper( <ls_tag>-name ).
       lt_update = VALUE #( BASE lt_update ( CORRESPONDING #( <ls_tag> ) ) ).
     ENDLOOP.
 
@@ -275,23 +279,6 @@ CLASS zcl_abaptags_adt_res_tags IMPLEMENTATION.
     ELSE.
       ROLLBACK WORK.
     ENDIF.
-  ENDMETHOD.
-
-
-  METHOD update_tag.
-    cs_tag-parent_tag_id = iv_parent_tag_id.
-
-    IF cs_tag-tag_id IS INITIAL.
-      cs_tag-tag_id = cl_uuid_factory=>create_system_uuid( )->create_uuid_x16( ).
-      cs_tag-created_by = sy-uname.
-      GET TIME STAMP FIELD cs_tag-created_date_time.
-      cs_tag-owner = mv_owner.
-    ELSEIF cs_tag-is_changed = abap_true.
-      cs_tag-changed_by = sy-uname.
-      GET TIME STAMP FIELD cs_tag-changed_date_time.
-    ENDIF.
-
-    cs_tag-name_upper = to_upper( cs_tag-name ).
   ENDMETHOD.
 
 
@@ -315,6 +302,10 @@ CLASS zcl_abaptags_adt_res_tags IMPLEMENTATION.
   METHOD make_tags_global.
     DATA: lt_user_tags        TYPE RANGE OF zabaptags_tag_id,
           lv_changed_datetime TYPE timestampl.
+
+    LOOP AT mt_tags ASSIGNING FIELD-SYMBOL(<ls_tag>).
+      <ls_tag>-name_upper = to_upper( <ls_tag>-name ).
+    ENDLOOP.
 
     " Check if there is already a global tag with the same name
     SELECT name
@@ -346,6 +337,80 @@ CLASS zcl_abaptags_adt_res_tags IMPLEMENTATION.
       COMMIT WORK.
     ELSE.
       ROLLBACK WORK.
+    ENDIF.
+  ENDMETHOD.
+
+  METHOD validate_tag.
+    DATA: lt_tag_id_range  TYPE RANGE OF zabaptags_tag_id,
+          lv_parent_tag_id TYPE zabaptags_tag_name,
+          lt_tag_id        TYPE TABLE OF zabaptags_tags.
+
+    IF is_tag-tag_id IS NOT INITIAL.
+      lt_tag_id_range = VALUE #( ( sign = 'I' option = 'EQ' low = is_tag-tag_id ) ).
+    ENDIF.
+    IF is_tag-parent_tag_id IS NOT INITIAL.
+      lt_tag_id_range = VALUE #( BASE lt_tag_id_range
+        ( sign = 'I' option = 'EQ' low = is_tag-parent_tag_id )
+      ).
+    ENDIF.
+
+    IF lt_tag_id_range IS NOT INITIAL.
+      SELECT tag_id,
+             name
+        FROM zabaptags_tags
+        WHERE tag_id IN @lt_tag_id_range
+      INTO TABLE @lt_tag_id.
+
+      " check tag existence if tag will be modified
+      IF is_tag-tag_id IS NOT INITIAL AND
+         NOT line_exists( lt_tag_id[ tag_id = is_tag-tag_id ] ).
+        RAISE EXCEPTION TYPE zcx_abaptags_adt_error
+          EXPORTING
+            textid = zcx_abaptags_adt_error=>tag_no_longer_exists
+            msgv1  = |{ is_tag-name }|
+            msgv2  = |{ is_tag-owner }|.
+      ENDIF.
+
+      " check parent tag existence if tag is in a hierarchy
+      IF is_tag-parent_tag_id IS NOT INITIAL AND
+         NOT line_exists( lt_tag_id[ tag_id = is_tag-parent_tag_id ] ).
+        RAISE EXCEPTION TYPE zcx_abaptags_adt_error
+          EXPORTING
+            textid = zcx_abaptags_adt_error=>parent_tag_no_longer_exists
+            msgv1  = |{ is_tag-name }|
+            msgv2  = |{ is_tag-owner }|.
+      ENDIF.
+    ENDIF.
+
+    CLEAR lt_tag_id_range.
+
+    IF is_tag-tag_id IS NOT INITIAL.
+      lt_tag_id_range = VALUE #( ( sign = 'E' option = 'EQ' low = is_tag-tag_id ) ).
+    ENDIF.
+
+    SELECT SINGLE @abap_true
+      FROM zabaptags_tags
+      WHERE tag_id IN @lt_tag_id_range
+        AND parent_tag_id = @is_tag-parent_tag_id
+        AND name_upper = @is_tag-name_upper
+        AND owner = @is_tag-owner
+    INTO @DATA(lf_exists).
+
+    IF lf_exists = abap_true.
+      IF is_tag-parent_tag_id IS NOT INITIAL.
+        RAISE EXCEPTION TYPE zcx_abaptags_adt_error
+          EXPORTING
+            textid = zcx_abaptags_adt_error=>tag_parent_tag_already_exists
+            msgv1  = |{ is_tag-name }|
+            msgv2  = |{ is_tag-owner }|
+            msgv3  = |{ lt_tag_id[ tag_id = is_tag-parent_tag_id ]-name }|.
+      ELSE.
+        RAISE EXCEPTION TYPE zcx_abaptags_adt_error
+          EXPORTING
+            textid = zcx_abaptags_adt_error=>tag_no_longer_exists
+            msgv1  = |{ is_tag-name }|
+            msgv2  = |{ is_tag-owner }|.
+      ENDIF.
     ENDIF.
   ENDMETHOD.
 

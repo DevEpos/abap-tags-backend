@@ -44,6 +44,36 @@
      <MSGNR>005</MSGNR>
      <TEXT>There already exists a global tag with the name &apos;&amp;1&apos;</TEXT>
     </T100>
+    <T100>
+     <SPRSL>E</SPRSL>
+     <ARBGB>ZABAPTAGS</ARBGB>
+     <MSGNR>006</MSGNR>
+     <TEXT>The Tag with Name: &apos;&amp;1&apos;, Owner: &apos;&amp;2&apos; no longer exists</TEXT>
+    </T100>
+    <T100>
+     <SPRSL>E</SPRSL>
+     <ARBGB>ZABAPTAGS</ARBGB>
+     <MSGNR>007</MSGNR>
+     <TEXT>The Parent of the Tag, Name: &apos;&amp;1&apos;, Owner: &apos;&amp;2&apos; no longer exists.</TEXT>
+    </T100>
+    <T100>
+     <SPRSL>E</SPRSL>
+     <ARBGB>ZABAPTAGS</ARBGB>
+     <MSGNR>008</MSGNR>
+     <TEXT>There already exists a Tag with Name: &apos;&amp;1&apos;, Owner: &apos;&amp;2&apos;, Parent: &apos;&amp;3&apos;</TEXT>
+    </T100>
+    <T100>
+     <SPRSL>E</SPRSL>
+     <ARBGB>ZABAPTAGS</ARBGB>
+     <MSGNR>009</MSGNR>
+     <TEXT>Some chosen Tags no longer exist in the Database</TEXT>
+    </T100>
+    <T100>
+     <SPRSL>E</SPRSL>
+     <ARBGB>ZABAPTAGS</ARBGB>
+     <MSGNR>010</MSGNR>
+     <TEXT>The parent tags of some chosen tags no longer exist</TEXT>
+    </T100>
    </T100>
   </asx:values>
  </asx:abap>

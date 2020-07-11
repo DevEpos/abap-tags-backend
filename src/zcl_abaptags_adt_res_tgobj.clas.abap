@@ -51,6 +51,9 @@ CLASS zcl_abaptags_adt_res_tgobj DEFINITION
     METHODS delete_tags_from_objects
       RAISING
         cx_adt_rest.
+    METHODS validate_tags
+      RAISING
+        cx_adt_rest.
 ENDCLASS.
 
 
@@ -176,7 +179,6 @@ CLASS zcl_abaptags_adt_res_tgobj IMPLEMENTATION.
 
   METHOD create_non_persisted_tags.
     DATA: lt_new_tags          TYPE TABLE OF zabaptags_tags,
-          lf_new_global_tags   TYPE abap_bool,
           lv_created_date_time TYPE tzonref-tstamps.
 
     FIELD-SYMBOLS: <ls_tagged_object> TYPE zabaptags_tagged_object,
@@ -187,10 +189,6 @@ CLASS zcl_abaptags_adt_res_tgobj IMPLEMENTATION.
     LOOP AT <ls_tagged_object>-tags ASSIGNING <ls_tag> WHERE tag_id IS INITIAL.
       IF sy-tabix = 1.
         GET TIME STAMP FIELD lv_created_date_time.
-      ENDIF.
-
-      IF <ls_tag>-owner IS INITIAL.
-        lf_new_global_tags = abap_true.
       ENDIF.
 
       TRY.
@@ -232,13 +230,6 @@ CLASS zcl_abaptags_adt_res_tgobj IMPLEMENTATION.
           msgv2  = COND #( WHEN ls_first_existing_tag-owner IS NOT INITIAL THEN ls_first_existing_tag-owner ELSE '*' ).
     ENDIF.
 
-*.. At this moment it is assumed that user tags need no specific locking
-    IF lf_new_global_tags = abap_true.
-      zcl_abaptags_tag_util=>lock_tags(
-          iv_lock_owner  = '*'
-      ).
-    ENDIF.
-
     INSERT zabaptags_tags FROM TABLE lt_new_tags.
     IF sy-subrc = 0.
       COMMIT WORK.
@@ -249,11 +240,6 @@ CLASS zcl_abaptags_adt_res_tgobj IMPLEMENTATION.
           textid = zcx_abaptags_adt_error=>tags_persisting_failure.
     ENDIF.
 
-    IF lf_new_global_tags = abap_true.
-      zcl_abaptags_tag_util=>unlock_tags(
-          iv_lock_owner  = '*'
-      ).
-    ENDIF.
   ENDMETHOD.
 
   METHOD prepare_for_db_insert.
@@ -264,7 +250,7 @@ CLASS zcl_abaptags_adt_res_tgobj IMPLEMENTATION.
 
     FIELD-SYMBOLS: <ls_tagged_object> TYPE zabaptags_tagged_object,
                    <ls_tag>           TYPE zabaptags_adt_object_tag.
-
+    validate_tags( ).
 
     LOOP AT mt_tagged_objects ASSIGNING <ls_tagged_object>.
 
@@ -318,9 +304,7 @@ CLASS zcl_abaptags_adt_res_tgobj IMPLEMENTATION.
   METHOD delete_tags_from_objects.
     DATA: lv_tadir_object          TYPE string,
           lv_tadir_type            TYPE trobjtype,
-          lv_parent_object         TYPE string,
-          lt_tagged_objects_delete TYPE TABLE OF zabaptags_tgobj,
-          lv_parent_type           TYPE trobjtype.
+          lt_tagged_objects_delete TYPE TABLE OF zabaptags_tgobj.
 
     FIELD-SYMBOLS: <ls_tagged_object> TYPE zabaptags_tagged_object,
                    <ls_tag>           TYPE zabaptags_adt_object_tag.
@@ -348,6 +332,57 @@ CLASS zcl_abaptags_adt_res_tgobj IMPLEMENTATION.
       DELETE zabaptags_tgobj FROM TABLE lt_tagged_objects_delete.
       COMMIT WORK.
     ENDIF.
+  ENDMETHOD.
+
+
+  METHOD validate_tags.
+    DATA: lt_remaining_tags TYPE TABLE OF zabaptags_tags,
+          lt_tag_id         TYPE SORTED TABLE OF zabaptags_tag_id WITH UNIQUE KEY table_line.
+
+    LOOP AT mt_tagged_objects ASSIGNING FIELD-SYMBOL(<ls_tagged_obj>).
+
+      LOOP AT <ls_tagged_obj>-tags ASSIGNING FIELD-SYMBOL(<ls_tag>).
+        INSERT <ls_tag>-tag_id INTO TABLE lt_tag_id.
+      ENDLOOP.
+
+    ENDLOOP.
+
+    IF lt_tag_id IS NOT INITIAL.
+      SELECT tag_id,
+             name,
+             parent_tag_id
+        FROM zabaptags_tags
+        FOR ALL ENTRIES IN @lt_tag_id
+        WHERE tag_id = @lt_tag_id-table_line
+      INTO CORRESPONDING FIELDS OF TABLE @lt_remaining_tags.
+
+      IF lines( lt_remaining_tags ) <> lines( lt_tag_id ).
+        RAISE EXCEPTION TYPE zcx_abaptags_adt_error
+          EXPORTING
+            textid = zcx_abaptags_adt_error=>chosen_tags_no_longer_exist.
+      ENDIF.
+    ENDIF.
+
+    CLEAR lt_tag_id.
+    LOOP AT lt_remaining_tags ASSIGNING FIELD-SYMBOL(<ls_remaining_tag>) WHERE parent_tag_id IS NOT INITIAL.
+      INSERT <ls_remaining_tag>-parent_tag_id INTO TABLE lt_tag_id.
+    ENDLOOP.
+
+    IF lt_tag_id IS NOT INITIAL.
+      SELECT tag_id,
+             name
+        FROM zabaptags_tags
+        FOR ALL ENTRIES IN @lt_tag_id
+        WHERE tag_id = @lt_tag_id-table_line
+      INTO CORRESPONDING FIELDS OF TABLE @lt_remaining_tags.
+
+      IF lines( lt_remaining_tags ) <> lines( lt_tag_id ).
+        RAISE EXCEPTION TYPE zcx_abaptags_adt_error
+          EXPORTING
+            textid = zcx_abaptags_adt_error=>parents_of_chs_tags_deleted.
+      ENDIF.
+    ENDIF.
+
   ENDMETHOD.
 
 ENDCLASS.
