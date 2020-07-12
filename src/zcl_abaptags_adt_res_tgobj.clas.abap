@@ -341,7 +341,7 @@ CLASS zcl_abaptags_adt_res_tgobj IMPLEMENTATION.
 
     LOOP AT mt_tagged_objects ASSIGNING FIELD-SYMBOL(<ls_tagged_obj>).
 
-      LOOP AT <ls_tagged_obj>-tags ASSIGNING FIELD-SYMBOL(<ls_tag>).
+      LOOP AT <ls_tagged_obj>-tags ASSIGNING FIELD-SYMBOL(<ls_tag>) WHERE tag_id IS NOT INITIAL.
         INSERT <ls_tag>-tag_id INTO TABLE lt_tag_id.
       ENDLOOP.
 
