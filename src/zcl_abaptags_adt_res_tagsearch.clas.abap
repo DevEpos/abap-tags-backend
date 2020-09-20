@@ -267,8 +267,7 @@ CLASS zcl_abaptags_adt_res_tagsearch IMPLEMENTATION.
   ENDMETHOD.
 
   METHOD fill_descriptions.
-    DATA: lt_class_result TYPE zsat_entity_t,
-          lt_texts        TYPE STANDARD TABLE OF seu_objtxt.
+    DATA lt_texts TYPE STANDARD TABLE OF seu_objtxt.
 
     lt_texts = VALUE #(
       FOR tagged_obj IN mt_tagged_objects_int
@@ -276,7 +275,7 @@ CLASS zcl_abaptags_adt_res_tagsearch IMPLEMENTATION.
     ).
     CALL FUNCTION 'RS_SHORTTEXT_GET'
       TABLES
-        obj_tab      = lt_texts.
+        obj_tab = lt_texts.
 
     LOOP AT mt_tagged_objects_int ASSIGNING FIELD-SYMBOL(<ls_entity>).
       ASSIGN lt_texts[ obj_name = <ls_entity>-adt_obj_ref-name object = <ls_entity>-adt_obj_ref-tadir_type ] TO FIELD-SYMBOL(<ls_text>).
