@@ -18,7 +18,7 @@ CLASS zcl_abaptags_adt_disc_app DEFINITION
         REDEFINITION.
   PROTECTED SECTION.
     METHODS: get_application_title REDEFINITION,
-      register_resources REDEFINITION
+      register_resources REDEFINITION,
       fill_router REDEFINITION.      
   PRIVATE SECTION.
     CONSTANTS c_app_title TYPE string VALUE 'ADT Discovery for ABAP Tags'.
