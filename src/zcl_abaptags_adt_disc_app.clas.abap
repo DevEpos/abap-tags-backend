@@ -18,7 +18,8 @@ CLASS zcl_abaptags_adt_disc_app DEFINITION
         REDEFINITION.
   PROTECTED SECTION.
     METHODS: get_application_title REDEFINITION,
-      register_resources REDEFINITION.
+      register_resources REDEFINITION
+      fill_router REDEFINITION.      
   PRIVATE SECTION.
     CONSTANTS c_app_title TYPE string VALUE 'ADT Discovery for ABAP Tags'.
     CONSTANTS c_tags_management_handler TYPE string VALUE 'ZCL_ABAPTAGS_ADT_RES_TAGS' ##NO_TEXT.
@@ -39,6 +40,14 @@ ENDCLASS.
 
 
 CLASS zcl_abaptags_adt_disc_app IMPLEMENTATION.
+
+  METHOD fill_router.
+    super->fill_router( CHANGING router = router ).
+    router->attach(
+        iv_template      = '/discovery'
+        iv_handler_class = cl_adt_res_discovery=>co_class_name
+    ).
+  ENDMETHOD.  
 
 
   METHOD get_application_title.
