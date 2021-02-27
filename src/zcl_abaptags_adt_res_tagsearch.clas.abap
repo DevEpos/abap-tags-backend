@@ -16,42 +16,40 @@ CLASS zcl_abaptags_adt_res_tagsearch DEFINITION
         function_group TYPE trobjtype VALUE 'FUGR',
       END OF c_tadir_types.
     TYPES:
-      BEGIN OF ty_s_tag_info,
+      BEGIN OF ty_tag_info,
         object_name TYPE sobj_name,
         object_type TYPE trobjtype,
         tag_id      TYPE zabaptags_tag_id,
         tag_name    TYPE zabaptags_tag_name,
         owner       TYPE responsibl,
-      END OF ty_s_tag_info.
+      END OF ty_tag_info.
 
     TYPES:
-      BEGIN OF ty_s_func_modules,
+      BEGIN OF ty_func_module,
         function TYPE tfdir-funcname,
         group    TYPE tfdir-pname,
-      END OF ty_s_func_modules.
+      END OF ty_func_module.
 
     TYPES:
-      BEGIN OF ty_s_tadir_info,
+      BEGIN OF ty_tadir_info,
         object_name  TYPE tadir-obj_name,
         object_type  TYPE tadir-object,
         package_name TYPE tadir-devclass,
         author       TYPE tadir-author,
-      END OF ty_s_tadir_info.
+      END OF ty_tadir_info.
 
-    DATA mt_func_modules TYPE HASHED TABLE OF ty_s_func_modules WITH UNIQUE KEY function.
-    DATA mt_tadir_info TYPE HASHED TABLE OF ty_s_tadir_info WITH UNIQUE KEY object_name object_type.
-    DATA mt_tag_info TYPE SORTED TABLE OF ty_s_tag_info WITH NON-UNIQUE KEY object_name object_type.
-    DATA mt_tagged_objects_int TYPE STANDARD TABLE OF zabaptags_tagged_object.
-    DATA mt_owner_range TYPE RANGE OF sy-uname.
-    DATA mt_tags_for_search TYPE zabaptags_tag_data_t.
-    DATA mv_query TYPE string.
-    DATA mv_max_results TYPE i.
-    DATA mt_object_name_range TYPE RANGE OF sobj_name.
-    DATA mt_object_type_range TYPE RANGE OF trobjtype.
-    DATA mt_parent_object_name_range TYPE RANGE OF sobj_name.
-    DATA mt_parent_object_type_range TYPE RANGE OF trobjtype.
-    DATA mt_tagged_objects_simple TYPE STANDARD TABLE OF zabaptags_tgobj.
-    DATA ms_search_params TYPE zabaptags_tgobj_search_params.
+    DATA func_modules TYPE HASHED TABLE OF ty_func_module WITH UNIQUE KEY function.
+    DATA tadir_infos TYPE HASHED TABLE OF ty_tadir_info WITH UNIQUE KEY object_name object_type.
+    DATA tag_infos TYPE SORTED TABLE OF ty_tag_info WITH NON-UNIQUE KEY object_name object_type.
+    DATA tagged_objects TYPE STANDARD TABLE OF zabaptags_tagged_object.
+    DATA owner_range TYPE RANGE OF sy-uname.
+    DATA max_results TYPE i.
+    DATA object_name_range TYPE RANGE OF sobj_name.
+    DATA object_type_range TYPE RANGE OF trobjtype.
+    DATA parent_object_name_range TYPE RANGE OF sobj_name.
+    DATA parent_object_type_range TYPE RANGE OF trobjtype.
+    DATA tagged_objects_simple TYPE STANDARD TABLE OF zabaptags_tgobj.
+    DATA search_params TYPE zabaptags_tgobj_search_params.
 
     "! <p class="shorttext synchronized" lang="en">Retrieve Parameters</p>
     METHODS get_parameters
@@ -91,11 +89,11 @@ CLASS zcl_abaptags_adt_res_tagsearch IMPLEMENTATION.
   METHOD post.
     request->get_body_data(
       EXPORTING content_handler = get_request_content_handler( )
-      IMPORTING data            = ms_search_params
+      IMPORTING data            = search_params
     ).
 
-    IF ms_search_params-tag_id IS INITIAL AND
-      ms_search_params-query IS INITIAL.
+    IF search_params-tag_id IS INITIAL AND
+      search_params-query IS INITIAL.
       RETURN.
     ENDIF.
 
@@ -108,158 +106,158 @@ CLASS zcl_abaptags_adt_res_tagsearch IMPLEMENTATION.
 
     fill_descriptions( ).
 
-    DATA(lt_result) = CORRESPONDING zabaptags_tagged_object_t( mt_tagged_objects_int ).
+    DATA(result) = CORRESPONDING zabaptags_tagged_object_t( tagged_objects ).
 
     response->set_body_data(
         content_handler = get_response_content_handler( )
-        data            = lt_result
+        data            = result
     ).
   ENDMETHOD.
 
   METHOD get_parameters.
-    DATA(lv_scope) = COND #(
-      WHEN ms_search_params-search_scope IS INITIAL THEN zif_abaptags_c_global=>c_scopes-all ELSE ms_search_params-search_scope
+    DATA(scope) = COND #(
+      WHEN search_params-search_scope IS INITIAL THEN zif_abaptags_c_global=>scopes-all ELSE search_params-search_scope
     ).
-    mt_owner_range = SWITCH #(  lv_scope
-      WHEN zif_abaptags_c_global=>c_scopes-global THEN VALUE #( ( sign = 'I' option = 'EQ' low = space ) )
-      WHEN zif_abaptags_c_global=>c_scopes-user   THEN VALUE #( ( sign = 'I' option = 'EQ' low = sy-uname ) )
+    owner_range = SWITCH #(  scope
+      WHEN zif_abaptags_c_global=>scopes-global THEN VALUE #( ( sign = 'I' option = 'EQ' low = space ) )
+      WHEN zif_abaptags_c_global=>scopes-user   THEN VALUE #( ( sign = 'I' option = 'EQ' low = sy-uname ) )
     ).
 
-    mv_max_results = ms_search_params-max_results.
-    IF mv_max_results > 0.
-      ADD 1 TO mv_max_results.
+    max_results = search_params-max_results.
+    IF max_results > 0.
+      ADD 1 TO max_results.
     ENDIF.
 
-    IF ms_search_params-query IS NOT INITIAL.
-      determine_obj_name_range( ms_search_params-query ).
+    IF search_params-query IS NOT INITIAL.
+      determine_obj_name_range( search_params-query ).
     ENDIF.
   ENDMETHOD.
 
   METHOD determine_obj_name_range.
-    DATA: lt_obj_name_type  TYPE TABLE OF string,
-          lt_obj_name_range LIKE mt_object_name_range,
-          lt_obj_type_range LIKE mt_object_type_range.
+    DATA: obj_name_type  TYPE TABLE OF string,
+          obj_name_range LIKE object_name_range,
+          obj_type_range LIKE object_type_range.
 
-    DATA(lv_query) = iv_query.
+    DATA(query) = iv_query.
 
-    IF ms_search_params-query_type = zif_abaptags_c_global=>c_tag_query_types-object_uri.
+    IF search_params-query_type = zif_abaptags_c_global=>tag_query_types-object_uri.
       zcl_abaptags_adt_util=>map_uri_to_wb_object(
-        EXPORTING iv_uri         = lv_query
-        IMPORTING ev_object_name = DATA(lv_object_name)
-                  ev_tadir_type  = DATA(lv_object_type)
+        EXPORTING uri         = query
+        IMPORTING object_name = DATA(object_name)
+                  tadir_type  = DATA(object_type)
       ).
-      lt_obj_name_range = VALUE #( ( sign = 'I' option = 'EQ' low = lv_object_name ) ).
-      lt_obj_type_range = VALUE #( ( sign = 'I' option = 'EQ' low = lv_object_type ) ).
-    ELSEIF ms_search_params-query_type = zif_abaptags_c_global=>c_tag_query_types-object_name_type_combo.
-      SPLIT lv_query AT ':' INTO TABLE lt_obj_name_type.
-      IF lines( lt_obj_name_type ) = 2.
-        lt_obj_name_range = VALUE #( ( sign = 'I' option = 'EQ' low = lt_obj_name_type[ 1 ] ) ).
-        lt_obj_type_range = VALUE #( ( sign = 'I' option = 'EQ' low = lt_obj_name_type[ 2 ] ) ).
+      obj_name_range = VALUE #( ( sign = 'I' option = 'EQ' low = object_name ) ).
+      obj_type_range = VALUE #( ( sign = 'I' option = 'EQ' low = object_type ) ).
+    ELSEIF search_params-query_type = zif_abaptags_c_global=>tag_query_types-object_name_type_combo.
+      SPLIT query AT ':' INTO TABLE obj_name_type.
+      IF lines( obj_name_type ) = 2.
+        obj_name_range = VALUE #( ( sign = 'I' option = 'EQ' low = obj_name_type[ 1 ] ) ).
+        obj_type_range = VALUE #( ( sign = 'I' option = 'EQ' low = obj_name_type[ 2 ] ) ).
       ENDIF.
     ELSE.
-      DATA(lv_length) = strlen( lv_query ).
-      DATA(lv_last_char_offset) = lv_length - 1.
+      DATA(length) = strlen( query ).
+      DATA(last_char_offset) = length - 1.
 
-      DATA(lv_option) = 'EQ'.
-      DATA(lv_sign) = 'I'.
+      DATA(option) = 'EQ'.
+      DATA(sign) = 'I'.
 
-      IF iv_query+lv_last_char_offset(1) = '<'.
-        lv_query = lv_query(lv_last_char_offset).
-      ELSEIF lv_query+lv_last_char_offset(1) <> '*'.
-        lv_query = |{ lv_query }*|.
+      IF iv_query+last_char_offset(1) = '<'.
+        query = query(last_char_offset).
+      ELSEIF query+last_char_offset(1) <> '*'.
+        query = |{ query }*|.
       ENDIF.
 
-      IF lv_query CA '+*'.
-        lv_option = 'CP'.
+      IF query CA '+*'.
+        option = 'CP'.
       ENDIF.
 
-      lt_obj_name_range = VALUE #( ( sign = lv_sign option = lv_option low = to_upper( lv_query ) ) ).
+      obj_name_range = VALUE #( ( sign = sign option = option low = to_upper( query ) ) ).
     ENDIF.
 
-    IF ms_search_params-query_focus = zif_abaptags_c_global=>c_tag_query_focus-parent_object.
-      mt_parent_object_name_range = lt_obj_name_range.
-      mt_parent_object_type_range = lt_obj_type_range.
+    IF search_params-query_focus = zif_abaptags_c_global=>tag_query_focus-parent_object.
+      parent_object_name_range = obj_name_range.
+      parent_object_type_range = obj_type_range.
     ELSE.
-      mt_object_name_range = lt_obj_name_range.
-      mt_object_type_range = lt_obj_type_range.
+      object_name_range = obj_name_range.
+      object_type_range = obj_type_range.
     ENDIF.
 
   ENDMETHOD.
 
   METHOD search.
-    DATA: lt_tag_id_range TYPE RANGE OF zabaptags_tag_id.
+    DATA: tag_id_range TYPE RANGE OF zabaptags_tag_id.
 
-    lt_tag_id_range = VALUE #( FOR tag_id IN ms_search_params-tag_id ( sign = 'I' option = 'EQ' low = tag_id ) ).
-    DATA(lv_tag_count) = lines( lt_tag_id_range ).
+    tag_id_range = VALUE #( FOR tag_id IN search_params-tag_id ( sign = 'I' option = 'EQ' low = tag_id ) ).
+    DATA(tag_count) = lines( tag_id_range ).
 
-    IF ms_search_params-matches_all_tags = abap_true.
+    IF search_params-matches_all_tags = abap_true.
       SELECT object_name, object_type
         FROM zabaptags_tgobj
-        WHERE tag_id IN @lt_tag_id_range
-          AND object_name IN @mt_object_name_range
-          AND object_type IN @mt_object_type_range
-          AND parent_object_name IN @mt_parent_object_name_range
-          AND parent_object_type IN @mt_parent_object_type_range
+        WHERE tag_id IN @tag_id_range
+          AND object_name IN @object_name_range
+          AND object_type IN @object_type_range
+          AND parent_object_name IN @parent_object_name_range
+          AND parent_object_type IN @parent_object_type_range
         GROUP BY object_name, object_type
-          HAVING COUNT(*) = @lv_tag_count
+          HAVING COUNT(*) = @tag_count
         ORDER BY object_type, object_name
-      INTO CORRESPONDING FIELDS OF TABLE @mt_tagged_objects_simple
-        UP TO @mv_max_results ROWS.
+      INTO CORRESPONDING FIELDS OF TABLE @tagged_objects_simple
+        UP TO @max_results ROWS.
     ELSE.
       SELECT DISTINCT object_name, object_type
         FROM zabaptags_tgobj
-        WHERE tag_id IN @lt_tag_id_range
-          AND object_name IN @mt_object_name_range
-          AND object_type IN @mt_object_type_range
-          AND parent_object_name IN @mt_parent_object_name_range
-          AND parent_object_type IN @mt_parent_object_type_range
+        WHERE tag_id IN @tag_id_range
+          AND object_name IN @object_name_range
+          AND object_type IN @object_type_range
+          AND parent_object_name IN @parent_object_name_range
+          AND parent_object_type IN @parent_object_type_range
         ORDER BY object_type, object_name
-      INTO CORRESPONDING FIELDS OF TABLE @mt_tagged_objects_simple
-        UP TO @mv_max_results ROWS.
+      INTO CORRESPONDING FIELDS OF TABLE @tagged_objects_simple
+        UP TO @max_results ROWS.
     ENDIF.
 
-    rf_results = xsdbool( mt_tagged_objects_simple IS NOT INITIAL ).
+    rf_results = xsdbool( tagged_objects_simple IS NOT INITIAL ).
   ENDMETHOD.
 
   METHOD post_process_results.
 
-    LOOP AT mt_tagged_objects_simple ASSIGNING FIELD-SYMBOL(<ls_tagged_object>).
-      DATA(lv_tadir_object_name) = <ls_tagged_object>-object_name.
-      DATA(lv_tadir_object_type) = <ls_tagged_object>-object_type.
+    LOOP AT tagged_objects_simple ASSIGNING FIELD-SYMBOL(<tagged_object>).
+      DATA(tadir_object_name) = <tagged_object>-object_name.
+      DATA(tadir_object_type) = <tagged_object>-object_type.
 
-      IF <ls_tagged_object>-object_type = c_tadir_types-function.
-        ASSIGN mt_func_modules[ function = <ls_tagged_object>-object_name ] TO FIELD-SYMBOL(<ls_function>).
+      IF <tagged_object>-object_type = c_tadir_types-function.
+        ASSIGN func_modules[ function = <tagged_object>-object_name ] TO FIELD-SYMBOL(<function>).
         CHECK sy-subrc = 0.
-        lv_tadir_object_type = c_tadir_types-function_group.
-        lv_tadir_object_name = <ls_function>-group.
+        tadir_object_type = c_tadir_types-function_group.
+        tadir_object_name = <function>-group.
       ENDIF.
 
-      ASSIGN mt_tadir_info[ object_name = lv_tadir_object_name object_type = lv_tadir_object_type ] TO FIELD-SYMBOL(<ls_tadir_info>).
+      ASSIGN tadir_infos[ object_name = tadir_object_name object_type = tadir_object_type ] TO FIELD-SYMBOL(<tadir_info>).
       CHECK sy-subrc = 0.
 
-      DATA(ls_adt_object_ref) = zcl_abaptags_adt_util=>get_adt_obj_ref_for_tadir_type(
-          iv_tadir_type       = <ls_tagged_object>-object_type
-          iv_name             = <ls_tagged_object>-object_name
+      DATA(adt_object_ref) = zcl_abaptags_adt_util=>get_adt_obj_ref_for_tadir_type(
+          tadir_type       = <tagged_object>-object_type
+          name             = <tagged_object>-object_name
       ).
-      CHECK ls_adt_object_ref IS NOT INITIAL.
+      CHECK adt_object_ref IS NOT INITIAL.
 
-      APPEND INITIAL LINE TO mt_tagged_objects_int ASSIGNING FIELD-SYMBOL(<ls_tagged_object_result>).
+      APPEND INITIAL LINE TO tagged_objects ASSIGNING FIELD-SYMBOL(<tagged_object_result>).
 
-      <ls_tagged_object_result>-adt_obj_ref = VALUE #(
-         name         = <ls_tagged_object>-object_name
-         type         = ls_adt_object_ref-type
-         tadir_type   = <ls_tagged_object>-object_type
-         uri          = ls_adt_object_ref-uri
-         package_name = <ls_tadir_info>-package_name
-         owner        = <ls_tadir_info>-author
+      <tagged_object_result>-adt_obj_ref = VALUE #(
+         name         = <tagged_object>-object_name
+         type         = adt_object_ref-type
+         tadir_type   = <tagged_object>-object_type
+         uri          = adt_object_ref-uri
+         package_name = <tadir_info>-package_name
+         owner        = <tadir_info>-author
       ).
 
-      LOOP AT mt_tag_info ASSIGNING FIELD-SYMBOL(<ls_tag_info>) WHERE object_name = <ls_tagged_object>-object_name
-                                                                  AND object_type = <ls_tagged_object>-object_type.
-        <ls_tagged_object_result>-tags = VALUE #( BASE <ls_tagged_object_result>-tags
-          ( tag_id   = <ls_tag_info>-tag_id
-            tag_name = <ls_tag_info>-tag_name
-            owner    = <ls_tag_info>-owner )
+      LOOP AT tag_infos ASSIGNING FIELD-SYMBOL(<tag_info>) WHERE object_name = <tagged_object>-object_name
+                                                                AND object_type = <tagged_object>-object_type.
+        <tagged_object_result>-tags = VALUE #( BASE <tagged_object_result>-tags
+          ( tag_id   = <tag_info>-tag_id
+            tag_name = <tag_info>-tag_name
+            owner    = <tag_info>-owner )
         ).
       ENDLOOP.
 
@@ -267,20 +265,20 @@ CLASS zcl_abaptags_adt_res_tagsearch IMPLEMENTATION.
   ENDMETHOD.
 
   METHOD fill_descriptions.
-    DATA lt_texts TYPE STANDARD TABLE OF seu_objtxt.
+    DATA: texts TYPE STANDARD TABLE OF seu_objtxt.
 
-    lt_texts = VALUE #(
-      FOR tagged_obj IN mt_tagged_objects_int
+    texts = VALUE #(
+      FOR tagged_obj IN tagged_objects
       ( object = tagged_obj-adt_obj_ref-tadir_type obj_name = tagged_obj-adt_obj_ref-name )
     ).
     CALL FUNCTION 'RS_SHORTTEXT_GET'
       TABLES
-        obj_tab = lt_texts.
+        obj_tab      = texts.
 
-    LOOP AT mt_tagged_objects_int ASSIGNING FIELD-SYMBOL(<ls_entity>).
-      ASSIGN lt_texts[ obj_name = <ls_entity>-adt_obj_ref-name object = <ls_entity>-adt_obj_ref-tadir_type ] TO FIELD-SYMBOL(<ls_text>).
+    LOOP AT tagged_objects ASSIGNING FIELD-SYMBOL(<entity>).
+      ASSIGN texts[ obj_name = <entity>-adt_obj_ref-name object = <entity>-adt_obj_ref-tadir_type ] TO FIELD-SYMBOL(<text>).
       IF sy-subrc = 0.
-        <ls_entity>-adt_obj_ref-description = <ls_text>-stext.
+        <entity>-adt_obj_ref-description = <text>-stext.
       ENDIF.
     ENDLOOP.
   ENDMETHOD.
@@ -304,9 +302,9 @@ CLASS zcl_abaptags_adt_res_tagsearch IMPLEMENTATION.
 
 
   METHOD retrieve_tag_info.
-    DATA: lt_child_tags LIKE mt_tag_info.
+    DATA: child_tags LIKE tag_infos.
 
-    CHECK ms_search_params-with_tag_info = abap_true.
+    CHECK search_params-with_tag_info = abap_true.
 
     SELECT tagged_object~object_name,
            tagged_object~object_type,
@@ -316,16 +314,16 @@ CLASS zcl_abaptags_adt_res_tagsearch IMPLEMENTATION.
       FROM zabaptags_tags AS tag
         INNER JOIN zabaptags_tgobj AS tagged_object
           ON tag~tag_id = tagged_object~tag_id
-      FOR ALL ENTRIES IN @mt_tagged_objects_simple
-      WHERE tagged_object~object_type = @mt_tagged_objects_simple-object_type
-        AND tagged_object~object_name = @mt_tagged_objects_simple-object_name
-    INTO CORRESPONDING FIELDS OF TABLE @mt_tag_info.
+      FOR ALL ENTRIES IN @tagged_objects_simple
+      WHERE tagged_object~object_type = @tagged_objects_simple-object_type
+        AND tagged_object~object_name = @tagged_objects_simple-object_name
+    INTO CORRESPONDING FIELDS OF TABLE @tag_infos.
 
     IF sy-subrc <> 0.
       RETURN.
     ENDIF.
 
-    IF ms_search_params-tag_info_type <> zif_abaptags_c_global=>c_tag_info_types-children.
+    IF search_params-tag_info_type <> zif_abaptags_c_global=>tag_info_types-children.
       RETURN.
     ENDIF.
 
@@ -339,65 +337,65 @@ CLASS zcl_abaptags_adt_res_tagsearch IMPLEMENTATION.
       FROM zabaptags_tags AS tag
         INNER JOIN zabaptags_tgobj AS tgobj
           ON tag~tag_id = tgobj~tag_id
-      FOR ALL ENTRIES IN @mt_tag_info
-      WHERE parent_tag_id = @mt_tag_info-tag_id
-    INTO TABLE @DATA(lt_parent_tag_info).
+      FOR ALL ENTRIES IN @tag_infos
+      WHERE parent_tag_id = @tag_infos-tag_id
+    INTO TABLE @DATA(parent_tag_info).
 
     IF sy-subrc <> 0.
-      CLEAR mt_tag_info.
+      CLEAR tag_infos.
     ENDIF.
 
-    LOOP AT mt_tag_info ASSIGNING FIELD-SYMBOL(<ls_tag_info>).
+    LOOP AT tag_infos ASSIGNING FIELD-SYMBOL(<tag_info>).
 
-      LOOP AT lt_parent_tag_info ASSIGNING FIELD-SYMBOL(<ls_child_tag>) WHERE parent_tag_id = <ls_tag_info>-tag_id
-                                                                          AND parent_object_name = <ls_tag_info>-object_name
-                                                                          AND parent_object_type = <ls_tag_info>-object_type.
-        DATA(ls_child_tag) = <ls_tag_info>.
-        ls_child_tag-tag_id = <ls_child_tag>-tag_id.
-        ls_child_tag-tag_name = <ls_tag_info>-tag_name && ' > ' && <ls_child_tag>-name.
-        lt_child_tags = VALUE #( BASE lt_child_tags ( ls_child_tag ) ).
+      LOOP AT parent_tag_info ASSIGNING FIELD-SYMBOL(<child_tag>) WHERE parent_tag_id = <tag_info>-tag_id
+                                                                    AND parent_object_name = <tag_info>-object_name
+                                                                    AND parent_object_type = <tag_info>-object_type.
+        DATA(child_tag) = <tag_info>.
+        child_tag-tag_id = <child_tag>-tag_id.
+        child_tag-tag_name = <tag_info>-tag_name && ' > ' && <child_tag>-name.
+        child_tags = VALUE #( BASE child_tags ( child_tag ) ).
       ENDLOOP.
 
-      DELETE mt_tag_info.
+      DELETE tag_infos.
     ENDLOOP.
 
-    mt_tag_info = lt_child_tags.
+    tag_infos = child_tags.
   ENDMETHOD.
 
 
   METHOD determine_tadir_info.
     TYPES:
-      BEGIN OF lty_s_tadir,
+      BEGIN OF tadir,
         obj_name TYPE tadir-obj_name,
         object   TYPE tadir-object,
-      END OF lty_s_tadir.
+      END OF tadir.
 
-    DATA: lt_func_module_range TYPE RANGE OF tfdir-funcname,
-          lt_tadir_search      TYPE TABLE OF lty_s_tadir.
+    DATA: func_module_range TYPE RANGE OF tfdir-funcname,
+          tadir_search      TYPE TABLE OF tadir.
 
-    LOOP AT mt_tagged_objects_simple ASSIGNING FIELD-SYMBOL(<ls_tagged_object>).
-      IF <ls_tagged_object>-object_type = c_tadir_types-function.
-        lt_func_module_range = VALUE #( BASE lt_func_module_range ( sign = 'I' option = 'EQ' low = <ls_tagged_object>-object_name ) ).
+    LOOP AT tagged_objects_simple ASSIGNING FIELD-SYMBOL(<tagged_object>).
+      IF <tagged_object>-object_type = c_tadir_types-function.
+        func_module_range = VALUE #( BASE func_module_range ( sign = 'I' option = 'EQ' low = <tagged_object>-object_name ) ).
       ELSE.
-        lt_tadir_search = VALUE #( BASE lt_tadir_search ( obj_name = <ls_tagged_object>-object_name object = <ls_tagged_object>-object_type ) ).
+        tadir_search = VALUE #( BASE tadir_search ( obj_name = <tagged_object>-object_name object = <tagged_object>-object_type ) ).
       ENDIF.
     ENDLOOP.
 
-    IF lt_func_module_range IS NOT INITIAL.
+    IF func_module_range IS NOT INITIAL.
       SELECT funcname AS function,
              pname AS group
         FROM tfdir
-        WHERE funcname IN @lt_func_module_range
-      INTO CORRESPONDING FIELDS OF TABLE @mt_func_modules.
+        WHERE funcname IN @func_module_range
+      INTO CORRESPONDING FIELDS OF TABLE @func_modules.
 
-      LOOP AT mt_func_modules ASSIGNING FIELD-SYMBOL(<ls_func_module>).
-        DATA(lv_func_group) = |{ <ls_func_module>-group }|.
-        DATA(lv_sapl_offset) = find( val = lv_func_group regex = '(?=/.+/)?SAPL' ).
-        DATA(lv_offset_after_sapl) = lv_sapl_offset + 4.
+      LOOP AT func_modules ASSIGNING FIELD-SYMBOL(<func_module>).
+        DATA(func_group) = |{ <func_module>-group }|.
+        DATA(sapl_offset) = find( val = func_group regex = '(?=/.+/)?SAPL' ).
+        DATA(offset_after_sapl) = sapl_offset + 4.
 
-        <ls_func_module>-group = |{ lv_func_group(lv_sapl_offset) }{ lv_func_group+lv_offset_after_sapl }|.
+        <func_module>-group = |{ func_group(sapl_offset) }{ func_group+offset_after_sapl }|.
 
-        lt_tadir_search = VALUE #( BASE lt_tadir_search ( object = c_tadir_types-function_group obj_name = <ls_func_module>-group ) ).
+        tadir_search = VALUE #( BASE tadir_search ( object = c_tadir_types-function_group obj_name = <func_module>-group ) ).
       ENDLOOP.
     ENDIF.
 
@@ -407,10 +405,10 @@ CLASS zcl_abaptags_adt_res_tagsearch IMPLEMENTATION.
            devclass AS package_name,
            author
       FROM tadir
-      FOR ALL ENTRIES IN @lt_tadir_search
-      WHERE obj_name = @lt_tadir_search-obj_name
-        AND object   = @lt_tadir_search-object
-    INTO CORRESPONDING FIELDS OF TABLE @mt_tadir_info.
+      FOR ALL ENTRIES IN @tadir_search
+      WHERE obj_name = @tadir_search-obj_name
+        AND object   = @tadir_search-object
+    INTO CORRESPONDING FIELDS OF TABLE @tadir_infos.
   ENDMETHOD.
 
 ENDCLASS.

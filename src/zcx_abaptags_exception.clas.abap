@@ -24,13 +24,13 @@ CLASS zcx_abaptags_exception DEFINITION
         !msgv4    TYPE sy-msgv4 OPTIONAL .
 
     "! <p class="shorttext synchronized" lang="en">Raise exception with text</p>
-    "! @parameter iv_text | <p class="shorttext synchronized" lang="en">Text</p>
-    "! @parameter ix_previous | <p class="shorttext synchronized" lang="en">Previous exception</p>
+    "! @parameter error_text | <p class="shorttext synchronized" lang="en">Text</p>
+    "! @parameter previous_exc | <p class="shorttext synchronized" lang="en">Previous exception</p>
     "! @raising zcx_abaptags_exception | <p class="shorttext synchronized" lang="en">Exception</p>
     CLASS-METHODS raise
       IMPORTING
-        !iv_text     TYPE string optional
-        !ix_previous TYPE REF TO cx_root OPTIONAL
+        !error_text     TYPE string optional
+        !previous_exc TYPE REF TO cx_root OPTIONAL
       RAISING
         zcx_abaptags_exception.
   PROTECTED SECTION.
@@ -61,15 +61,15 @@ CLASS zcx_abaptags_exception IMPLEMENTATION.
   ENDMETHOD.
 
   METHOD raise.
-    DATA: lv_text TYPE string.
+    DATA: text TYPE string.
 
-    IF iv_text IS INITIAL.
-      lv_text = c_generic_error_msg.
+    IF error_text IS INITIAL.
+      text = c_generic_error_msg.
     ELSE.
-      lv_text = iv_text.
+      text = error_text.
     ENDIF.
 
-    zcl_abaptags_message_helper=>set_msg_vars_for_clike( iv_text = lv_text ).
+    zcl_abaptags_message_helper=>set_msg_vars_for_clike( text = text ).
 
     RAISE EXCEPTION TYPE zcx_abaptags_exception
       EXPORTING
@@ -85,6 +85,6 @@ CLASS zcx_abaptags_exception IMPLEMENTATION.
         msgv2    = sy-msgv2
         msgv3    = sy-msgv3
         msgv4    = sy-msgv4
-        previous = ix_previous.
+        previous = previous_exc.
   ENDMETHOD.
 ENDCLASS.

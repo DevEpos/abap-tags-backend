@@ -7,6 +7,15 @@ CLASS zcx_abaptags_adt_error DEFINITION
 
   PUBLIC SECTION.
     CONSTANTS:
+      BEGIN OF unknown_tags_action,
+        msgid TYPE symsgid VALUE 'ZABAPTAGS',
+        msgno TYPE symsgno VALUE '011',
+        attr1 TYPE scx_attrname VALUE 'MSGV1',
+        attr2 TYPE scx_attrname VALUE '',
+        attr3 TYPE scx_attrname VALUE '',
+        attr4 TYPE scx_attrname VALUE '',
+      END OF unknown_tags_action .
+    CONSTANTS:
       BEGIN OF chosen_tags_no_longer_exist,
         msgid TYPE symsgid VALUE 'ZABAPTAGS',
         msgno TYPE symsgno VALUE '009',

@@ -1,0 +1,52 @@
+<?sap.transform simple?>
+<tt:transform
+  xmlns:tt="http://www.sap.com/transformation-templates"
+  xmlns:ddic="http://www.sap.com/abapxml/types/dictionary"
+  xmlns:atm="http://www.devepos.com/adt/atm">
+
+  <tt:root name="shared_tag" type="ddic:zabaptags_shared_tag"/>
+  <tt:include name="zabaptags_user" template="users"/>
+
+  <tt:template>
+    <tt:apply name="sharedTag">
+      <tt:with-root name="shared_tag" ref="shared_tag"/>
+    </tt:apply>
+  </tt:template>
+
+  <!-- PUBLIC TEMPLATE for a shared Tag -->
+  <tt:template name="sharedTag">
+    <tt:context>
+      <tt:root name="shared_tag"/>
+    </tt:context>
+
+    <atm:tag tt:extensible="deep">
+      <!-- serialize some scalar properties of the tag -->
+      <tt:cond s-check="not-initial(shared_tag.tag_id)">
+        <tt:attribute name="atm:id" option="format(guid)" value-ref="shared_tag.tag_id"/>
+      </tt:cond>
+
+      <!-- Shared Users -->
+      <tt:cond check="exist(shared_tag.users)">
+        <tt:cond check="not-initial(shared_tag.users)">
+          <tt:apply name="users">
+            <tt:with-root name="USERS" ref="shared_tag.users"/>
+          </tt:apply>
+        </tt:cond>
+      </tt:cond>
+    </atm:tag>
+  </tt:template>
+
+  <tt:template name="sharedTags">
+    <tt:context>
+      <tt:root name="shared_tags" type="ddic:zabaptags_shared_tag_t"/>
+    </tt:context>
+    <tt:cond check="not-initial(shared_tags)">
+      <tt:loop ref="shared_tags">
+        <tt:apply name="sharedTag">
+          <tt:with-root name="shared_tag" ref="$ref"/>
+        </tt:apply>
+      </tt:loop>
+    </tt:cond>
+  </tt:template>
+
+</tt:transform>
