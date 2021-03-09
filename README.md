@@ -1,3 +1,4 @@
+![](https://img.shields.io/badge/ABAP-v740sp08+-orange)
 # abap-tags-backend
 
 This Repository contains the ADT Backend that is needed to use the eclipse plugin
@@ -6,7 +7,3 @@ This Repository contains the ADT Backend that is needed to use the eclipse plugi
 ### Installation
 
 Install this repository using [abapGit](https://github.com/larshp/abapGit#abapgit).
-
-#### SAP NetWeaver compatibility
-
-The repository is compatible with NW 7.40 and greater
