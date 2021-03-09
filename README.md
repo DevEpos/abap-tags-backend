@@ -1,4 +1,4 @@
-![](https://img.shields.io/badge/ABAP-v740sp08+-orange)
+![](https://img.shields.io/badge/ABAP-v7.40sp08+-orange)
 # abap-tags-backend
 
 This Repository contains the ADT Backend that is needed to use the eclipse plugin
