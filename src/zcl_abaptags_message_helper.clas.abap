@@ -10,6 +10,13 @@ CLASS zcl_abaptags_message_helper DEFINITION
           text TYPE string.
   PROTECTED SECTION.
   PRIVATE SECTION.
+    TYPES:
+      ty_message TYPE c LENGTH 200.
+
+    CONSTANTS:
+      c_length_of_msgv           TYPE i VALUE 50,
+      c_offset_of_last_character TYPE i VALUE 49.
+
     CLASS-METHODS:
       split_text
         IMPORTING
@@ -40,19 +47,10 @@ CLASS zcl_abaptags_message_helper IMPLEMENTATION.
   ENDMETHOD.
 
   METHOD split_text.
-
-    CONSTANTS:
-      c_length_of_msgv           TYPE i VALUE 50,
-      c_offset_of_last_character TYPE i VALUE 49.
-
-    TYPES:
-      char200 TYPE c LENGTH 200.
-
-    DATA:
-      tmp_text TYPE char200,
-      msg_var  TYPE c LENGTH c_length_of_msgv,
-      rest     TYPE char200,
-      index    TYPE syst-index.
+    DATA: tmp_text TYPE ty_message,
+          msg_var  TYPE c LENGTH c_length_of_msgv,
+          rest     TYPE ty_message,
+          index    TYPE syst-index.
 
     tmp_text = text.
 

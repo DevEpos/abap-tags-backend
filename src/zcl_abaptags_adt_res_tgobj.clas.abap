@@ -17,8 +17,7 @@ CLASS zcl_abaptags_adt_res_tgobj DEFINITION
         lock         TYPE string VALUE 'lock',
         unlock       TYPE string VALUE 'unlock',
         batch_delete TYPE string VALUE 'batchDelete',
-      END OF c_actions.
-    CONSTANTS:
+      END OF c_actions,
       BEGIN OF c_params,
         action     TYPE string VALUE 'action',
         object_uri TYPE string VALUE 'objectUri',
@@ -31,29 +30,31 @@ CLASS zcl_abaptags_adt_res_tgobj DEFINITION
         id       TYPE zabaptags_tag_id,
       END OF ty_tag_map.
 
-    DATA action_name TYPE string.
-    DATA new_tag_map TYPE HASHED TABLE OF ty_tag_map WITH UNIQUE KEY tag_name owner.
-    DATA tagged_objects TYPE zabaptags_tagged_object_t.
-    DATA tagged_objects_db TYPE TABLE OF zabaptags_tgobj.
+    DATA:
+      action_name       TYPE string,
+      new_tag_map       TYPE HASHED TABLE OF ty_tag_map WITH UNIQUE KEY tag_name owner,
+      tagged_objects    TYPE zabaptags_tagged_object_t,
+      tagged_objects_db TYPE TABLE OF zabaptags_tgobj.
 
-    METHODS get_content_handler
-      RETURNING
-        VALUE(content_handler) TYPE REF TO if_adt_rest_content_handler.
-    METHODS create_tagged_objects
-      RAISING
-        cx_adt_rest.
-    METHODS prepare_for_db_insert
-      RAISING
-        cx_adt_rest.
-    METHODS create_non_persisted_tags
-      RAISING
-        cx_adt_rest.
-    METHODS delete_tags_from_objects
-      RAISING
-        cx_adt_rest.
-    METHODS validate_tags
-      RAISING
-        cx_adt_rest.
+    METHODS:
+      get_content_handler
+        RETURNING
+          VALUE(content_handler) TYPE REF TO if_adt_rest_content_handler,
+      create_tagged_objects
+        RAISING
+          cx_adt_rest,
+      prepare_for_db_insert
+        RAISING
+          cx_adt_rest,
+      create_non_persisted_tags
+        RAISING
+          cx_adt_rest,
+      delete_tags_from_objects
+        RAISING
+          cx_adt_rest,
+      validate_tags
+        RAISING
+          cx_adt_rest.
 ENDCLASS.
 
 
@@ -64,17 +65,15 @@ CLASS zcl_abaptags_adt_res_tgobj IMPLEMENTATION.
     DATA(binary_data) = request->get_inner_rest_request( )->get_entity( )->get_binary_data( ).
     IF binary_data IS NOT INITIAL.
       request->get_body_data(
-         EXPORTING content_handler = get_content_handler( )
-         IMPORTING data            = tagged_objects
-      ).
+        EXPORTING content_handler = get_content_handler( )
+        IMPORTING data            = tagged_objects ).
     ENDIF.
 
     CHECK tagged_objects IS NOT INITIAL.
 
     action_name = zcl_abaptags_adt_request_util=>get_request_param_value(
-        param_name    = c_params-action
-        request       = request
-    ).
+      param_name    = c_params-action
+      request       = request ).
 
     IF action_name IS INITIAL.
 *      " create/update tags
@@ -100,17 +99,15 @@ CLASS zcl_abaptags_adt_res_tgobj IMPLEMENTATION.
           tags  TYPE zcl_abaptags_tag_util=>ty_tag_infos.
 
     DATA(object_uri) = zcl_abaptags_adt_request_util=>get_request_param_value(
-        param_name    = c_params-object_uri
-        mandatory     = abap_true
-        request       = request
-    ).
+      param_name    = c_params-object_uri
+      mandatory     = abap_true
+      request       = request ).
 
     zcl_abaptags_adt_util=>map_uri_to_wb_object(
      EXPORTING uri         = object_uri
      IMPORTING object_name = DATA(tadir_object)
                tadir_type  = DATA(tadir_type)
-               object_type = DATA(adt_type)
-    ).
+               object_type = DATA(adt_type) ).
 
     SELECT DISTINCT
            tags~tag_id,
@@ -124,7 +121,7 @@ CLASS zcl_abaptags_adt_res_tgobj IMPLEMENTATION.
         AND tgobj~object_type = @tadir_type
         AND ( tags~owner = @space OR tags~owner = @sy-uname )
       ORDER BY owner, name
-    INTO CORRESPONDING FIELDS OF TABLE @tags.
+      INTO CORRESPONDING FIELDS OF TABLE @tags.
 
     zcl_abaptags_tag_util=>det_hierarchical_tag_names( CHANGING tag_info = tags ).
 
@@ -136,33 +133,28 @@ CLASS zcl_abaptags_adt_res_tgobj IMPLEMENTATION.
 
     tagged_objects = VALUE #(
       ( adt_obj_ref = VALUE #(
-         name        = tadir_object
-         description = texts[ 1 ]-stext
-         tadir_type  = tadir_type
-         type        = COND #( WHEN adt_type-subtype_wb <> space THEN |{ adt_type-objtype_tr }/{ adt_type-subtype_wb }| ELSE adt_type )
-         uri         = object_uri
-        )
+          name        = tadir_object
+          description = texts[ 1 ]-stext
+          tadir_type  = tadir_type
+          type        = COND #(
+            WHEN adt_type-subtype_wb <> space THEN |{ adt_type-objtype_tr }/{ adt_type-subtype_wb }| ELSE adt_type )
+          uri         = object_uri )
         tags = VALUE #(
           FOR tag IN tags
           ( tag_id   = tag-tag_id
             tag_name = tag-full_hierarchy
-            owner    = tag-owner )
-        )
-      )
-    ).
+            owner    = tag-owner ) ) ) ).
 
     response->set_body_data(
-        content_handler = get_content_handler( )
-        data            = tagged_objects
-    ).
+      content_handler = get_content_handler( )
+      data            = tagged_objects ).
   ENDMETHOD.
 
   METHOD get_content_handler.
     content_handler = cl_adt_rest_cnt_hdl_factory=>get_instance( )->get_handler_for_xml_using_st(
-       st_name      = 'ZABAPTAGS_TAGGED_OBJECTS'
-       root_name    = 'TAGGED_OBJECTS'
-       content_type = if_rest_media_type=>gc_appl_xml
-    ).
+      st_name      = 'ZABAPTAGS_TAGGED_OBJECTS'
+      root_name    = 'TAGGED_OBJECTS'
+      content_type = if_rest_media_type=>gc_appl_xml ).
   ENDMETHOD.
 
   METHOD create_tagged_objects.
@@ -204,8 +196,7 @@ CLASS zcl_abaptags_adt_res_tgobj IMPLEMENTATION.
           name_upper        = to_upper( <tag>-tag_name )
           owner             = <tag>-owner
           created_by        = sy-uname
-          created_date_time = created_date_time )
-      ).
+          created_date_time = created_date_time ) ).
     ENDLOOP.
 
     IF new_tags IS INITIAL.
@@ -218,7 +209,7 @@ CLASS zcl_abaptags_adt_res_tgobj IMPLEMENTATION.
       FOR ALL ENTRIES IN @new_tags
       WHERE name_upper = @new_tags-name_upper
         AND owner      = @new_tags-owner
-    INTO TABLE @DATA(existing_tags)
+      INTO TABLE @DATA(existing_tags)
       UP TO 1 ROWS.
 
     IF sy-subrc = 0.
@@ -257,8 +248,7 @@ CLASS zcl_abaptags_adt_res_tgobj IMPLEMENTATION.
       zcl_abaptags_adt_util=>map_uri_to_wb_object(
         EXPORTING uri         = <tagged_object>-adt_obj_ref-uri
         IMPORTING object_name = tadir_object
-                  tadir_type  = tadir_type
-      ).
+                  tadir_type  = tadir_type ).
 
       LOOP AT <tagged_object>-tags ASSIGNING <tag>.
         CLEAR: parent_object,
@@ -281,8 +271,7 @@ CLASS zcl_abaptags_adt_res_tgobj IMPLEMENTATION.
           zcl_abaptags_adt_util=>map_uri_to_wb_object(
             EXPORTING uri         = <tag>-parent_uri
             IMPORTING object_name = parent_object
-                      tadir_type  = parent_type
-          ).
+                      tadir_type  = parent_type ).
         ENDIF.
 
         tagged_objects_db = VALUE #( BASE tagged_objects_db
@@ -292,8 +281,7 @@ CLASS zcl_abaptags_adt_res_tgobj IMPLEMENTATION.
            parent_object_type = parent_type
            parent_object_name = parent_object
            tagged_by          = sy-uname
-           tagged_date        = sy-datum )
-        ).
+           tagged_date        = sy-datum ) ).
       ENDLOOP.
 
     ENDLOOP.
@@ -315,15 +303,13 @@ CLASS zcl_abaptags_adt_res_tgobj IMPLEMENTATION.
       zcl_abaptags_adt_util=>map_uri_to_wb_object(
         EXPORTING uri         = <tagged_object>-adt_obj_ref-uri
         IMPORTING object_name = tadir_object
-                  tadir_type  = tadir_type
-      ).
+                  tadir_type  = tadir_type ).
 
       LOOP AT <tagged_object>-tags ASSIGNING <tag>.
         tagged_objects_delete = VALUE #( BASE tagged_objects_delete
          ( object_type        = tadir_type
            object_name        = tadir_object
-           tag_id             = <tag>-tag_id )
-        ).
+           tag_id             = <tag>-tag_id ) ).
       ENDLOOP.
 
     ENDLOOP.
@@ -354,7 +340,7 @@ CLASS zcl_abaptags_adt_res_tgobj IMPLEMENTATION.
         FROM zabaptags_tags
         FOR ALL ENTRIES IN @tag_ids
         WHERE tag_id = @tag_ids-table_line
-      INTO CORRESPONDING FIELDS OF TABLE @remaining_tags.
+        INTO CORRESPONDING FIELDS OF TABLE @remaining_tags.
 
       IF lines( remaining_tags ) <> lines( tag_ids ).
         RAISE EXCEPTION TYPE zcx_abaptags_adt_error
@@ -374,7 +360,7 @@ CLASS zcl_abaptags_adt_res_tgobj IMPLEMENTATION.
         FROM zabaptags_tags
         FOR ALL ENTRIES IN @tag_ids
         WHERE tag_id = @tag_ids-table_line
-      INTO CORRESPONDING FIELDS OF TABLE @remaining_tags.
+        INTO CORRESPONDING FIELDS OF TABLE @remaining_tags.
 
       IF lines( remaining_tags ) <> lines( tag_ids ).
         RAISE EXCEPTION TYPE zcx_abaptags_adt_error

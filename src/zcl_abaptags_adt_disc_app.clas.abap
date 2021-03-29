@@ -6,36 +6,41 @@ CLASS zcl_abaptags_adt_disc_app DEFINITION
   CREATE PUBLIC .
 
   PUBLIC SECTION.
-    CONSTANTS c_root_scheme TYPE string VALUE 'http://www.devepos.com/adt/atm'.
-    CONSTANTS c_root_rel_scheme TYPE string VALUE 'http://www.devepos.com/adt/relations/atm'.
-    CONSTANTS c_tags_uri TYPE string VALUE '/tags'.
-    CONSTANTS c_tags_share_uri TYPE string VALUE '/tags/share'.
-    CONSTANTS c_object_tagging_uri TYPE string VALUE '/taggedobjects'.
-    CONSTANTS c_tagged_object_search_uri TYPE string VALUE '/taggedobjects/search'.
+    CONSTANTS:
+      c_root_scheme              TYPE string VALUE 'http://www.devepos.com/adt/atm',
+      c_root_rel_scheme          TYPE string VALUE 'http://www.devepos.com/adt/relations/atm',
+      c_tags_uri                 TYPE string VALUE '/tags',
+      c_tags_share_uri           TYPE string VALUE '/tags/share',
+      c_object_tagging_uri       TYPE string VALUE '/taggedobjects',
+      c_tagged_object_search_uri TYPE string VALUE '/taggedobjects/search',
+      c_static_uri               TYPE string VALUE '/devepos/adt/atm'.
 
-    CONSTANTS c_static_uri TYPE string VALUE '/devepos/adt/atm'.
-
-    METHODS if_adt_rest_rfc_application~get_static_uri_path
+    METHODS:
+      if_adt_rest_rfc_application~get_static_uri_path
         REDEFINITION.
   PROTECTED SECTION.
-    METHODS: get_application_title REDEFINITION,
+    METHODS:
+      get_application_title REDEFINITION,
       register_resources REDEFINITION,
       fill_router REDEFINITION.
   PRIVATE SECTION.
-    CONSTANTS c_app_title TYPE string VALUE 'ADT Discovery for ABAP Tags'.
-    CONSTANTS c_tags_management_handler TYPE string VALUE 'ZCL_ABAPTAGS_ADT_RES_TAGS' ##NO_TEXT.
-    "! <p class="shorttext synchronized" lang="en">Register resources for managing abap tags</p>
-    METHODS register_tag_management
-      IMPORTING
-        registry TYPE REF TO if_adt_disc_rest_rc_registry.
-    "! <p class="shorttext synchronized" lang="en">Register resources for abap tag search</p>
-    METHODS register_tag_search
-      IMPORTING
-        registry TYPE REF TO if_adt_disc_rest_rc_registry.
-    "! <p class="shorttext synchronized" lang="en">Register resources for tagging objects</p>
-    METHODS register_object_tagging_res
-      IMPORTING
-        registry TYPE REF TO if_adt_disc_rest_rc_registry.
+    CONSTANTS:
+      c_app_title               TYPE string VALUE 'ADT Discovery for ABAP Tags' ##NO_TEXT,
+      c_tags_management_handler TYPE string VALUE 'ZCL_ABAPTAGS_ADT_RES_TAGS' ##NO_TEXT.
+
+    METHODS:
+      "! <p class="shorttext synchronized" lang="en">Register resources for managing abap tags</p>
+      register_tag_management
+        IMPORTING
+          registry TYPE REF TO if_adt_disc_rest_rc_registry,
+      "! <p class="shorttext synchronized" lang="en">Register resources for abap tag search</p>
+      register_tag_search
+        IMPORTING
+          registry TYPE REF TO if_adt_disc_rest_rc_registry,
+      "! <p class="shorttext synchronized" lang="en">Register resources for tagging objects</p>
+      register_object_tagging_res
+        IMPORTING
+          registry TYPE REF TO if_adt_disc_rest_rc_registry.
 ENDCLASS.
 
 
@@ -45,9 +50,8 @@ CLASS zcl_abaptags_adt_disc_app IMPLEMENTATION.
   METHOD fill_router.
     super->fill_router( CHANGING router = router ).
     router->attach(
-        iv_template      = '/discovery'
-        iv_handler_class = cl_adt_res_discovery=>co_class_name
-    ).
+      iv_template      = '/discovery'
+      iv_handler_class = cl_adt_res_discovery=>co_class_name ).
   ENDMETHOD.
 
 
@@ -76,19 +80,16 @@ CLASS zcl_abaptags_adt_disc_app IMPLEMENTATION.
       handler_class   = 'ZCL_ABAPTAGS_ADT_RES_TGOBJ'
       description     = 'Object Tagging' ##NO_TEXT
       category_scheme = c_root_scheme
-      category_term   = 'objecttagging'
-    ).
+      category_term   = 'objecttagging' ).
 
     registry->register_resource(
-        template      = |{ c_object_tagging_uri }/\{objectUri\}|
-        handler_class = 'ZCL_ABAPTAGS_ADT_RES_TGOBJ'
-    ).
+      template      = |{ c_object_tagging_uri }/\{objectUri\}|
+      handler_class = 'ZCL_ABAPTAGS_ADT_RES_TGOBJ' ).
 
     collection->register_disc_res_w_template(
       relation      = |{ c_root_rel_scheme }{ c_object_tagging_uri }/{ c_previewinfo_uri_part }|
       template      = |{ c_object_tagging_uri }/{ c_previewinfo_uri_part }|
-      handler_class = 'ZCL_ABAPTAGS_ADT_RES_TAGPREV'
-    ).
+      handler_class = 'ZCL_ABAPTAGS_ADT_RES_TAGPREV' ).
 
   ENDMETHOD.
 
@@ -100,23 +101,20 @@ CLASS zcl_abaptags_adt_disc_app IMPLEMENTATION.
       handler_class   = c_tags_management_handler
       description     = 'Tags' ##NO_TEXT
       category_scheme = c_root_scheme
-      category_term   = 'tags'
-    ).
+      category_term   = 'tags' ).
 
     collection = registry->register_discoverable_resource(
       url             = c_tags_share_uri
       handler_class   = 'ZCL_ABAPTAGS_ADT_RES_TAGSSHARE'
       description     = 'Share Tags' ##NO_TEXT
       category_scheme = c_root_scheme
-      category_term   = 'shareTags'
-    ).
+      category_term   = 'shareTags' ).
 
     collection->register_disc_res_w_template(
-        relation      = |{ c_root_rel_scheme }{ c_tags_share_uri }/info|
-        template      = |{ c_tags_share_uri }\{:tagId\}|
-        description   = 'Details of Shared Tag'
-        handler_class = 'ZCL_ABAPTAGS_ADT_RES_TAGSSHARE'
-    ).
+      relation      = |{ c_root_rel_scheme }{ c_tags_share_uri }/info|
+      template      = |{ c_tags_share_uri }\{:tagId\}|
+      description   = 'Details of Shared Tag'
+      handler_class = 'ZCL_ABAPTAGS_ADT_RES_TAGSSHARE' ).
 
   ENDMETHOD.
 
@@ -127,7 +125,6 @@ CLASS zcl_abaptags_adt_disc_app IMPLEMENTATION.
       handler_class   = 'ZCL_ABAPTAGS_ADT_RES_TAGSEARCH'
       description     = 'Tagged Object Search' ##NO_TEXT
       category_scheme = c_root_scheme
-      category_term   = 'taggedobjectsearch'
-    ).
+      category_term   = 'taggedobjectsearch' ).
   ENDMETHOD.
 ENDCLASS.

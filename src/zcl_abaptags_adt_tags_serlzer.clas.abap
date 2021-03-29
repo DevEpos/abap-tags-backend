@@ -5,19 +5,20 @@ CLASS zcl_abaptags_adt_tags_serlzer DEFINITION
   CREATE PUBLIC .
 
   PUBLIC SECTION.
-    "! <p class="shorttext synchronized" lang="en">Deserializes child tags of tag</p>
-    CLASS-METHODS deserialize
-      IMPORTING
-        reader              TYPE REF TO if_sxml_reader
-        transformation_name TYPE string
-      EXPORTING
-        tag                 TYPE zabaptags_tag_data.
-    "! <p class="shorttext synchronized" lang="en">Serializes child tags of tag</p>
-    CLASS-METHODS serialize
-      IMPORTING
-        writer              TYPE REF TO if_sxml_writer
-        tag                 TYPE zabaptags_tag_data
-        transformation_name TYPE string.
+    CLASS-METHODS:
+      "! <p class="shorttext synchronized" lang="en">Deserializes child tags of tag</p>
+      deserialize
+        IMPORTING
+          reader              TYPE REF TO if_sxml_reader
+          transformation_name TYPE string
+        EXPORTING
+          tag                 TYPE zabaptags_tag_data,
+      "! <p class="shorttext synchronized" lang="en">Serializes child tags of tag</p>
+      serialize
+        IMPORTING
+          writer              TYPE REF TO if_sxml_writer
+          tag                 TYPE zabaptags_tag_data
+          transformation_name TYPE string.
   PROTECTED SECTION.
   PRIVATE SECTION.
 ENDCLASS.

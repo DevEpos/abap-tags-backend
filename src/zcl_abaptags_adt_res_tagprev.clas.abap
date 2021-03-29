@@ -6,7 +6,8 @@ CLASS zcl_abaptags_adt_res_tagprev DEFINITION
   CREATE PUBLIC .
 
   PUBLIC SECTION.
-    METHODS post
+    METHODS:
+      post
         REDEFINITION.
   PROTECTED SECTION.
   PRIVATE SECTION.
@@ -16,20 +17,22 @@ CLASS zcl_abaptags_adt_res_tagprev DEFINITION
         count  TYPE sy-tabix,
       END OF ty_tag_count.
 
-    DATA object_refs TYPE SORTED TABLE OF zabaptags_adt_obj_ref WITH UNIQUE KEY name tadir_type.
-    DATA preview_info TYPE zabaptags_tag_preview_info.
-    DATA tags_raw TYPE zabaptags_tag_data_t.
-    DATA tagged_obj_counts TYPE HASHED TABLE OF ty_tag_count WITH UNIQUE KEY tag_id.
+    DATA:
+      object_refs       TYPE SORTED TABLE OF zabaptags_adt_obj_ref WITH UNIQUE KEY name tadir_type,
+      preview_info      TYPE zabaptags_tag_preview_info,
+      tags_raw          TYPE zabaptags_tag_data_t,
+      tagged_obj_counts TYPE HASHED TABLE OF ty_tag_count WITH UNIQUE KEY tag_id.
 
-    METHODS get_content_handler
-      RETURNING
-        VALUE(content_handler) TYPE REF TO if_adt_rest_content_handler.
-    "! <p class="shorttext synchronized" lang="en">Collect object references from request body</p>
-    METHODS collect_object_refs.
-    METHODS read_tags_flat.
-    METHODS fill_tagged_object_info.
-    METHODS determine_tagged_object_count.
-    METHODS create_response_data.
+    METHODS:
+      get_content_handler
+        RETURNING
+          VALUE(content_handler) TYPE REF TO if_adt_rest_content_handler,
+      "! <p class="shorttext synchronized" lang="en">Collect object references from request body</p>
+      collect_object_refs,
+      read_tags_flat,
+      fill_tagged_object_info,
+      determine_tagged_object_count,
+      create_response_data.
 ENDCLASS.
 
 
@@ -42,9 +45,8 @@ CLASS zcl_abaptags_adt_res_tagprev IMPLEMENTATION.
 
     IF binary_data IS NOT INITIAL.
       request->get_body_data(
-         EXPORTING content_handler = content_handler
-         IMPORTING data            = preview_info
-      ).
+        EXPORTING content_handler = content_handler
+        IMPORTING data            = preview_info ).
     ENDIF.
 
     collect_object_refs( ).
@@ -54,17 +56,15 @@ CLASS zcl_abaptags_adt_res_tagprev IMPLEMENTATION.
     create_response_data( ).
 
     response->set_body_data(
-        content_handler = content_handler
-        data            = preview_info
-    ).
+      content_handler = content_handler
+      data            = preview_info ).
   ENDMETHOD.
 
   METHOD get_content_handler.
     content_handler = cl_adt_rest_cnt_hdl_factory=>get_instance( )->get_handler_for_xml_using_st(
-       st_name      = 'ZABAPTAGS_TAG_PREVIEW_INFO'
-       root_name    = 'TAG_PREVIEW_INFO'
-       content_type = if_rest_media_type=>gc_appl_xml
-    ).
+      st_name      = 'ZABAPTAGS_TAG_PREVIEW_INFO'
+      root_name    = 'TAG_PREVIEW_INFO'
+      content_type = if_rest_media_type=>gc_appl_xml ).
   ENDMETHOD.
 
 
@@ -77,8 +77,7 @@ CLASS zcl_abaptags_adt_res_tagprev IMPLEMENTATION.
             EXPORTING uri         = <obj_ref>-uri
             IMPORTING object_name = obj_ref_int-name
                       object_type = DATA(object_type)
-                      tadir_type  = obj_ref_int-tadir_type
-          ).
+                      tadir_type  = obj_ref_int-tadir_type ).
           obj_ref_int-type = COND #( WHEN object_type-subtype_wb IS NOT INITIAL THEN object_type-objtype_tr && '/' && object_type-subtype_wb
                                                                                 ELSE object_type-objtype_tr ).
           CONDENSE obj_ref_int-name.
@@ -106,7 +105,7 @@ CLASS zcl_abaptags_adt_res_tagprev IMPLEMENTATION.
       FROM zabaptags_tags
       WHERE owner = @sy-uname
          OR owner = @space
-    INTO CORRESPONDING FIELDS OF TABLE @tags_raw.
+      INTO CORRESPONDING FIELDS OF TABLE @tags_raw.
   ENDMETHOD.
 
   METHOD determine_tagged_object_count.
@@ -117,15 +116,14 @@ CLASS zcl_abaptags_adt_res_tagprev IMPLEMENTATION.
 
       where = VALUE #( BASE where
         ( |{ operator }( OBJECT_TYPE = { cl_abap_dyn_prg=>quote( <obj_ref>-tadir_type ) } | &&
-          |AND OBJECT_NAME = { cl_abap_dyn_prg=>quote( <obj_ref>-name ) } )| )
-      ).
+          |AND OBJECT_NAME = { cl_abap_dyn_prg=>quote( <obj_ref>-name ) } )| ) ).
     ENDLOOP.
 
     SELECT tag_id, COUNT( * ) AS count
       FROM zabaptags_tgobj
       WHERE (where)
       GROUP BY tag_id
-    INTO CORRESPONDING FIELDS OF TABLE @tagged_obj_counts.
+      INTO CORRESPONDING FIELDS OF TABLE @tagged_obj_counts.
   ENDMETHOD.
 
   METHOD fill_tagged_object_info.

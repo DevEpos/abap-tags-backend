@@ -19,12 +19,6 @@
      <LANGU>E</LANGU>
      <DESCRIPT>CONSTRUCTOR</DESCRIPT>
     </SEOCOMPOTX>
-    <SEOCOMPOTX>
-     <CLSNAME>ZCX_ABAPTAGS_EXCEPTION</CLSNAME>
-     <CMPNAME>RAISE</CMPNAME>
-     <LANGU>E</LANGU>
-     <DESCRIPT>Raise exception with text</DESCRIPT>
-    </SEOCOMPOTX>
    </DESCRIPTIONS>
   </asx:values>
  </asx:abap>
