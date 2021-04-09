@@ -104,9 +104,12 @@ CLASS zcl_abaptags_adt_res_tagprev IMPLEMENTATION.
 
 
   METHOD read_tags_flat.
-    tags_raw = tags_dac->find_tags( owner_range = VALUE #(
-      ( sign = 'I' option = 'EQ' low = sy-uname )
-      ( sign = 'I' option = 'EQ' low = space  ) ) ).
+    tags_raw = VALUE #(
+      ( LINES OF tags_dac->find_tags(
+          owner_range = VALUE #(
+            ( sign = 'I' option = 'EQ' low = sy-uname )
+            ( sign = 'I' option = 'EQ' low = space  ) ) ) )
+      ( LINES OF tags_dac->find_shared_tags( ) ) ).
   ENDMETHOD.
 
 
@@ -116,12 +119,14 @@ CLASS zcl_abaptags_adt_res_tagprev IMPLEMENTATION.
 
 
   METHOD fill_tagged_object_info.
+
     LOOP AT tags_raw ASSIGNING FIELD-SYMBOL(<tag>).
       ASSIGN tagged_obj_counts[ tag_id = <tag>-tag_id ] TO FIELD-SYMBOL(<tag_count>).
       IF sy-subrc = 0.
         <tag>-tagged_object_count = <tag_count>-count.
       ENDIF.
     ENDLOOP.
+
   ENDMETHOD.
 
 
