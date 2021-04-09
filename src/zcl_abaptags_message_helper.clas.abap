@@ -32,6 +32,7 @@ ENDCLASS.
 
 CLASS zcl_abaptags_message_helper IMPLEMENTATION.
 
+
   METHOD set_msg_vars_for_clike.
 
     split_text(
@@ -45,6 +46,7 @@ CLASS zcl_abaptags_message_helper IMPLEMENTATION.
     MESSAGE e001(00) WITH msgv1 msgv2 msgv3 msgv4
                      INTO DATA(dummy) ##needed.
   ENDMETHOD.
+
 
   METHOD split_text.
     DATA: tmp_text TYPE ty_message,
@@ -88,5 +90,6 @@ CLASS zcl_abaptags_message_helper IMPLEMENTATION.
     ENDDO.
 
   ENDMETHOD.
+
 
 ENDCLASS.

@@ -142,6 +142,7 @@ CLASS zcx_abaptags_adt_error IMPLEMENTATION.
     ENDIF.
   ENDMETHOD.
 
+
   METHOD get_http_status.
     result = cl_rest_status_code=>gc_server_error_internal.
   ENDMETHOD.
@@ -155,5 +156,6 @@ CLASS zcx_abaptags_adt_error IMPLEMENTATION.
   METHOD get_type.
     result = 'ABAPTagsFailure'.
   ENDMETHOD.
+
 
 ENDCLASS.

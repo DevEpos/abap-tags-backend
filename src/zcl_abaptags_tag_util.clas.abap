@@ -5,25 +5,6 @@ CLASS zcl_abaptags_tag_util DEFINITION
   CREATE PUBLIC .
 
   PUBLIC SECTION.
-    TYPES:
-      BEGIN OF ty_tag_data,
-        tag_id TYPE zabaptags_tag_id,
-        data   TYPE REF TO zabaptags_tag_data,
-      END OF ty_tag_data,
-      ty_tag_data_map TYPE HASHED TABLE OF ty_tag_data WITH UNIQUE KEY tag_id,
-      BEGIN OF ty_tag_id,
-        tag_id TYPE zabaptags_tag_id,
-      END OF ty_tag_id,
-      ty_tag_ids TYPE TABLE OF ty_tag_id,
-      BEGIN OF ty_tag_info,
-        tag_id         TYPE zabaptags_tag_id,
-        name           TYPE zabaptags_tag_name,
-        parent_tag_id  TYPE zabaptags_tag_id,
-        owner          TYPE responsibl,
-        full_hierarchy TYPE string,
-      END OF ty_tag_info,
-      ty_tag_infos TYPE STANDARD TABLE OF ty_tag_info.
-
     CLASS-METHODS:
       "! <p class="shorttext synchronized" lang="en">Builds hierarchical tags from flat tags table</p>
       build_hierarchical_tags
@@ -50,7 +31,7 @@ CLASS zcl_abaptags_tag_util DEFINITION
           VALUE(locked_by) TYPE uname,
       det_hierarchical_tag_names
         CHANGING
-          tag_info TYPE ty_tag_infos,
+          tag_info TYPE zif_abaptags_ty_global=>ty_tag_infos,
       "! <p class="shorttext synchronized" lang="en">Determines all child tags for the given tags</p>
       determine_all_child_tags
         IMPORTING
@@ -59,12 +40,21 @@ CLASS zcl_abaptags_tag_util DEFINITION
           tags        TYPE zabaptags_tag_data_t.
   PROTECTED SECTION.
   PRIVATE SECTION.
+    TYPES:
+      BEGIN OF ty_tag_parent_info,
+        tag_id             TYPE zabaptags_tag_id,
+        name               TYPE zabaptags_tag_name,
+        parent_tag_id      TYPE zabaptags_tag_id,
+        originating_tag_id TYPE zabaptags_tag_id,
+        level              TYPE i,
+      END OF ty_tag_parent_info.
 ENDCLASS.
 
 CLASS zcl_abaptags_tag_util IMPLEMENTATION.
 
+
   METHOD build_hierarchical_tags.
-    DATA: tmp_tag_map   TYPE ty_tag_data_map,
+    DATA: tmp_tag_map   TYPE zif_abaptags_ty_global=>ty_tag_data_map,
           has_map_entry TYPE abap_bool.
 
     FIELD-SYMBOLS: <parent>   TYPE zabaptags_tag_data,
@@ -112,6 +102,7 @@ CLASS zcl_abaptags_tag_util IMPLEMENTATION.
     SORT tags_result BY owner name.
   ENDMETHOD.
 
+
   METHOD lock_tags.
     DATA: text TYPE string ##needed.
 
@@ -137,6 +128,7 @@ CLASS zcl_abaptags_tag_util IMPLEMENTATION.
     ENDIF.
   ENDMETHOD.
 
+
   METHOD unlock_tags.
 
     CALL FUNCTION 'DEQUEUE_EZABAPTAGS_TAG'
@@ -145,6 +137,7 @@ CLASS zcl_abaptags_tag_util IMPLEMENTATION.
         owner  = lock_owner.
 
   ENDMETHOD.
+
 
   METHOD get_tags_lock_entry.
     DATA: enq_entries TYPE TABLE OF seqg3,
@@ -171,22 +164,14 @@ CLASS zcl_abaptags_tag_util IMPLEMENTATION.
     ENDIF.
   ENDMETHOD.
 
-  METHOD det_hierarchical_tag_names.
-    TYPES:
-      BEGIN OF ty_tag_parent_info,
-        tag_id             TYPE zabaptags_tag_id,
-        name               TYPE zabaptags_tag_name,
-        parent_tag_id      TYPE zabaptags_tag_id,
-        originating_tag_id TYPE zabaptags_tag_id,
-        level              TYPE i,
-      END OF ty_tag_parent_info.
 
+  METHOD det_hierarchical_tag_names.
     DATA: parent_tags     TYPE TABLE OF ty_tag_parent_info,
           parent_tags_tmp LIKE parent_tags,
           parent_tags_all LIKE parent_tags.
 
     FIELD-SYMBOLS: <parent_tag> TYPE ty_tag_parent_info,
-                   <tag_info>   TYPE zcl_abaptags_tag_util=>ty_tag_info.
+                   <tag_info>   TYPE zif_abaptags_ty_global=>ty_tag_info.
 
     LOOP AT tag_info ASSIGNING <tag_info>.
       IF <tag_info>-parent_tag_id IS NOT INITIAL.
@@ -202,28 +187,27 @@ CLASS zcl_abaptags_tag_util IMPLEMENTATION.
       parent_tags_all = parent_tags.
     ENDIF.
 
+    DATA(tag_db_columns) = VALUE string_table( ( `TAG_ID` ) ( `NAME` ) ( `PARENT_TAG_ID` ) ).
+
     WHILE parent_tags IS NOT INITIAL.
-      SELECT tag_id,
-             name,
-             parent_tag_id
-        FROM zabaptags_tags
-        FOR ALL ENTRIES IN @parent_tags
-        WHERE tag_id = @parent_tags-parent_tag_id
-        INTO TABLE @DATA(parent_tag_info).
+      DATA(parent_tags_db) = zcl_abaptags_tags_dac=>get_instance( )->find_tags(
+        columns      = tag_db_columns
+        tag_id_range = VALUE #( FOR parent IN parent_tags
+          ( sign = 'I' option = 'EQ' low = parent-parent_tag_id ) ) ).
 
       LOOP AT parent_tags ASSIGNING <parent_tag>.
-        ASSIGN parent_tag_info[ tag_id = <parent_tag>-parent_tag_id ] TO FIELD-SYMBOL(<ls_parent_tag_info>).
+        ASSIGN parent_tags_db[ tag_id = <parent_tag>-parent_tag_id ] TO FIELD-SYMBOL(<parent_tag_db>).
         CHECK sy-subrc = 0.
 
-        DATA(ls_parent_tag_info) = VALUE ty_tag_parent_info(
-          tag_id        = <ls_parent_tag_info>-tag_id
-          name          = <ls_parent_tag_info>-name
-          parent_tag_id = <ls_parent_tag_info>-parent_tag_id
+        DATA(parent_tag_info) = VALUE ty_tag_parent_info(
+          tag_id        = <parent_tag_db>-tag_id
+          name          = <parent_tag_db>-name
+          parent_tag_id = <parent_tag_db>-parent_tag_id
           originating_tag_id = <parent_tag>-originating_tag_id
           level         = <parent_tag>-level + 1 ).
-        parent_tags_all = VALUE #( BASE parent_tags_all ( ls_parent_tag_info ) ).
-        IF ls_parent_tag_info-parent_tag_id IS NOT INITIAL.
-          parent_tags_tmp = VALUE #( BASE parent_tags_tmp ( ls_parent_tag_info ) ).
+        parent_tags_all = VALUE #( BASE parent_tags_all ( parent_tag_info ) ).
+        IF parent_tag_info-parent_tag_id IS NOT INITIAL.
+          parent_tags_tmp = VALUE #( BASE parent_tags_tmp ( parent_tag_info ) ).
         ENDIF.
       ENDLOOP.
 
@@ -244,22 +228,23 @@ CLASS zcl_abaptags_tag_util IMPLEMENTATION.
     ENDLOOP.
   ENDMETHOD.
 
+
   METHOD determine_all_child_tags.
-    DATA: new_child_tags TYPE TABLE OF zabaptags_tags.
+    DATA: new_child_tags TYPE zabaptags_tag_data_t.
 
     DATA(child_tags) = tags.
-    DATA(fields) = COND #( WHEN tag_id_only = abap_true THEN |TAG_ID| ELSE |*| ).
+    DATA(columns) = COND string_table( WHEN tag_id_only = abap_true THEN VALUE #( ( `TAG_ID` ) ) ).
 
     WHILE child_tags IS NOT INITIAL.
-      SELECT (fields)
-        FROM zabaptags_tags
-        FOR ALL ENTRIES IN @child_tags
-        WHERE parent_tag_id = @child_tags-tag_id
-        INTO CORRESPONDING FIELDS OF TABLE @new_child_tags.
+      new_child_tags = zcl_abaptags_tags_dac=>get_instance( )->find_tags(
+        columns             = columns
+        parent_tag_id_range = VALUE #( FOR child IN child_tags
+          ( sign = 'I' option = 'EQ' low = child-tag_id ) ) ).
 
       tags = CORRESPONDING #( BASE ( tags ) new_child_tags ).
       child_tags = CORRESPONDING #( new_child_tags ).
     ENDWHILE.
   ENDMETHOD.
+
 
 ENDCLASS.

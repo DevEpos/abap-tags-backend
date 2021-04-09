@@ -65,4 +65,5 @@ CLASS zcx_abaptags_exception IMPLEMENTATION.
     me->previous = previous.
   ENDMETHOD.
 
+
 ENDCLASS.

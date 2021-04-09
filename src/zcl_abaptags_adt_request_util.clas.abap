@@ -46,6 +46,7 @@ ENDCLASS.
 
 CLASS zcl_abaptags_adt_request_util IMPLEMENTATION.
 
+
   METHOD get_request_param_value.
     IF mandatory = abap_true.
       request->get_uri_query_parameter(
@@ -63,6 +64,7 @@ CLASS zcl_abaptags_adt_request_util IMPLEMENTATION.
       TRANSLATE result TO UPPER CASE.
     ENDIF.
   ENDMETHOD.
+
 
   METHOD get_request_param_values.
     IF mandatory = abap_true.
@@ -87,6 +89,7 @@ CLASS zcl_abaptags_adt_request_util IMPLEMENTATION.
     ENDIF.
   ENDMETHOD.
 
+
   METHOD get_boolean_req_param.
     TRY.
         DATA(value) = get_request_param_value(
@@ -101,5 +104,6 @@ CLASS zcl_abaptags_adt_request_util IMPLEMENTATION.
       CATCH cx_adt_rest.
     ENDTRY.
   ENDMETHOD.
+
 
 ENDCLASS.

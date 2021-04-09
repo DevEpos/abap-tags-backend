@@ -7,6 +7,7 @@ CLASS zcl_abaptags_adt_res_tags DEFINITION
 
   PUBLIC SECTION.
     METHODS:
+      constructor,
       post
         REDEFINITION,
       get
@@ -14,7 +15,6 @@ CLASS zcl_abaptags_adt_res_tags DEFINITION
   PROTECTED SECTION.
   PRIVATE SECTION.
     CONSTANTS:
-      c_tags_content_type TYPE string VALUE 'application/vnd.devepos.adt.tags.data.v2+xml' ##NO_TEXT,
       BEGIN OF c_actions,
         lock         TYPE string VALUE 'lock' ##NO_TEXT,
         unlock       TYPE string VALUE 'unlock' ##NO_TEXT,
@@ -37,12 +37,12 @@ CLASS zcl_abaptags_adt_res_tags DEFINITION
       END OF ty_tag_map,
       BEGIN OF ty_tag_id,
         tag_id TYPE zabaptags_tag_id,
-      END OF ty_tag_id,
-      ty_tag_ids TYPE TABLE OF ty_tag_id.
+      END OF ty_tag_id.
 
     DATA:
       action_name              TYPE string,
       tags                     TYPE zabaptags_tag_data_t,
+      tags_dac                 TYPE REF TO zcl_abaptags_tags_dac,
       owner                    TYPE sy-uname,
       owner_range              TYPE RANGE OF sy-uname,
       lock_owner               TYPE sy-uname,
@@ -84,6 +84,13 @@ ENDCLASS.
 
 CLASS zcl_abaptags_adt_res_tags IMPLEMENTATION.
 
+
+  METHOD constructor.
+    super->constructor( ).
+    tags_dac = zcl_abaptags_tags_dac=>get_instance( ).
+  ENDMETHOD.
+
+
   METHOD post.
     DATA(binary_data) = request->get_inner_rest_request( )->get_entity( )->get_binary_data( ).
     IF binary_data IS NOT INITIAL.
@@ -124,10 +131,10 @@ CLASS zcl_abaptags_adt_res_tags IMPLEMENTATION.
 
   ENDMETHOD.
 
+
   METHOD get.
     DATA: tag_name_range TYPE RANGE OF zabaptags_tag_name,
-          tag_id_range   TYPE RANGE OF zabaptags_tag_id,
-          tags           TYPE zabaptags_tag_data_t.
+          tag_id_range   TYPE RANGE OF zabaptags_tag_id.
 
     get_parameters( request ).
 
@@ -137,25 +144,25 @@ CLASS zcl_abaptags_adt_res_tags IMPLEMENTATION.
         ELSE                    VALUE #( ( sign = 'I' option = 'EQ' low = query ) ) ).
     ENDIF.
 
-    SELECT *
-      FROM zabaptags_tags
-      WHERE owner IN @owner_range
-        AND name_upper IN @tag_name_range
-      INTO CORRESPONDING FIELDS OF TABLE @tags.
+    DATA(tags) = tags_dac->find_tags(
+      owner_range      = owner_range
+      name_upper_range = tag_name_range ).
+
+    IF scope = zif_abaptags_c_global=>scopes-all.
+      tags = VALUE #( BASE tags
+        ( LINES OF tags_dac->find_shared_tags( ) ) ).
+    ENDIF.
 
     IF with_object_count = abap_true.
-      SELECT tag_id, COUNT(*) AS tag_count
-        FROM zabaptags_tgobj
-        WHERE tag_id IN @tag_id_range
-        GROUP BY tag_id
-        INTO TABLE @DATA(tag_counts).
+      DATA(tag_counts) = tags_dac->get_tagged_obj_count( tag_ids = VALUE #(
+        FOR tag IN tags ( sign = 'I' option = 'EQ' low = tag-tag_id ) ) ).
 
       IF tag_counts IS NOT INITIAL.
 
         LOOP AT tags ASSIGNING FIELD-SYMBOL(<tag>).
           ASSIGN tag_counts[ tag_id = <tag>-tag_id ] TO FIELD-SYMBOL(<tag_count>).
           CHECK sy-subrc = 0.
-          <tag>-tagged_object_count = <tag_count>-tag_count.
+          <tag>-tagged_object_count = <tag_count>-count.
         ENDLOOP.
 
       ENDIF.
@@ -166,12 +173,14 @@ CLASS zcl_abaptags_adt_res_tags IMPLEMENTATION.
       response = response ).
   ENDMETHOD.
 
+
   METHOD get_tags_content_handler.
     result = cl_adt_rest_cnt_hdl_factory=>get_instance( )->get_handler_for_xml_using_st(
       st_name      = 'ZABAPTAGS_TAGS'
       root_name    = 'TAGS'
       content_type = if_rest_media_type=>gc_appl_xml ).
   ENDMETHOD.
+
 
   METHOD get_parameters.
     query = zcl_abaptags_adt_request_util=>get_request_param_value(
@@ -204,15 +213,16 @@ CLASS zcl_abaptags_adt_res_tags IMPLEMENTATION.
 
       WHEN zif_abaptags_c_global=>scopes-user.
         owner_range = VALUE #( ( sign = 'I' option = 'EQ' low = sy-uname ) ).
-        owner =
+        owner = sy-uname.
         lock_owner = sy-uname.
 
       WHEN zif_abaptags_c_global=>scopes-all.
         owner_range = VALUE #( ( sign = 'I' option = 'EQ' low = sy-uname )
-                                  ( sign = 'I' option = 'EQ' low = space )  ).
+                               ( sign = 'I' option = 'EQ' low = space ) ).
     ENDCASE.
 
   ENDMETHOD.
+
 
   METHOD delete_tags.
     DATA: tag_id_range TYPE RANGE OF zabaptags_tag_id.
@@ -223,28 +233,30 @@ CLASS zcl_abaptags_adt_res_tags IMPLEMENTATION.
       EXPORTING tag_id_only = abap_true
       CHANGING  tags        = tags ).
 
-    SORT tags.
-    DELETE ADJACENT DUPLICATES FROM tags.
+    SORT tags BY tag_id.
+    DELETE ADJACENT DUPLICATES FROM tags COMPARING tag_id.
 
     tag_id_range = VALUE #( FOR tag IN tags ( sign = 'I' option = 'EQ' low = tag-tag_id ) ).
 
-    DELETE FROM zabaptags_tgobj WHERE tag_id IN tag_id_range.
-    DELETE FROM zabaptags_tags WHERE tag_id IN tag_id_range.
-
-    COMMIT WORK.
+    zcl_abaptags_tags_dac=>get_instance( )->delete_tag_by_id( tag_id_range ).
   ENDMETHOD.
 
 
   METHOD create_or_update_tags.
-    DATA: update             TYPE TABLE OF zabaptags_tags,
-          existing_tag_range TYPE RANGE OF zabaptags_tag_id,
-          existing_tag_id    TYPE TABLE OF zabaptags_tag_id.
+    DATA: tags_to_update     TYPE zif_abaptags_ty_global=>ty_db_tags.
 
     LOOP AT tags ASSIGNING FIELD-SYMBOL(<tag>).
       <tag>-name_upper = to_upper( <tag>-name ).
       validate_tag( <tag> ).
       IF <tag>-tag_id IS INITIAL.
-        <tag>-tag_id = cl_uuid_factory=>create_system_uuid( )->create_uuid_x16( ).
+
+        TRY.
+            <tag>-tag_id = cl_uuid_factory=>create_system_uuid( )->create_uuid_x16( ).
+          CATCH cx_uuid_error INTO DATA(uuid_error).
+            RAISE EXCEPTION TYPE zcx_abaptags_adt_error
+              EXPORTING
+                previous = uuid_error.
+        ENDTRY.
         <tag>-created_by = sy-uname.
         GET TIME STAMP FIELD <tag>-created_date_time.
       ELSE.
@@ -252,15 +264,10 @@ CLASS zcl_abaptags_adt_res_tags IMPLEMENTATION.
         GET TIME STAMP FIELD <tag>-changed_date_time.
       ENDIF.
 
-      update = VALUE #( BASE update ( CORRESPONDING #( <tag> ) ) ).
+      tags_to_update = VALUE #( BASE tags_to_update ( CORRESPONDING #( <tag> ) ) ).
     ENDLOOP.
 
-    MODIFY zabaptags_tags FROM TABLE update.
-    IF sy-subrc = 0.
-      COMMIT WORK.
-    ELSE.
-      ROLLBACK WORK.
-    ENDIF.
+    tags_dac->modify_tags( tags_to_update ).
   ENDMETHOD.
 
 
@@ -281,50 +288,36 @@ CLASS zcl_abaptags_adt_res_tags IMPLEMENTATION.
 
 
   METHOD make_tags_global.
-    DATA: user_tags        TYPE RANGE OF zabaptags_tag_id,
-          changed_datetime TYPE timestampl.
+    DATA: name_upper_range TYPE zif_abaptags_ty_global=>ty_tag_name_range.
 
     LOOP AT tags ASSIGNING FIELD-SYMBOL(<tag>).
       <tag>-name_upper = to_upper( <tag>-name ).
+
+      CHECK <tag>-parent_tag_id IS INITIAL.
+
+      name_upper_range = VALUE #( BASE name_upper_range ( sign = 'I' option = 'EQ' low = <tag>-name_upper ) ).
     ENDLOOP.
 
     " Check if there is already a global tag with the same name
-    SELECT name
-      FROM zabaptags_tags
-      FOR ALL ENTRIES IN @tags
-      WHERE owner = ''
-        AND parent_tag_id = '00000000000000000000000000000000'
-        AND name_upper = @tags-name_upper
-      INTO TABLE @DATA(existing_global).
+    DATA(existing_global_tag) = tags_dac->find_first_global_tag( name_upper_range ).
 
-    IF existing_global IS NOT INITIAL.
+    IF existing_global_tag IS NOT INITIAL.
       RAISE EXCEPTION TYPE zcx_abaptags_adt_error
         EXPORTING
           textid = zcx_abaptags_adt_error=>global_tag_already_exists
-          msgv1  = |{ existing_global[ 1 ]-name }|.
+          msgv1  = |{ existing_global_tag-name }|.
     ENDIF.
 
-    GET TIME STAMP FIELD changed_datetime.
     zcl_abaptags_tag_util=>determine_all_child_tags(
       EXPORTING tag_id_only = abap_true
-      CHANGING  tags        = tags
-    ).
-    user_tags = VALUE #( FOR tag IN tags ( sign = 'I' option = 'EQ' low = tag-tag_id ) ).
-    UPDATE zabaptags_tags SET owner             = '',
-                              changed_by        = @sy-uname,
-                              changed_date_time = @changed_datetime
-                          WHERE tag_id IN @user_tags.
-    IF sy-subrc = 0.
-      COMMIT WORK.
-    ELSE.
-      ROLLBACK WORK.
-    ENDIF.
+      CHANGING  tags        = tags ).
+
+    tags_dac->convert_tags_to_global( VALUE #( FOR tag IN tags ( sign = 'I' option = 'EQ' low = tag-tag_id ) ) ).
   ENDMETHOD.
 
+
   METHOD validate_tag.
-    DATA: tag_id_range  TYPE RANGE OF zabaptags_tag_id,
-          parent_tag_id TYPE zabaptags_tag_name,
-          tag_id        TYPE TABLE OF zabaptags_tags.
+    DATA: tag_id_range  TYPE RANGE OF zabaptags_tag_id.
 
     IF tag-tag_id IS NOT INITIAL.
       tag_id_range = VALUE #( ( sign = 'I' option = 'EQ' low = tag-tag_id ) ).
@@ -335,15 +328,13 @@ CLASS zcl_abaptags_adt_res_tags IMPLEMENTATION.
     ENDIF.
 
     IF tag_id_range IS NOT INITIAL.
-      SELECT tag_id,
-             name
-        FROM zabaptags_tags
-        WHERE tag_id IN @tag_id_range
-        INTO TABLE @tag_id.
+      DATA(tags) = tags_dac->find_tags(
+        columns      = VALUE #( ( `TAG_ID` ) ( `NAME` ) )
+        tag_id_range = tag_id_range ).
 
       " check tag existence if tag will be modified
       IF tag-tag_id IS NOT INITIAL AND
-         NOT line_exists( tag_id[ tag_id = tag-tag_id ] ).
+         NOT line_exists( tags[ tag_id = tag-tag_id ] ).
         RAISE EXCEPTION TYPE zcx_abaptags_adt_error
           EXPORTING
             textid = zcx_abaptags_adt_error=>tag_no_longer_exists
@@ -353,7 +344,7 @@ CLASS zcl_abaptags_adt_res_tags IMPLEMENTATION.
 
       " check parent tag existence if tag is in a hierarchy
       IF tag-parent_tag_id IS NOT INITIAL AND
-         NOT line_exists( tag_id[ tag_id = tag-parent_tag_id ] ).
+         NOT line_exists( tags[ tag_id = tag-parent_tag_id ] ).
         RAISE EXCEPTION TYPE zcx_abaptags_adt_error
           EXPORTING
             textid = zcx_abaptags_adt_error=>parent_tag_no_longer_exists
@@ -368,22 +359,20 @@ CLASS zcl_abaptags_adt_res_tags IMPLEMENTATION.
       tag_id_range = VALUE #( ( sign = 'E' option = 'EQ' low = tag-tag_id ) ).
     ENDIF.
 
-    SELECT SINGLE @abap_true
-      FROM zabaptags_tags
-      WHERE tag_id IN @tag_id_range
-        AND parent_tag_id = @tag-parent_tag_id
-        AND name_upper = @tag-name_upper
-        AND owner = @tag-owner
-      INTO @DATA(exists).
+    DATA(tag_exists) = tags_dac->exists_tag(
+      tag_id_range        = tag_id_range
+      parent_tag_id_range = VALUE #( ( sign = 'I' option = 'EQ' low = tag-parent_tag_id ) )
+      owner_range         = VALUE #( ( sign = 'I' option = 'EQ' low = tag-owner ) )
+      name_upper_range    = VALUE #( ( sign = 'I' option = 'EQ' low = tag-name_upper  ) ) ).
 
-    IF exists = abap_true.
+    IF tag_exists = abap_true.
       IF tag-parent_tag_id IS NOT INITIAL.
         RAISE EXCEPTION TYPE zcx_abaptags_adt_error
           EXPORTING
             textid = zcx_abaptags_adt_error=>tag_parent_tag_already_exists
             msgv1  = |{ tag-name }|
             msgv2  = |{ tag-owner }|
-            msgv3  = |{ tag_id[ tag_id = tag-parent_tag_id ]-name }|.
+            msgv3  = |{ tags[ tag_id = tag-parent_tag_id ]-name }|.
       ELSE.
         RAISE EXCEPTION TYPE zcx_abaptags_adt_error
           EXPORTING
@@ -393,5 +382,6 @@ CLASS zcl_abaptags_adt_res_tags IMPLEMENTATION.
       ENDIF.
     ENDIF.
   ENDMETHOD.
+
 
 ENDCLASS.

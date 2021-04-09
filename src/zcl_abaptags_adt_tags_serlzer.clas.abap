@@ -26,6 +26,8 @@ ENDCLASS.
 
 
 CLASS zcl_abaptags_adt_tags_serlzer IMPLEMENTATION.
+
+
   METHOD deserialize.
     DATA: child TYPE zabaptags_tag_data.
     FIELD-SYMBOLS: <children> TYPE zabaptags_tag_data_t.
@@ -62,6 +64,7 @@ CLASS zcl_abaptags_adt_tags_serlzer IMPLEMENTATION.
     ENDTRY.
   ENDMETHOD.
 
+
   METHOD serialize.
     FIELD-SYMBOLS: <children> TYPE zabaptags_tag_data_t.
 
@@ -79,5 +82,6 @@ CLASS zcl_abaptags_adt_tags_serlzer IMPLEMENTATION.
 
     ENDIF.
   ENDMETHOD.
+
 
 ENDCLASS.

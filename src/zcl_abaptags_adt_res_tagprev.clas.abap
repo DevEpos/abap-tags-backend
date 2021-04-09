@@ -7,26 +7,21 @@ CLASS zcl_abaptags_adt_res_tagprev DEFINITION
 
   PUBLIC SECTION.
     METHODS:
+      constructor,
       post
         REDEFINITION.
   PROTECTED SECTION.
   PRIVATE SECTION.
-    TYPES:
-      BEGIN OF ty_tag_count,
-        tag_id TYPE zabaptags_tag_id,
-        count  TYPE sy-tabix,
-      END OF ty_tag_count.
-
     DATA:
+      tags_dac          TYPE REF TO zcl_abaptags_tags_dac,
       object_refs       TYPE SORTED TABLE OF zabaptags_adt_obj_ref WITH UNIQUE KEY name tadir_type,
       preview_info      TYPE zabaptags_tag_preview_info,
       tags_raw          TYPE zabaptags_tag_data_t,
-      tagged_obj_counts TYPE HASHED TABLE OF ty_tag_count WITH UNIQUE KEY tag_id.
+      tagged_obj_counts TYPE zif_abaptags_ty_global=>ty_tag_counts.
 
-    METHODS:
-      get_content_handler
-        RETURNING
-          VALUE(content_handler) TYPE REF TO if_adt_rest_content_handler,
+    METHODS: get_content_handler
+      RETURNING
+        VALUE(content_handler) TYPE REF TO if_adt_rest_content_handler,
       "! <p class="shorttext synchronized" lang="en">Collect object references from request body</p>
       collect_object_refs,
       read_tags_flat,
@@ -38,6 +33,13 @@ ENDCLASS.
 
 
 CLASS zcl_abaptags_adt_res_tagprev IMPLEMENTATION.
+
+
+  METHOD constructor.
+    super->constructor( ).
+    tags_dac = zcl_abaptags_tags_dac=>get_instance( ).
+  ENDMETHOD.
+
 
   METHOD post.
     DATA(content_handler) = get_content_handler( ).
@@ -59,6 +61,7 @@ CLASS zcl_abaptags_adt_res_tagprev IMPLEMENTATION.
       content_handler = content_handler
       data            = preview_info ).
   ENDMETHOD.
+
 
   METHOD get_content_handler.
     content_handler = cl_adt_rest_cnt_hdl_factory=>get_instance( )->get_handler_for_xml_using_st(
@@ -101,30 +104,16 @@ CLASS zcl_abaptags_adt_res_tagprev IMPLEMENTATION.
 
 
   METHOD read_tags_flat.
-    SELECT *
-      FROM zabaptags_tags
-      WHERE owner = @sy-uname
-         OR owner = @space
-      INTO CORRESPONDING FIELDS OF TABLE @tags_raw.
+    tags_raw = tags_dac->find_tags( owner_range = VALUE #(
+      ( sign = 'I' option = 'EQ' low = sy-uname )
+      ( sign = 'I' option = 'EQ' low = space  ) ) ).
   ENDMETHOD.
+
 
   METHOD determine_tagged_object_count.
-    DATA: where TYPE TABLE OF string.
-
-    LOOP AT object_refs ASSIGNING FIELD-SYMBOL(<obj_ref>).
-      DATA(operator) = COND #( WHEN sy-tabix <> 1 THEN ` OR ` ELSE `` ).
-
-      where = VALUE #( BASE where
-        ( |{ operator }( OBJECT_TYPE = { cl_abap_dyn_prg=>quote( <obj_ref>-tadir_type ) } | &&
-          |AND OBJECT_NAME = { cl_abap_dyn_prg=>quote( <obj_ref>-name ) } )| ) ).
-    ENDLOOP.
-
-    SELECT tag_id, COUNT( * ) AS count
-      FROM zabaptags_tgobj
-      WHERE (where)
-      GROUP BY tag_id
-      INTO CORRESPONDING FIELDS OF TABLE @tagged_obj_counts.
+    tagged_obj_counts = tags_dac->get_tagged_obj_count( object_refs =  CORRESPONDING #( object_refs ) ).
   ENDMETHOD.
+
 
   METHOD fill_tagged_object_info.
     LOOP AT tags_raw ASSIGNING FIELD-SYMBOL(<tag>).

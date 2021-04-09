@@ -6,9 +6,11 @@ CLASS zcl_abaptags_adt_res_tgobj DEFINITION
   CREATE PUBLIC .
 
   PUBLIC SECTION.
-    METHODS post
-        REDEFINITION.
-    METHODS get
+    METHODS:
+      constructor,
+      post
+        REDEFINITION,
+      get
         REDEFINITION.
   PROTECTED SECTION.
   PRIVATE SECTION.
@@ -32,9 +34,10 @@ CLASS zcl_abaptags_adt_res_tgobj DEFINITION
 
     DATA:
       action_name       TYPE string,
+      tags_dac          TYPE REF TO zcl_abaptags_tags_dac,
       new_tag_map       TYPE HASHED TABLE OF ty_tag_map WITH UNIQUE KEY tag_name owner,
       tagged_objects    TYPE zabaptags_tagged_object_t,
-      tagged_objects_db TYPE TABLE OF zabaptags_tgobj.
+      tagged_objects_db TYPE zif_abaptags_ty_global=>ty_db_tagged_objects.
 
     METHODS:
       get_content_handler
@@ -54,12 +57,27 @@ CLASS zcl_abaptags_adt_res_tgobj DEFINITION
           cx_adt_rest,
       validate_tags
         RAISING
+          cx_adt_rest,
+      collect_tgobj_for_insert
+        IMPORTING
+          tadir_object TYPE string
+          tadir_type   TYPE trobjtype
+        CHANGING
+          tags         TYPE zabaptags_adt_object_tag_t
+        RAISING
           cx_adt_rest.
 ENDCLASS.
 
 
 
 CLASS zcl_abaptags_adt_res_tgobj IMPLEMENTATION.
+
+
+  METHOD constructor.
+    super->constructor( ).
+    tags_dac = zcl_abaptags_tags_dac=>get_instance( ).
+  ENDMETHOD.
+
 
   METHOD post.
     DATA(binary_data) = request->get_inner_rest_request( )->get_entity( )->get_binary_data( ).
@@ -76,6 +94,7 @@ CLASS zcl_abaptags_adt_res_tgobj IMPLEMENTATION.
       request       = request ).
 
     IF action_name IS INITIAL.
+
 *      " create/update tags
       create_tagged_objects( ).
     ELSE.
@@ -94,9 +113,9 @@ CLASS zcl_abaptags_adt_res_tgobj IMPLEMENTATION.
 
   ENDMETHOD.
 
+
   METHOD get.
-    DATA: texts TYPE TABLE OF seu_objtxt,
-          tags  TYPE zcl_abaptags_tag_util=>ty_tag_infos.
+    DATA: texts TYPE TABLE OF seu_objtxt.
 
     DATA(object_uri) = zcl_abaptags_adt_request_util=>get_request_param_value(
       param_name    = c_params-object_uri
@@ -109,20 +128,7 @@ CLASS zcl_abaptags_adt_res_tgobj IMPLEMENTATION.
                tadir_type  = DATA(tadir_type)
                object_type = DATA(adt_type) ).
 
-    SELECT DISTINCT
-           tags~tag_id,
-           tags~parent_tag_id,
-           tags~owner,
-           tags~name
-      FROM zabaptags_tgobj AS tgobj
-        INNER JOIN zabaptags_tags AS tags
-          ON tgobj~tag_id = tags~tag_id
-      WHERE tgobj~object_name = @tadir_object
-        AND tgobj~object_type = @tadir_type
-        AND ( tags~owner = @space OR tags~owner = @sy-uname )
-      ORDER BY owner, name
-      INTO CORRESPONDING FIELDS OF TABLE @tags.
-
+    DATA(tags) = tags_dac->find_tags_of_object( VALUE #( name = tadir_object type = tadir_type ) ).
     zcl_abaptags_tag_util=>det_hierarchical_tag_names( CHANGING tag_info = tags ).
 
     texts = VALUE #( ( object = tadir_type obj_name = tadir_object ) ).
@@ -150,6 +156,7 @@ CLASS zcl_abaptags_adt_res_tgobj IMPLEMENTATION.
       data            = tagged_objects ).
   ENDMETHOD.
 
+
   METHOD get_content_handler.
     content_handler = cl_adt_rest_cnt_hdl_factory=>get_instance( )->get_handler_for_xml_using_st(
       st_name      = 'ZABAPTAGS_TAGGED_OBJECTS'
@@ -157,21 +164,17 @@ CLASS zcl_abaptags_adt_res_tgobj IMPLEMENTATION.
       content_type = if_rest_media_type=>gc_appl_xml ).
   ENDMETHOD.
 
+
   METHOD create_tagged_objects.
     create_non_persisted_tags( ).
     prepare_for_db_insert( ).
-
-    IF tagged_objects_db IS NOT INITIAL.
-      INSERT zabaptags_tgobj FROM TABLE tagged_objects_db ACCEPTING DUPLICATE KEYS.
-      IF sy-dbcnt > 0.
-        COMMIT WORK.
-      ENDIF.
-    ENDIF.
+    tags_dac->insert_tagged_objects( tagged_objects_db ).
   ENDMETHOD.
 
+
   METHOD create_non_persisted_tags.
-    DATA: new_tags          TYPE TABLE OF zabaptags_tags,
-          created_date_time TYPE tzonref-tstamps.
+    DATA: new_tags          TYPE zif_abaptags_ty_global=>ty_db_tags,
+          created_date_time TYPE timestampl.
 
     FIELD-SYMBOLS: <tagged_object> TYPE zabaptags_tagged_object,
                    <tag>           TYPE zabaptags_adt_object_tag.
@@ -185,11 +188,15 @@ CLASS zcl_abaptags_adt_res_tgobj IMPLEMENTATION.
 
       TRY.
           DATA(tag_id) = cl_uuid_factory=>create_system_uuid( )->create_uuid_x16( ).
-        CATCH cx_uuid_error.
+        CATCH cx_uuid_error INTO DATA(uuid_error).
+          RAISE EXCEPTION TYPE zcx_abaptags_adt_error
+            EXPORTING
+              previous = uuid_error.
       ENDTRY.
-      new_tag_map = VALUE #( BASE new_tag_map ( id       = tag_id
-                                                tag_name = <tag>-tag_name
-                                                owner    = <tag>-owner ) ).
+      new_tag_map = VALUE #( BASE new_tag_map
+        ( id       = tag_id
+          tag_name = <tag>-tag_name
+          owner    = <tag>-owner ) ).
       new_tags = VALUE #( BASE new_tags
         ( tag_id            = tag_id
           name              = <tag>-tag_name
@@ -204,34 +211,23 @@ CLASS zcl_abaptags_adt_res_tgobj IMPLEMENTATION.
     ENDIF.
 
 *.. check if some of the tags already exist in the database
-    SELECT tag_id, name, owner
-      FROM zabaptags_tags
-      FOR ALL ENTRIES IN @new_tags
-      WHERE name_upper = @new_tags-name_upper
-        AND owner      = @new_tags-owner
-      INTO TABLE @DATA(existing_tags)
-      UP TO 1 ROWS.
+    DATA(existing_tag) = tags_dac->find_first_tag_by_tags( new_tags ).
 
-    IF sy-subrc = 0.
-      DATA(first_existing_tag) = existing_tags[ 1 ].
+    IF existing_tag IS NOT INITIAL.
       RAISE EXCEPTION TYPE zcx_abaptags_adt_error
         EXPORTING
           textid = zcx_abaptags_adt_error=>tag_already_exists
-          msgv1  = |{ first_existing_tag-name }|
-          msgv2  = COND #( WHEN first_existing_tag-owner IS NOT INITIAL THEN first_existing_tag-owner ELSE '*' ).
+          msgv1  = |{ existing_tag-name }|
+          msgv2  = COND #( WHEN existing_tag-owner IS NOT INITIAL THEN existing_tag-owner ELSE '*' ).
     ENDIF.
 
-    INSERT zabaptags_tags FROM TABLE new_tags.
-    IF sy-subrc = 0.
-      COMMIT WORK.
-    ELSE.
-      CLEAR new_tag_map.
+    IF NOT tags_dac->insert_tags( new_tags ).
       RAISE EXCEPTION TYPE zcx_abaptags_adt_error
         EXPORTING
           textid = zcx_abaptags_adt_error=>tags_persisting_failure.
     ENDIF.
-
   ENDMETHOD.
+
 
   METHOD prepare_for_db_insert.
     DATA: tadir_object  TYPE string,
@@ -250,49 +246,19 @@ CLASS zcl_abaptags_adt_res_tgobj IMPLEMENTATION.
         IMPORTING object_name = tadir_object
                   tadir_type  = tadir_type ).
 
-      LOOP AT <tagged_object>-tags ASSIGNING <tag>.
-        CLEAR: parent_object,
-               parent_type.
-
-        IF <tag>-tag_id IS INITIAL.
-          ASSIGN new_tag_map[ tag_name = <tag>-tag_name
-                                 owner    = <tag>-owner ] TO FIELD-SYMBOL(<new_tag>).
-          IF sy-subrc <> 0.
-            RAISE EXCEPTION TYPE zcx_abaptags_adt_error
-              EXPORTING
-                textid = zcx_abaptags_adt_error=>tag_with_name_not_found
-                msgv1  = |{ <tag>-tag_name }|
-                msgv2  = COND #( WHEN <tag>-owner IS INITIAL THEN '*' ELSE <tag>-owner ).
-          ENDIF.
-          <tag>-tag_id = <new_tag>-id.
-        ENDIF.
-
-        IF <tag>-parent_uri IS NOT INITIAL.
-          zcl_abaptags_adt_util=>map_uri_to_wb_object(
-            EXPORTING uri         = <tag>-parent_uri
-            IMPORTING object_name = parent_object
-                      tadir_type  = parent_type ).
-        ENDIF.
-
-        tagged_objects_db = VALUE #( BASE tagged_objects_db
-         ( object_type        = tadir_type
-           object_name        = tadir_object
-           tag_id             = <tag>-tag_id
-           parent_object_type = parent_type
-           parent_object_name = parent_object
-           tagged_by          = sy-uname
-           tagged_date        = sy-datum ) ).
-      ENDLOOP.
-
+      collect_tgobj_for_insert(
+        EXPORTING tadir_object = tadir_object
+                  tadir_type   = tadir_type
+        CHANGING  tags         = <tagged_object>-tags ).
     ENDLOOP.
 
   ENDMETHOD.
 
 
   METHOD delete_tags_from_objects.
-    DATA: tadir_object          TYPE string,
-          tadir_type            TYPE trobjtype,
-          tagged_objects_delete TYPE TABLE OF zabaptags_tgobj.
+    DATA: tadir_object      TYPE string,
+          tadir_type        TYPE trobjtype,
+          tagged_objects_db TYPE zif_abaptags_ty_global=>ty_db_tagged_objects.
 
     FIELD-SYMBOLS: <tagged_object> TYPE zabaptags_tagged_object,
                    <tag>           TYPE zabaptags_adt_object_tag.
@@ -306,69 +272,113 @@ CLASS zcl_abaptags_adt_res_tgobj IMPLEMENTATION.
                   tadir_type  = tadir_type ).
 
       LOOP AT <tagged_object>-tags ASSIGNING <tag>.
-        tagged_objects_delete = VALUE #( BASE tagged_objects_delete
-         ( object_type        = tadir_type
-           object_name        = tadir_object
-           tag_id             = <tag>-tag_id ) ).
+        tagged_objects_db = VALUE #( BASE tagged_objects_db
+         ( object_type = tadir_type
+           object_name = tadir_object
+           tag_id      = <tag>-tag_id ) ).
       ENDLOOP.
 
     ENDLOOP.
 
-    IF tagged_objects_delete IS NOT INITIAL.
-      DELETE zabaptags_tgobj FROM TABLE tagged_objects_delete.
-      COMMIT WORK.
-    ENDIF.
+    tags_dac->delete_tagged_objects( tagged_objects_db ).
   ENDMETHOD.
 
 
   METHOD validate_tags.
-    DATA: remaining_tags TYPE TABLE OF zabaptags_tags,
-          tag_ids        TYPE SORTED TABLE OF zabaptags_tag_id WITH UNIQUE KEY table_line.
+    DATA: existing_tags TYPE zabaptags_tag_data_t,
+          tag_id_range  TYPE zif_abaptags_ty_global=>ty_tag_id_range.
 
     LOOP AT tagged_objects ASSIGNING FIELD-SYMBOL(<tagged_obj>).
 
       LOOP AT <tagged_obj>-tags ASSIGNING FIELD-SYMBOL(<tag>) WHERE tag_id IS NOT INITIAL.
-        INSERT <tag>-tag_id INTO TABLE tag_ids.
+        tag_id_range = VALUE #( BASE tag_id_range ( sign = 'I' option = 'EQ' low = <tag>-tag_id ) ).
       ENDLOOP.
 
     ENDLOOP.
 
-    IF tag_ids IS NOT INITIAL.
-      SELECT tag_id,
-             name,
-             parent_tag_id
-        FROM zabaptags_tags
-        FOR ALL ENTRIES IN @tag_ids
-        WHERE tag_id = @tag_ids-table_line
-        INTO CORRESPONDING FIELDS OF TABLE @remaining_tags.
-
-      IF lines( remaining_tags ) <> lines( tag_ids ).
-        RAISE EXCEPTION TYPE zcx_abaptags_adt_error
-          EXPORTING
-            textid = zcx_abaptags_adt_error=>chosen_tags_no_longer_exist.
-      ENDIF.
+    IF tag_id_range IS INITIAL.
+      RETURN.
     ENDIF.
 
-    CLEAR tag_ids.
-    LOOP AT remaining_tags ASSIGNING FIELD-SYMBOL(<remaining_tag>) WHERE parent_tag_id IS NOT INITIAL.
-      INSERT <remaining_tag>-parent_tag_id INTO TABLE tag_ids.
+    SORT tag_id_range.
+    DELETE ADJACENT DUPLICATES FROM tag_id_range.
+
+    existing_tags = tags_dac->find_tags(
+      columns      = VALUE #( ( `TAG_ID` ) ( `PARENT_TAG_ID` ) )
+      tag_id_range = tag_id_range ).
+
+    IF lines( existing_tags ) <> lines( tag_id_range ).
+      RAISE EXCEPTION TYPE zcx_abaptags_adt_error
+        EXPORTING
+          textid = zcx_abaptags_adt_error=>chosen_tags_no_longer_exist.
+    ENDIF.
+
+    CLEAR tag_id_range.
+
+    LOOP AT existing_tags ASSIGNING FIELD-SYMBOL(<existing_tag>) WHERE parent_tag_id IS NOT INITIAL.
+      tag_id_range = VALUE #( BASE tag_id_range ( sign = 'I' option = 'EQ' low = <existing_tag>-parent_tag_id ) ).
     ENDLOOP.
 
-    IF tag_ids IS NOT INITIAL.
-      SELECT tag_id,
-             name
-        FROM zabaptags_tags
-        FOR ALL ENTRIES IN @tag_ids
-        WHERE tag_id = @tag_ids-table_line
-        INTO CORRESPONDING FIELDS OF TABLE @remaining_tags.
+    IF tag_id_range IS INITIAL.
+      RETURN.
+    ENDIF.
 
-      IF lines( remaining_tags ) <> lines( tag_ids ).
-        RAISE EXCEPTION TYPE zcx_abaptags_adt_error
-          EXPORTING
-            textid = zcx_abaptags_adt_error=>parents_of_chs_tags_deleted.
-      ENDIF.
+    SORT tag_id_range.
+    DELETE ADJACENT DUPLICATES FROM tag_id_range.
+
+    DATA(tag_count) = tags_dac->count_tags( tag_id_range ).
+
+    IF tag_count <> lines( tag_id_range ).
+      RAISE EXCEPTION TYPE zcx_abaptags_adt_error
+        EXPORTING
+          textid = zcx_abaptags_adt_error=>parents_of_chs_tags_deleted.
     ENDIF.
 
   ENDMETHOD.
+
+
+  METHOD collect_tgobj_for_insert.
+
+    DATA: parent_object TYPE string,
+          parent_type   TYPE trobjtype.
+
+    FIELD-SYMBOLS <tag> TYPE zabaptags_adt_object_tag.
+
+    LOOP AT tags ASSIGNING <tag>.
+      CLEAR: parent_object,
+             parent_type.
+
+      IF <tag>-tag_id IS INITIAL.
+        ASSIGN new_tag_map[ tag_name = <tag>-tag_name
+                               owner    = <tag>-owner ] TO FIELD-SYMBOL(<new_tag>).
+        IF sy-subrc <> 0.
+          RAISE EXCEPTION TYPE zcx_abaptags_adt_error
+            EXPORTING
+              textid = zcx_abaptags_adt_error=>tag_with_name_not_found
+              msgv1  = |{ <tag>-tag_name }|
+              msgv2  = COND #( WHEN <tag>-owner IS INITIAL THEN '*' ELSE <tag>-owner ).
+        ENDIF.
+        <tag>-tag_id = <new_tag>-id.
+      ENDIF.
+
+      IF <tag>-parent_uri IS NOT INITIAL.
+        zcl_abaptags_adt_util=>map_uri_to_wb_object(
+          EXPORTING uri         = <tag>-parent_uri
+          IMPORTING object_name = parent_object
+                    tadir_type  = parent_type ).
+      ENDIF.
+
+      tagged_objects_db = VALUE #( BASE tagged_objects_db
+       ( object_type        = tadir_type
+         object_name        = tadir_object
+         tag_id             = <tag>-tag_id
+         parent_object_type = parent_type
+         parent_object_name = parent_object
+         tagged_by          = sy-uname
+         tagged_date        = sy-datum ) ).
+    ENDLOOP.
+
+  ENDMETHOD.
+
 
 ENDCLASS.

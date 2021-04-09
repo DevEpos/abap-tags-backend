@@ -7,6 +7,7 @@ INTERFACE zif_abaptags_c_global
       all    TYPE string VALUE 'all',
       global TYPE string VALUE 'global',
       user   TYPE string VALUE 'user',
+      shared TYPE string VALUE 'shared',
     END OF scopes,
 
     "! Possible types for reading tag info of tagged objects
@@ -26,6 +27,12 @@ INTERFACE zif_abaptags_c_global
     BEGIN OF tag_query_focus,
       object        TYPE string VALUE 'object',
       parent_object TYPE string VALUE 'parentObject',
-    END OF tag_query_focus.
+    END OF tag_query_focus,
+
+    BEGIN OF object_types,
+      function       TYPE trobjtype VALUE 'FUNC',
+      function_group TYPE trobjtype VALUE 'FUGR',
+      program        TYPE trobjtype VALUE 'PROG',
+    END OF object_types.
 
 ENDINTERFACE.

@@ -47,6 +47,7 @@ ENDCLASS.
 
 CLASS zcl_abaptags_adt_disc_app IMPLEMENTATION.
 
+
   METHOD fill_router.
     super->fill_router( CHANGING router = router ).
     router->attach(
@@ -71,6 +72,7 @@ CLASS zcl_abaptags_adt_disc_app IMPLEMENTATION.
     register_object_tagging_res( registry ).
   ENDMETHOD.
 
+
   METHOD register_object_tagging_res.
     CONSTANTS: c_previewinfo_uri_part     TYPE string VALUE 'previewInfo' ##NO_TEXT,
                c_tagged_obj_info_uri_part TYPE string VALUE 'previewInfo' ##NO_TEXT.
@@ -92,6 +94,7 @@ CLASS zcl_abaptags_adt_disc_app IMPLEMENTATION.
       handler_class = 'ZCL_ABAPTAGS_ADT_RES_TAGPREV' ).
 
   ENDMETHOD.
+
 
   METHOD register_tag_management.
     DATA: collection TYPE REF TO if_adt_discovery_collection.
@@ -127,4 +130,6 @@ CLASS zcl_abaptags_adt_disc_app IMPLEMENTATION.
       category_scheme = c_root_scheme
       category_term   = 'taggedobjectsearch' ).
   ENDMETHOD.
+
+
 ENDCLASS.

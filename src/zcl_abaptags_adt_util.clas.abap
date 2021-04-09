@@ -315,6 +315,7 @@ CLASS zcl_abaptags_adt_util IMPLEMENTATION.
 
   ENDMETHOD.
 
+
   METHOD resolve_parent_uri.
     map_uri_to_wb_object(
       EXPORTING uri         = adt_obj_info-parent_uri
@@ -338,5 +339,6 @@ CLASS zcl_abaptags_adt_util IMPLEMENTATION.
       CLEAR adt_obj_info-parent_uri.
     ENDIF.
   ENDMETHOD.
+
 
 ENDCLASS.
