@@ -125,7 +125,7 @@ CLASS zcl_abaptags_adt_disc_app IMPLEMENTATION.
   METHOD register_tag_search.
     registry->register_discoverable_resource(
       url             = c_tagged_object_search_uri
-      handler_class   = 'ZCL_ABAPTAGS_ADT_RES_TAGSEARCH'
+      handler_class   = 'ZCL_ABAPTAGS_ADT_RES_TGOBJSRCH'
       description     = 'Tagged Object Search' ##NO_TEXT
       category_scheme = c_root_scheme
       category_term   = 'taggedobjectsearch' ).

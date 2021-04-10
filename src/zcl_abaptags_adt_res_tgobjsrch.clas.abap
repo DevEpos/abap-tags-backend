@@ -1,5 +1,5 @@
-"! <p class="shorttext synchronized" lang="en">ADT Resource for abap tag search</p>
-CLASS zcl_abaptags_adt_res_tagsearch DEFINITION
+"! <p class="shorttext synchronized" lang="en">Resource for tagged object search</p>
+CLASS zcl_abaptags_adt_res_tgobjsrch DEFINITION
   PUBLIC
   INHERITING FROM cl_adt_rest_resource
   FINAL
@@ -12,28 +12,8 @@ CLASS zcl_abaptags_adt_res_tagsearch DEFINITION
         REDEFINITION.
   PROTECTED SECTION.
   PRIVATE SECTION.
-    CONSTANTS:
-      BEGIN OF c_tadir_types,
-        function       TYPE trobjtype VALUE 'FUNC',
-        function_group TYPE trobjtype VALUE 'FUGR',
-      END OF c_tadir_types.
-
-    TYPES:
-      BEGIN OF ty_func_module,
-        function TYPE tfdir-funcname,
-        group    TYPE tfdir-pname,
-      END OF ty_func_module,
-
-      BEGIN OF ty_tadir_info,
-        object_name  TYPE tadir-obj_name,
-        object_type  TYPE tadir-object,
-        package_name TYPE tadir-devclass,
-        author       TYPE tadir-author,
-      END OF ty_tadir_info.
-
     DATA:
       tags_dac                 TYPE REF TO zcl_abaptags_tags_dac,
-      func_modules             TYPE HASHED TABLE OF ty_func_module WITH UNIQUE KEY function,
       tadir_info_reader        TYPE REF TO zcl_abaptags_tadir,
       tgobj_infos              TYPE zif_abaptags_ty_global=>ty_tgobj_infos,
       tagged_objects           TYPE STANDARD TABLE OF zabaptags_tagged_object,
@@ -76,7 +56,7 @@ ENDCLASS.
 
 
 
-CLASS zcl_abaptags_adt_res_tagsearch IMPLEMENTATION.
+CLASS zcl_abaptags_adt_res_tgobjsrch IMPLEMENTATION.
 
 
   METHOD constructor.

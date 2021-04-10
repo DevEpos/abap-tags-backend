@@ -54,6 +54,9 @@
       <tt:cond s-check="not-initial(tag.is_shared)">
         <tt:attribute name="atm:shared" option="format(boolean)" value-ref="tag.is_shared"/>
       </tt:cond>
+      <tt:cond s-check="not-initial(tag.is_shared_for_me)">
+        <tt:attribute name="atm:sharedForMe" option="format(boolean)" value-ref="tag.is_shared_for_me"/>
+      </tt:cond>
 
       <!-- Serialize child tags -->
       <tt:call-method class="zcl_abaptags_adt_tags_serlzer" d-name="deserialize" reader="reader" s-name="serialize" writer="writer">

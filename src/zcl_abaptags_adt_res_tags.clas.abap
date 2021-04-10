@@ -150,7 +150,7 @@ CLASS zcl_abaptags_adt_res_tags IMPLEMENTATION.
 
     IF scope = zif_abaptags_c_global=>scopes-all.
       tags = VALUE #( BASE tags
-        ( LINES OF tags_dac->find_shared_tags( ) ) ).
+        ( LINES OF zcl_abaptags_tag_util=>get_shared_tags( abap_true ) ) ).
     ENDIF.
 
     IF with_object_count = abap_true.

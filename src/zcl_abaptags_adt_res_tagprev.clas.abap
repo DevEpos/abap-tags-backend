@@ -109,7 +109,7 @@ CLASS zcl_abaptags_adt_res_tagprev IMPLEMENTATION.
           owner_range = VALUE #(
             ( sign = 'I' option = 'EQ' low = sy-uname )
             ( sign = 'I' option = 'EQ' low = space  ) ) ) )
-      ( LINES OF tags_dac->find_shared_tags( ) ) ).
+      ( LINES OF zcl_abaptags_tag_util=>get_shared_tags( abap_true ) ) ).
   ENDMETHOD.
 
 
