@@ -115,7 +115,7 @@ CLASS zcl_abaptags_adt_disc_app IMPLEMENTATION.
 
     collection->register_disc_res_w_template(
       relation      = |{ c_root_rel_scheme }{ c_tags_share_uri }/info|
-      template      = |{ c_tags_share_uri }\{:tagId\}|
+      template      = |{ c_tags_share_uri }/info/\{tagId\}|
       description   = 'Details of Shared Tag'
       handler_class = 'ZCL_ABAPTAGS_ADT_RES_TAGSSHARE' ).
 

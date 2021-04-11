@@ -24,9 +24,14 @@ CLASS zcl_abaptags_tags_dac DEFINITION
         RETURNING
           VALUE(result) TYPE i,
       "! <p class="shorttext synchronized" lang="en">Unshares list of tags</p>
+      delete_shared_tags_by_id
+        IMPORTING
+          tag_ids            TYPE zif_abaptags_ty_global=>ty_tag_id_range
+          unshare_completely TYPE abap_bool OPTIONAL,
+      "! <p class="shorttext synchronized" lang="en">Delete user/tag id combinations from shared tags DB</p>
       delete_shared_tags
         IMPORTING
-          tag_ids TYPE zif_abaptags_ty_global=>ty_tag_id_range,
+          shared_tags_db TYPE zif_abaptags_ty_global=>ty_db_shared_tags OPTIONAL,
       "! <p class="shorttext synchronized" lang="en">Deletes tagged objects from DB</p>
       delete_tagged_objects
         IMPORTING
@@ -62,6 +67,12 @@ CLASS zcl_abaptags_tags_dac DEFINITION
       find_shared_tags
         RETURNING
           VALUE(result) TYPE zabaptags_tag_data_t,
+      "! <p class="shorttext synchronized" lang="en">Finds users of a shared tag</p>
+      find_shared_tag_users
+        IMPORTING
+          tag_id        TYPE zabaptags_tag_id
+        RETURNING
+          VALUE(result) TYPE zabaptags_user_t,
       "! <p class="shorttext synchronized" lang="en">Finds a list of tags that are shared</p>
       find_shared_tags_db
         IMPORTING
@@ -188,15 +199,27 @@ CLASS zcl_abaptags_tags_dac IMPLEMENTATION.
   ENDMETHOD.
 
 
-  METHOD delete_shared_tags.
+  METHOD delete_shared_tags_by_id.
     CHECK tag_ids IS NOT INITIAL.
 
     DELETE FROM zabaptags_shtags WHERE tag_id IN @tag_ids.
     IF sy-subrc = 0.
-      " remove 'is_shared' property of tags in masterdata table
-      UPDATE zabaptags_tags
-        SET is_shared = @abap_false
-        WHERE tag_id IN @tag_ids.
+      IF unshare_completely = abap_true.
+        " remove 'is_shared' property of tags in masterdata table
+        UPDATE zabaptags_tags
+          SET is_shared = @abap_false
+          WHERE tag_id IN @tag_ids.
+      ENDIF.
+      COMMIT WORK.
+    ENDIF.
+  ENDMETHOD.
+
+
+  METHOD delete_shared_tags.
+    CHECK shared_tags_db IS NOT INITIAL.
+
+    DELETE zabaptags_shtags FROM TABLE shared_tags_db.
+    IF sy-subrc = 0.
       COMMIT WORK.
     ENDIF.
   ENDMETHOD.
@@ -278,6 +301,14 @@ CLASS zcl_abaptags_tags_dac IMPLEMENTATION.
         ON  shared_tag~tag_id = tag~tag_id
         AND shared_tag~shared_user = @sy-uname
       INTO CORRESPONDING FIELDS OF TABLE @result.
+  ENDMETHOD.
+
+
+  METHOD find_shared_tag_users.
+    SELECT shared_user
+      FROM zabaptags_shtags
+      WHERE tag_id = @tag_id
+      INTO TABLE @result.
   ENDMETHOD.
 
 
@@ -437,6 +468,8 @@ CLASS zcl_abaptags_tags_dac IMPLEMENTATION.
 
 
   METHOD insert_tags.
+    CHECK tags IS NOT INITIAL.
+
     INSERT zabaptags_tags FROM TABLE tags.
     IF sy-subrc = 0.
       result = abap_true.
@@ -446,6 +479,8 @@ CLASS zcl_abaptags_tags_dac IMPLEMENTATION.
 
 
   METHOD modify_tags.
+    CHECK tags IS NOT INITIAL.
+
     MODIFY zabaptags_tags FROM TABLE tags.
     IF sy-subrc = 0.
       COMMIT WORK.
@@ -456,6 +491,8 @@ CLASS zcl_abaptags_tags_dac IMPLEMENTATION.
 
 
   METHOD share_tags.
+    CHECK tags_to_share IS NOT INITIAL.
+
     INSERT zabaptags_shtags FROM TABLE tags_to_share.
     IF sy-subrc = 0.
       DATA(l_tag_ids) = tag_ids.

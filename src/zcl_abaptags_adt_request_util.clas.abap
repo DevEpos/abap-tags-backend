@@ -6,6 +6,16 @@ CLASS zcl_abaptags_adt_request_util DEFINITION
 
   PUBLIC SECTION.
     CLASS-METHODS:
+      "! <p class="shorttext synchronized" lang="en">Retrieves UUID uri attribute</p>
+      get_uuid_uri_attribute
+        IMPORTING
+          name          TYPE string
+          mandatory     TYPE abap_bool OPTIONAL
+          request       TYPE REF TO if_adt_rest_request
+        RETURNING
+          VALUE(result) TYPE uuid
+        RAISING
+          cx_adt_rest,
       "! <p class="shorttext synchronized" lang="en">Retrieve values of request parameter</p>
       get_request_param_values
         IMPORTING
@@ -45,6 +55,30 @@ ENDCLASS.
 
 
 CLASS zcl_abaptags_adt_request_util IMPLEMENTATION.
+
+
+  METHOD get_uuid_uri_attribute.
+    DATA: uuid_string TYPE sysuuid_c36.
+
+    request->get_uri_attribute(
+      EXPORTING name      = name
+                mandatory = abap_false
+      IMPORTING value     = uuid_string ).
+
+    IF uuid_string IS INITIAL.
+      RETURN.
+    ENDIF.
+
+    TRY.
+        cl_system_uuid=>convert_uuid_c36_static(
+          EXPORTING uuid     = to_upper( uuid_string )
+          IMPORTING uuid_x16 = result ).
+      CATCH cx_uuid_error INTO DATA(conversion_error).
+        RAISE EXCEPTION TYPE zcx_abaptags_adt_error
+          EXPORTING
+            previous = conversion_error.
+    ENDTRY.
+  ENDMETHOD.
 
 
   METHOD get_request_param_value.
