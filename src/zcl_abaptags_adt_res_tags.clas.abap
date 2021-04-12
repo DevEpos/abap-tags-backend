@@ -312,7 +312,13 @@ CLASS zcl_abaptags_adt_res_tags IMPLEMENTATION.
       EXPORTING tag_id_only = abap_true
       CHANGING  tags        = tags ).
 
-    tags_dac->convert_tags_to_global( VALUE #( FOR tag IN tags ( sign = 'I' option = 'EQ' low = tag-tag_id ) ) ).
+    DATA(tag_ids) = VALUE zif_abaptags_ty_global=>ty_tag_id_range(
+      FOR tag IN tags ( sign = 'I' option = 'EQ' low = tag-tag_id ) ).
+
+    tags_dac->convert_tags_to_global( tag_ids ).
+    tags_dac->delete_shared_tags_by_id(
+      tag_ids            = tag_ids
+      unshare_completely = abap_true ).
   ENDMETHOD.
 
 

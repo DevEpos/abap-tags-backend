@@ -178,15 +178,12 @@ CLASS zcl_abaptags_tags_dac IMPLEMENTATION.
     GET TIME STAMP FIELD changed_datetime.
 
     UPDATE zabaptags_tags
-      SET owner             = '',
+      SET owner             = @space,
           changed_by        = @sy-uname,
           changed_date_time = @changed_datetime
       WHERE tag_id IN @tag_ids.
-
     IF sy-subrc = 0.
       COMMIT WORK.
-    ELSE.
-      ROLLBACK WORK.
     ENDIF.
   ENDMETHOD.
 
@@ -200,14 +197,19 @@ CLASS zcl_abaptags_tags_dac IMPLEMENTATION.
 
 
   METHOD delete_shared_tags_by_id.
+    DATA: changed_date_time TYPE timestampl.
+
     CHECK tag_ids IS NOT INITIAL.
 
     DELETE FROM zabaptags_shtags WHERE tag_id IN @tag_ids.
     IF sy-subrc = 0.
       IF unshare_completely = abap_true.
+        GET TIME STAMP FIELD changed_date_time.
         " remove 'is_shared' property of tags in masterdata table
         UPDATE zabaptags_tags
-          SET is_shared = @abap_false
+          SET is_shared = @abap_false,
+              changed_date_time = @changed_date_time,
+              changed_by = @sy-uname
           WHERE tag_id IN @tag_ids.
       ENDIF.
       COMMIT WORK.
@@ -484,8 +486,6 @@ CLASS zcl_abaptags_tags_dac IMPLEMENTATION.
     MODIFY zabaptags_tags FROM TABLE tags.
     IF sy-subrc = 0.
       COMMIT WORK.
-    ELSE.
-      ROLLBACK WORK.
     ENDIF.
   ENDMETHOD.
 
