@@ -5,38 +5,49 @@ CLASS zcl_abaptags_adt_request_util DEFINITION
   CREATE PUBLIC .
 
   PUBLIC SECTION.
-    "! <p class="shorttext synchronized" lang="en">Retrieve values of request parameter</p>
-    CLASS-METHODS get_request_param_values
-      IMPORTING
-        iv_param_name     TYPE string
-        it_default_values TYPE string_table OPTIONAL
-        if_mandatory      TYPE abap_bool OPTIONAL
-        if_upper_case     TYPE abap_bool OPTIONAL
-        io_request        TYPE REF TO if_adt_rest_request
-      RETURNING
-        VALUE(rt_values)  TYPE string_table
-      RAISING
-        cx_adt_rest.
-    "! <p class="shorttext synchronized" lang="en">Retrieve value of request parameter</p>
-    CLASS-METHODS get_request_param_value
-      IMPORTING
-        iv_param_name    TYPE string
-        iv_default_value TYPE any OPTIONAL
-        if_mandatory     TYPE abap_bool OPTIONAL
-        if_upper_case    TYPE abap_bool OPTIONAL
-        io_request       TYPE REF TO if_adt_rest_request
-      RETURNING
-        VALUE(rv_value)  TYPE string
-      RAISING
-        cx_adt_rest.
-    "! <p class="shorttext synchronized" lang="en">Retrieve boolean parameter value from request</p>
-    CLASS-METHODS get_boolean_req_param
-      IMPORTING
-        iv_param_name    TYPE string
-        if_default_value TYPE abap_bool OPTIONAL
-        io_request       TYPE REF TO if_adt_rest_request
-      RETURNING
-        VALUE(rf_value)  TYPE abap_bool.
+    CLASS-METHODS:
+      "! <p class="shorttext synchronized" lang="en">Retrieves UUID uri attribute</p>
+      get_uuid_uri_attribute
+        IMPORTING
+          name          TYPE string
+          mandatory     TYPE abap_bool OPTIONAL
+          request       TYPE REF TO if_adt_rest_request
+        RETURNING
+          VALUE(result) TYPE uuid
+        RAISING
+          cx_adt_rest,
+      "! <p class="shorttext synchronized" lang="en">Retrieve values of request parameter</p>
+      get_request_param_values
+        IMPORTING
+          param_name     TYPE string
+          default_values TYPE string_table OPTIONAL
+          mandatory      TYPE abap_bool OPTIONAL
+          upper_case     TYPE abap_bool OPTIONAL
+          request        TYPE REF TO if_adt_rest_request
+        RETURNING
+          VALUE(results) TYPE string_table
+        RAISING
+          cx_adt_rest,
+      "! <p class="shorttext synchronized" lang="en">Retrieve value of request parameter</p>
+      get_request_param_value
+        IMPORTING
+          param_name    TYPE string
+          default_value TYPE any OPTIONAL
+          mandatory     TYPE abap_bool OPTIONAL
+          upper_case    TYPE abap_bool OPTIONAL
+          request       TYPE REF TO if_adt_rest_request
+        RETURNING
+          VALUE(result) TYPE string
+        RAISING
+          cx_adt_rest,
+      "! <p class="shorttext synchronized" lang="en">Retrieve boolean parameter value from request</p>
+      get_boolean_req_param
+        IMPORTING
+          param_name    TYPE string
+          default_value TYPE abap_bool OPTIONAL
+          request       TYPE REF TO if_adt_rest_request
+        RETURNING
+          VALUE(result) TYPE abap_bool.
   PROTECTED SECTION.
   PRIVATE SECTION.
 ENDCLASS.
@@ -45,64 +56,89 @@ ENDCLASS.
 
 CLASS zcl_abaptags_adt_request_util IMPLEMENTATION.
 
-  METHOD get_request_param_value.
-    IF if_mandatory = abap_true.
-      io_request->get_uri_query_parameter(
-        EXPORTING name      = iv_param_name
-                  mandatory = abap_true
-        IMPORTING value     = rv_value
-      ).
-    ELSE.
-      io_request->get_uri_query_parameter(
-        EXPORTING name      = iv_param_name
-                  default   = iv_default_value
-        IMPORTING value     = rv_value
-      ).
+
+  METHOD get_uuid_uri_attribute.
+    DATA: uuid_c36_string TYPE string.
+
+    request->get_uri_attribute(
+      EXPORTING name      = name
+                mandatory = abap_false
+      IMPORTING value     = uuid_c36_string ).
+
+    IF uuid_c36_string IS INITIAL.
+      RETURN.
     ENDIF.
 
-    IF if_upper_case = abap_true.
-      TRANSLATE rv_value TO UPPER CASE.
+    TRY.
+        REPLACE ALL OCCURRENCES OF '-' IN uuid_c36_string WITH space.
+        cl_system_uuid=>convert_uuid_c32_static(
+          EXPORTING uuid     = to_upper( uuid_c36_string )
+          IMPORTING uuid_x16 = result ).
+      CATCH cx_uuid_error INTO DATA(conversion_error).
+        RAISE EXCEPTION TYPE zcx_abaptags_adt_error
+          EXPORTING
+            previous = conversion_error.
+    ENDTRY.
+  ENDMETHOD.
+
+
+  METHOD get_request_param_value.
+    IF mandatory = abap_true.
+      request->get_uri_query_parameter(
+        EXPORTING name      = param_name
+                  mandatory = abap_true
+        IMPORTING value     = result ).
+    ELSE.
+      request->get_uri_query_parameter(
+        EXPORTING name      = param_name
+                  default   = default_value
+        IMPORTING value     = result ).
+    ENDIF.
+
+    IF upper_case = abap_true.
+      TRANSLATE result TO UPPER CASE.
     ENDIF.
   ENDMETHOD.
+
 
   METHOD get_request_param_values.
-    IF if_mandatory = abap_true.
-      io_request->get_uri_query_parameter_values(
-        EXPORTING name      = iv_param_name
+    IF mandatory = abap_true.
+      request->get_uri_query_parameter_values(
+        EXPORTING name      = param_name
                   mandatory = abap_true
-        IMPORTING values    = rt_values
-      ).
+        IMPORTING values    = results ).
     ELSE.
-      io_request->get_uri_query_parameter_values(
-        EXPORTING name      = iv_param_name
-                  default   = it_default_values
-                  mandatory = if_mandatory
-        IMPORTING values    = rt_values
-      ).
+      request->get_uri_query_parameter_values(
+        EXPORTING name      = param_name
+                  default   = default_values
+                  mandatory = mandatory
+        IMPORTING values    = results ).
     ENDIF.
 
-    IF if_upper_case = abap_true.
-      LOOP AT rt_values ASSIGNING FIELD-SYMBOL(<lv_value>).
-        TRANSLATE <lv_value> TO UPPER CASE.
+    IF upper_case = abap_true.
+
+      LOOP AT results ASSIGNING FIELD-SYMBOL(<value>).
+        TRANSLATE <value> TO UPPER CASE.
       ENDLOOP.
+
     ENDIF.
   ENDMETHOD.
+
 
   METHOD get_boolean_req_param.
     TRY.
-        DATA(lv_value) = get_request_param_value(
-           iv_param_name = iv_param_name
-           io_request    = io_request
-         ).
-        IF lv_value IS NOT INITIAL.
-          lv_value = to_lower( lv_value ).
-          rf_value = COND #( WHEN lv_value = 'true' OR lv_value = 'x' THEN abap_true ).
+        DATA(value) = get_request_param_value(
+          param_name = param_name
+          request    = request ).
+        IF value IS NOT INITIAL.
+          value = to_lower( value ).
+          result = COND #( WHEN value = 'true' OR value = 'x' THEN abap_true ).
         ELSE.
-          rf_value = if_default_value.
+          result = default_value.
         ENDIF.
       CATCH cx_adt_rest.
     ENDTRY.
-
   ENDMETHOD.
+
 
 ENDCLASS.

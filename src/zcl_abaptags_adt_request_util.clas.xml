@@ -30,6 +30,12 @@
      <LANGU>E</LANGU>
      <DESCRIPT>Retrieve values of request parameter</DESCRIPT>
     </SEOCOMPOTX>
+    <SEOCOMPOTX>
+     <CLSNAME>ZCL_ABAPTAGS_ADT_REQUEST_UTIL</CLSNAME>
+     <CMPNAME>GET_UUID_URI_ATTRIBUTE</CMPNAME>
+     <LANGU>E</LANGU>
+     <DESCRIPT>Retrieves UUID uri attribute</DESCRIPT>
+    </SEOCOMPOTX>
    </DESCRIPTIONS>
   </asx:values>
  </asx:abap>

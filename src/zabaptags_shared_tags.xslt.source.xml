@@ -4,15 +4,14 @@
   xmlns:ddic="http://www.sap.com/abapxml/types/dictionary"
   xmlns:atm="http://www.devepos.com/adt/atm">
 
-  <tt:include name="zabaptags_tag" template="tag"/>
-  <tt:root name="tag" type="ddic:zabaptags_tag_data"/>
-  <tt:root name="tags" type="ddic:zabaptags_tag_data_t"/>
+  <tt:include name="zabaptags_shared_tag" template="sharedTag"/>
+  <tt:root name="shared_tags" type="ddic:zabaptags_shared_tag_t"/>
 
   <tt:template>
     <atm:tags tt:extensible="deep">
-      <tt:loop ref="tags">
-        <tt:apply name="tag">
-          <tt:with-root name="tag" ref="$ref"/>
+      <tt:loop ref="shared_tags">
+        <tt:apply name="sharedTag">
+          <tt:with-root name="shared_tag" ref="$ref"/>
         </tt:apply>
       </tt:loop>
     </atm:tags>

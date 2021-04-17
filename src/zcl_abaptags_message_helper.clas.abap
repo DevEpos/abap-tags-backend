@@ -7,88 +7,89 @@ CLASS zcl_abaptags_message_helper DEFINITION
     CLASS-METHODS:
       set_msg_vars_for_clike
         IMPORTING
-          iv_text TYPE string.
+          text TYPE string.
   PROTECTED SECTION.
   PRIVATE SECTION.
+    TYPES:
+      ty_message TYPE c LENGTH 200.
+
+    CONSTANTS:
+      c_length_of_msgv           TYPE i VALUE 50,
+      c_offset_of_last_character TYPE i VALUE 49.
+
     CLASS-METHODS:
       split_text
         IMPORTING
-          iv_text  TYPE string
+          text         TYPE string
         EXPORTING
-          ev_msgv1 TYPE sy-msgv1
-          ev_msgv2 TYPE sy-msgv2
-          ev_msgv3 TYPE sy-msgv3
-          ev_msgv4 TYPE sy-msgv4.
+          VALUE(msgv1) TYPE sy-msgv1
+          VALUE(msgv2) TYPE sy-msgv2
+          VALUE(msgv3) TYPE sy-msgv3
+          VALUE(msgv4) TYPE sy-msgv4.
 ENDCLASS.
 
 
 
 CLASS zcl_abaptags_message_helper IMPLEMENTATION.
 
+
   METHOD set_msg_vars_for_clike.
 
     split_text(
-      EXPORTING iv_text  = iv_text
-      IMPORTING ev_msgv1 = DATA(lv_msgv1)
-                ev_msgv2 = DATA(lv_msgv2)
-                ev_msgv3 = DATA(lv_msgv3)
-                ev_msgv4 = DATA(lv_msgv4)
+      EXPORTING text  = text
+      IMPORTING msgv1 = DATA(msgv1)
+                msgv2 = DATA(msgv2)
+                msgv3 = DATA(msgv3)
+                msgv4 = DATA(msgv4)
     ).
 
-    MESSAGE e001(00) WITH lv_msgv1 lv_msgv2 lv_msgv3 lv_msgv4
-                     INTO DATA(lv_dummy) ##needed.
+    MESSAGE e001(00) WITH msgv1 msgv2 msgv3 msgv4
+                     INTO DATA(dummy) ##needed.
   ENDMETHOD.
 
+
   METHOD split_text.
+    DATA: tmp_text TYPE ty_message,
+          msg_var  TYPE c LENGTH c_length_of_msgv,
+          rest     TYPE ty_message,
+          index    TYPE syst-index.
 
-    CONSTANTS:
-      lc_length_of_msgv           TYPE i VALUE 50,
-      lc_offset_of_last_character TYPE i VALUE 49.
-
-    TYPES:
-      ty_char200 TYPE c LENGTH 200.
-
-    DATA:
-      lv_text    TYPE ty_char200,
-      lv_msg_var TYPE c LENGTH lc_length_of_msgv,
-      lv_rest    TYPE ty_char200,
-      lv_index   TYPE syst-index.
-
-    lv_text = iv_text.
+    tmp_text = text.
 
     DO 4 TIMES.
 
-      lv_index = sy-index.
+      index = sy-index.
 
       CALL FUNCTION 'TEXT_SPLIT'
         EXPORTING
-          length = lc_length_of_msgv
-          text   = lv_text
+          length = c_length_of_msgv
+          text   = tmp_text
         IMPORTING
-          line   = lv_msg_var
-          rest   = lv_rest.
+          line   = msg_var
+          rest   = rest.
 
-      IF lv_msg_var+lc_offset_of_last_character = space.
+      IF msg_var+c_offset_of_last_character = space.
         " keep the space at the beginning of the rest
         " because otherwise it's lost
-        lv_rest = | { lv_rest }|.
+        rest = | { rest }|.
       ENDIF.
 
-      lv_text = lv_rest.
+      tmp_text = rest.
 
-      CASE lv_index.
+      CASE index.
         WHEN 1.
-          ev_msgv1 = lv_msg_var.
+          msgv1 = msg_var.
         WHEN 2.
-          ev_msgv2 = lv_msg_var.
+          msgv2 = msg_var.
         WHEN 3.
-          ev_msgv3 = lv_msg_var.
+          msgv3 = msg_var.
         WHEN 4.
-          ev_msgv4 = lv_msg_var.
+          msgv4 = msg_var.
       ENDCASE.
 
     ENDDO.
 
   ENDMETHOD.
+
 
 ENDCLASS.

@@ -74,6 +74,12 @@
      <MSGNR>010</MSGNR>
      <TEXT>The parent tags of some chosen tags no longer exist</TEXT>
     </T100>
+    <T100>
+     <SPRSL>E</SPRSL>
+     <ARBGB>ZABAPTAGS</ARBGB>
+     <MSGNR>011</MSGNR>
+     <TEXT>Unknown Action &amp;1 for Tags</TEXT>
+    </T100>
    </T100>
   </asx:values>
  </asx:abap>

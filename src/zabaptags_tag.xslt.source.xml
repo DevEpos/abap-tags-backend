@@ -1,59 +1,65 @@
 <?sap.transform simple?>
 <tt:transform
-   xmlns:tt="http://www.sap.com/transformation-templates"
-   xmlns:ddic="http://www.sap.com/abapxml/types/dictionary"
-   xmlns:atm="http://www.devepos.com/adt/atm">
+  xmlns:tt="http://www.sap.com/transformation-templates"
+  xmlns:ddic="http://www.sap.com/abapxml/types/dictionary"
+  xmlns:atm="http://www.devepos.com/adt/atm">
 
-  <tt:root name="TAG" type="ddic:zabaptags_tag_data"/>
+  <tt:root name="tag" type="ddic:zabaptags_tag_data"/>
 
   <tt:template>
     <tt:apply name="tag">
-      <tt:with-root name="TAG" ref="tag"/>
+      <tt:with-root name="tag" ref="tag"/>
     </tt:apply>
   </tt:template>
 
   <tt:template name="tag">
     <tt:context>
-      <tt:root name="TAG"/>
+      <tt:root name="tag"/>
     </tt:context>
     <atm:tag tt:extensible="deep">
       <!-- serialize some scalar properties of the tag -->
-      <tt:cond s-check="not-initial(TAG.TAG_ID)">
-        <tt:attribute name="atm:id" value-ref="TAG.TAG_ID" option="format(guid)"/>
+      <tt:cond s-check="not-initial(tag.tag_id)">
+        <tt:attribute name="atm:id" option="format(guid)" value-ref="tag.tag_id"/>
       </tt:cond>
-      <tt:cond s-check="not-initial(TAG.NAME)">
-        <tt:attribute name="atm:name" value-ref="TAG.NAME"/>
+      <tt:cond s-check="not-initial(tag.name)">
+        <tt:attribute name="atm:name" value-ref="tag.name"/>
       </tt:cond>
-      <tt:cond s-check="not-initial(TAG.DESCRIPTION)">
-        <tt:attribute name="atm:description" value-ref="TAG.DESCRIPTION"/>
+      <tt:cond s-check="not-initial(tag.description)">
+        <tt:attribute name="atm:description" value-ref="tag.description"/>
       </tt:cond>
-      <tt:cond s-check="not-initial(TAG.OWNER)">
-        <tt:attribute name="atm:owner" value-ref="TAG.OWNER"/>
+      <tt:cond s-check="not-initial(tag.owner)">
+        <tt:attribute name="atm:owner" value-ref="tag.owner"/>
       </tt:cond>
-      <tt:cond s-check="not-initial(TAG.CREATED_BY)">
-        <tt:attribute name="atm:createdBy" value-ref="TAG.CREATED_BY"/>
+      <tt:cond s-check="not-initial(tag.created_by)">
+        <tt:attribute name="atm:createdBy" value-ref="tag.created_by"/>
       </tt:cond>
-      <tt:cond s-check="not-initial(TAG.CREATED_DATE_TIME)">
-        <tt:attribute name="atm:createdDateTime" value-ref="TAG.CREATED_DATE_TIME" option="format(dateTimeLocal)"/>
+      <tt:cond s-check="not-initial(tag.created_date_time)">
+        <tt:attribute name="atm:createdDateTime" option="format(dateTimeLocal)" value-ref="tag.created_date_time"/>
       </tt:cond>
-      <tt:cond s-check="not-initial(TAG.CHANGED_BY)">
-        <tt:attribute name="atm:changedBy" value-ref="TAG.CHANGED_BY"/>
+      <tt:cond s-check="not-initial(tag.changed_by)">
+        <tt:attribute name="atm:changedBy" value-ref="tag.changed_by"/>
       </tt:cond>
-      <tt:cond s-check="not-initial(TAG.CHANGED_DATE_TIME)">
-        <tt:attribute name="atm:changedDateTime" value-ref="TAG.CHANGED_DATE_TIME" option="format(dateTimeLocal)"/>
+      <tt:cond s-check="not-initial(tag.changed_date_time)">
+        <tt:attribute name="atm:changedDateTime" option="format(dateTimeLocal)" value-ref="tag.changed_date_time"/>
       </tt:cond>
-      <tt:cond s-check="not-initial(TAG.TAGGED_OBJECT_COUNT)">
-        <tt:attribute name="atm:taggedObjectCount" value-ref="TAG.TAGGED_OBJECT_COUNT"/>
+      <tt:cond s-check="not-initial(tag.tagged_object_count)">
+        <tt:attribute name="atm:taggedObjectCount" value-ref="tag.tagged_object_count"/>
       </tt:cond>
-      <tt:cond s-check="not-initial(TAG.PARENT_TAG_ID)">
-        <tt:attribute name="atm:parentTagId" value-ref="TAG.PARENT_TAG_ID" option="format(guid)"/>
+      <tt:cond s-check="not-initial(tag.parent_tag_id)">
+        <tt:attribute name="atm:parentTagId" option="format(guid)" value-ref="tag.parent_tag_id"/>
       </tt:cond>
-      <tt:cond s-check="not-initial(TAG.IS_CHANGED)">
-        <tt:attribute name="atm:changed" value-ref="TAG.IS_CHANGED" option="format(boolean)"/>
+      <tt:cond s-check="not-initial(tag.is_changed)">
+        <tt:attribute name="atm:changed" option="format(boolean)" value-ref="tag.is_changed"/>
+      </tt:cond>
+      <tt:cond s-check="not-initial(tag.is_shared)">
+        <tt:attribute name="atm:shared" option="format(boolean)" value-ref="tag.is_shared"/>
+      </tt:cond>
+      <tt:cond s-check="not-initial(tag.is_shared_for_me)">
+        <tt:attribute name="atm:sharedForMe" option="format(boolean)" value-ref="tag.is_shared_for_me"/>
       </tt:cond>
 
       <!-- Serialize child tags -->
-      <tt:call-method class="zcl_abaptags_adt_tags_serlzer" d-name="deserialize" reader="io_reader" s-name="serialize" writer="io_writer">
+      <tt:call-method class="zcl_abaptags_adt_tags_serlzer" d-name="deserialize" reader="reader" s-name="serialize" writer="writer">
         <tt:with-parameter name="tag" ref="TAG"/>
         <tt:with-parameter name="transformation_name" val="C('ZABAPTAGS_TAG')"/>
       </tt:call-method>
@@ -67,9 +73,10 @@
     <tt:cond check="not-initial(tags)">
       <tt:loop ref="tags">
         <tt:apply name="tag">
-          <tt:with-root name="TAG" ref="$ref"/>
+          <tt:with-root name="tag" ref="$ref"/>
         </tt:apply>
       </tt:loop>
     </tt:cond>
   </tt:template>
+
 </tt:transform>
