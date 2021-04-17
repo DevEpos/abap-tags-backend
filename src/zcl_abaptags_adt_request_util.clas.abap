@@ -58,20 +58,21 @@ CLASS zcl_abaptags_adt_request_util IMPLEMENTATION.
 
 
   METHOD get_uuid_uri_attribute.
-    DATA: uuid_string TYPE sysuuid_c36.
+    DATA: uuid_c36_string TYPE string.
 
     request->get_uri_attribute(
       EXPORTING name      = name
                 mandatory = abap_false
-      IMPORTING value     = uuid_string ).
+      IMPORTING value     = uuid_c36_string ).
 
-    IF uuid_string IS INITIAL.
+    IF uuid_c36_string IS INITIAL.
       RETURN.
     ENDIF.
 
     TRY.
-        cl_system_uuid=>convert_uuid_c36_static(
-          EXPORTING uuid     = to_upper( uuid_string )
+        REPLACE ALL OCCURRENCES OF '-' IN uuid_c36_string WITH space.
+        cl_system_uuid=>convert_uuid_c32_static(
+          EXPORTING uuid     = to_upper( uuid_c36_string )
           IMPORTING uuid_x16 = result ).
       CATCH cx_uuid_error INTO DATA(conversion_error).
         RAISE EXCEPTION TYPE zcx_abaptags_adt_error
