@@ -274,7 +274,11 @@ CLASS zcl_abaptags_adt_res_tgobjsrch IMPLEMENTATION.
     CLEAR tgobj_infos.
 
     LOOP AT tgobj_infos_mesh-child_objects ASSIGNING FIELD-SYMBOL(<tgobj_child>).
-      DATA(child_tgobj_info) = tgobj_infos_mesh-child_objects\parent[ <tgobj_child> ].
+      TRY.
+          DATA(child_tgobj_info) = tgobj_infos_mesh-child_objects\parent[ <tgobj_child> ].
+        CATCH cx_sy_itab_line_not_found.
+          CONTINUE.
+      ENDTRY.
       child_tgobj_info-tag_id = <tgobj_child>-tag_id.
       child_tgobj_info-tag_name = child_tgobj_info-tag_name && ` > ` && <tgobj_child>-tag_name.
       tgobj_infos = VALUE #( BASE tgobj_infos ( child_tgobj_info ) ).
