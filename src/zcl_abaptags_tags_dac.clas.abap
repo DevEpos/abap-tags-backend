@@ -90,8 +90,14 @@ CLASS zcl_abaptags_tags_dac DEFINITION
           parent_tag_id_range TYPE zif_abaptags_ty_global=>ty_tag_id_range OPTIONAL
         RETURNING
           VALUE(result)       TYPE zabaptags_tag_data_t,
-      "! <p class="shorttext synchronized" lang="en">Finds tags of tadir objects</p>
+      "! <p class="shorttext synchronized" lang="en">Finds tags of tadir object</p>
       find_tags_of_object
+        IMPORTING
+          tadir_obj     TYPE zif_abaptags_ty_global=>ty_tadir_key
+        RETURNING
+          VALUE(result) TYPE zif_abaptags_ty_global=>ty_tag_infos,
+      "! <p class="shorttext synchronized" lang="en">Finds shared tags of tadir object</p>
+      find_shared_tags_of_object
         IMPORTING
           tadir_obj     TYPE zif_abaptags_ty_global=>ty_tadir_key
         RETURNING
@@ -357,17 +363,38 @@ CLASS zcl_abaptags_tags_dac IMPLEMENTATION.
 
   METHOD find_tags_of_object.
     SELECT DISTINCT
-           tags~tag_id,
-           tags~parent_tag_id,
-           tags~owner,
-           tags~name
+           tag~tag_id,
+           tag~parent_tag_id,
+           tag~owner,
+           tag~name
       FROM zabaptags_tgobj AS tgobj
-        INNER JOIN zabaptags_tags AS tags
-          ON tgobj~tag_id = tags~tag_id
+        INNER JOIN zabaptags_tags AS tag
+          ON tgobj~tag_id = tag~tag_id
       WHERE tgobj~object_name = @tadir_obj-name
         AND tgobj~object_type = @tadir_obj-type
-        AND ( tags~owner = @sy-uname OR tags~owner = @space )
+        AND ( tag~owner = @sy-uname OR tag~owner = @space )
       ORDER BY owner, name
+      INTO CORRESPONDING FIELDS OF TABLE @result.
+  ENDMETHOD.
+
+
+  METHOD find_shared_tags_of_object.
+    SELECT DISTINCT
+           tag~tag_id,
+           tag~parent_tag_id,
+           tag~owner,
+           tag~name
+      FROM zabaptags_tgobj AS tgobj
+        INNER JOIN zabaptags_tags AS tag
+          ON tgobj~tag_id = tag~tag_id
+        INNER JOIN zabaptags_shtags AS shared_tag
+          ON tag~tag_id = shared_tag~tag_id
+      WHERE tgobj~object_name = @tadir_obj-name
+        AND tgobj~object_type = @tadir_obj-type
+        AND tag~owner <> @sy-uname
+        AND tag~owner <> @space
+        AND tag~is_shared = @abap_true
+        AND shared_tag~shared_user = @sy-uname
       INTO CORRESPONDING FIELDS OF TABLE @result.
   ENDMETHOD.
 

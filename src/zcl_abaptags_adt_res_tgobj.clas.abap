@@ -124,14 +124,18 @@ CLASS zcl_abaptags_adt_res_tgobj IMPLEMENTATION.
 
     zcl_abaptags_adt_util=>map_uri_to_wb_object(
      EXPORTING uri         = object_uri
-     IMPORTING object_name = DATA(tadir_object)
-               tadir_type  = DATA(tadir_type)
+     IMPORTING object_name = DATA(object_name)
+               tadir_type  = DATA(object_type)
                object_type = DATA(adt_type) ).
 
-    DATA(tags) = tags_dac->find_tags_of_object( VALUE #( name = tadir_object type = tadir_type ) ).
+    DATA(tadir_object) = VALUE zif_abaptags_ty_global=>ty_tadir_key( name = object_name type = object_type ).
+    DATA(tags) = VALUE zif_abaptags_ty_global=>ty_tag_infos(
+      ( LINES OF tags_dac->find_tags_of_object( tadir_object ) )
+      ( LINES OF tags_dac->find_shared_tags_of_object( tadir_object ) ) ).
+
     zcl_abaptags_tag_util=>det_hierarchical_tag_names( CHANGING tag_info = tags ).
 
-    texts = VALUE #( ( object = tadir_type obj_name = tadir_object ) ).
+    texts = VALUE #( ( object = object_type obj_name = object_name ) ).
 
     CALL FUNCTION 'RS_SHORTTEXT_GET'
       TABLES
@@ -139,9 +143,9 @@ CLASS zcl_abaptags_adt_res_tgobj IMPLEMENTATION.
 
     tagged_objects = VALUE #(
       ( adt_obj_ref = VALUE #(
-          name        = tadir_object
+          name        = object_name
           description = texts[ 1 ]-stext
-          tadir_type  = tadir_type
+          tadir_type  = object_type
           type        = COND #(
             WHEN adt_type-subtype_wb <> space THEN |{ adt_type-objtype_tr }/{ adt_type-subtype_wb }| ELSE adt_type )
           uri         = object_uri )
