@@ -33,7 +33,10 @@ CLASS zcl_abaptags_adt_res_tagsshare DEFINITION
         RETURNING
           VALUE(result) TYPE REF TO if_adt_rest_content_handler,
       unshare_tags,
-      share_tags.
+      share_tags,
+      fill_user_info
+        CHANGING
+          users TYPE zabaptags_user_t.
 ENDCLASS.
 
 
@@ -84,6 +87,7 @@ CLASS zcl_abaptags_adt_res_tagsshare IMPLEMENTATION.
     IF users IS INITIAL.
       response->set_status( cl_rest_status_code=>gc_success_no_content ).
     ELSE.
+      fill_user_info( CHANGING users = users ).
       response->set_body_data(
         content_handler = get_content_handler( )
         data            = VALUE zabaptags_shared_tag_t(
@@ -167,6 +171,19 @@ CLASS zcl_abaptags_adt_res_tagsshare IMPLEMENTATION.
       tag_ids       = tag_ids_to_be_shared
       tags_to_share = CORRESPONDING #( tags_to_be_shared ) ).
 
+  ENDMETHOD.
+
+
+  METHOD fill_user_info.
+    DATA(user_info) = zcl_abaptags_user_dac=>get_instance( )->find_users(
+         VALUE #( FOR shared_user IN users ( sign = 'I' option = 'EQ' low = shared_user-name ) ) ).
+
+    LOOP AT user_info ASSIGNING FIELD-SYMBOL(<user>).
+      TRY.
+          users[ name = <user>-name ]-text = <user>-text.
+        CATCH cx_sy_itab_line_not_found ##NO_HANDLER.
+      ENDTRY.
+    ENDLOOP.
   ENDMETHOD.
 
 

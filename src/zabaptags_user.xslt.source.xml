@@ -1,26 +1,26 @@
 <?sap.transform simple?>
 <tt:transform
-  xmlns:tt="http://www.sap.com/transformation-templates"
-  xmlns:ddic="http://www.sap.com/abapxml/types/dictionary"
-  xmlns:adtbase="http://www.devepos.com/adt/base">
+    xmlns:tt="http://www.sap.com/transformation-templates"
+    xmlns:ddic="http://www.sap.com/abapxml/types/dictionary"
+    xmlns:adtbase="http://www.devepos.com/adt/base">
 
-  <tt:root name="USER" type="ddic:ZABAPTAGS_USER"/>
+  <tt:root name="user" type="ddic:ZABAPTAGS_USER"/>
 
   <tt:template>
     <tt:apply name="user">
-      <tt:with-root name="USER" ref="USER"/>
+      <tt:with-root name="user" ref="user"/>
     </tt:apply>
   </tt:template>
 
   <!-- PUBLIC TEMPLATES (can be called from other transformations) -->
   <tt:template name="user">
     <tt:context>
-      <tt:root name="USER"/>
+      <tt:root name="user"/>
     </tt:context>
 
     <adtbase:user tt:extensible="deep">
       <tt:apply name="userAttributes">
-        <tt:with-root name="USER" ref="USER"/>
+        <tt:with-root name="user" ref="user"/>
       </tt:apply>
     </adtbase:user>
   </tt:template>
@@ -31,20 +31,23 @@
       <tt:root name="USER"/>
     </tt:context>
 
-    <tt:cond check="not-initial(USER.NAME)">
-      <tt:attribute name="adtbase:name" value-ref="USER.NAME"/>
+    <tt:cond check="not-initial(user.name)">
+      <tt:attribute name="adtbase:name" value-ref="user.name"/>
+    </tt:cond>
+    <tt:cond check="not-initial(user.text)">
+      <tt:attribute name="adtbase:text" value-ref="user.text"/>
     </tt:cond>
 
   </tt:template>
 
   <tt:template name="users">
     <tt:context>
-      <tt:root name="USERS" type="ddic:ZABAPTAGS_USER_T"/>
+      <tt:root name="users" type="ddic:ZABAPTAGS_USER_T"/>
     </tt:context>
-    <tt:cond check="not-initial(USERS)">
-      <tt:loop ref="USERS">
+    <tt:cond check="not-initial(users)">
+      <tt:loop ref="users">
         <tt:apply name="user">
-          <tt:with-root name="USER" ref="$ref"/>
+          <tt:with-root name="user" ref="$ref"/>
         </tt:apply>
       </tt:loop>
     </tt:cond>
