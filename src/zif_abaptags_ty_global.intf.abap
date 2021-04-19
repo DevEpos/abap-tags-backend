@@ -118,18 +118,18 @@ INTERFACE zif_abaptags_ty_global
 
     "! <p class="shorttext synchronized" lang="en">Information about child tag of tagged object</p>
     BEGIN OF ty_tgobj_child_info,
+      tag_id             TYPE zabaptags_tag_id,
+      tag_name           TYPE zabaptags_tag_name,
       parent_object_name TYPE sobj_name,
       parent_object_type TYPE trobjtype,
       parent_tag_id      TYPE zabaptags_tag_id,
-      tag_id             TYPE zabaptags_tag_id,
-      tag_name           TYPE zabaptags_tag_name,
     END OF ty_tgobj_child_info,
 
     "! <p class="shorttext synchronized" lang="en">List of tagged object information</p>
     ty_tgobj_infos       TYPE SORTED TABLE OF ty_tgobj_info WITH UNIQUE KEY object_name object_type tag_id,
     "! <p class="shorttext synchronized" lang="en">List of infos about child tag of tagged object</p>
     ty_tgobj_child_infos TYPE SORTED TABLE OF ty_tgobj_child_info
-      WITH UNIQUE KEY parent_object_name parent_object_type parent_tag_id,
+      WITH UNIQUE KEY tag_id parent_tag_id parent_object_type parent_object_name,
 
     "! <p class="shorttext synchronized" lang="en">Mesh to connect tagged object with child tagged object</p>
     BEGIN OF MESH ty_tgobj_info_mesh,
