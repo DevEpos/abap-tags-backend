@@ -122,9 +122,9 @@ CLASS zcl_abaptags_adt_res_tgobjsrch IMPLEMENTATION.
       DATA(sign) = 'I'.
 
       IF l_query+last_char_offset(1) = '<'.
-        l_query = query(last_char_offset).
+        l_query = l_query(last_char_offset).
       ELSEIF l_query+last_char_offset(1) <> '*'.
-        l_query = |{ query }*|.
+        l_query = |{ l_query }*|.
       ENDIF.
 
       IF l_query CA '+*'.
