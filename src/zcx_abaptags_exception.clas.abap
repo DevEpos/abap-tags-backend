@@ -41,7 +41,7 @@ CLASS zcx_abaptags_exception IMPLEMENTATION.
 
     IF text IS NOT INITIAL.
       fill_t100key = abap_true.
-      zcl_dutils_message_util=>split_string_to_symsg( text ).
+      zcl_abaptags_message_helper=>set_msg_vars_for_clike( text ).
     ELSEIF sy-msgid IS NOT INITIAL.
       fill_t100key = abap_true.
     ENDIF.
