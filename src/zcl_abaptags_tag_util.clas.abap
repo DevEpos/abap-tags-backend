@@ -60,8 +60,7 @@ CLASS zcl_abaptags_tag_util IMPLEMENTATION.
 
 
   METHOD build_hierarchical_tags.
-    DATA: tmp_tag_map   TYPE zif_abaptags_ty_global=>ty_tag_data_map,
-          has_map_entry TYPE abap_bool.
+    DATA: tmp_tag_map   TYPE zif_abaptags_ty_global=>ty_tag_data_map.
 
     FIELD-SYMBOLS: <parent>   TYPE zabaptags_tag_data,
                    <children> TYPE zabaptags_tag_data_t.
@@ -71,17 +70,16 @@ CLASS zcl_abaptags_tag_util IMPLEMENTATION.
     DATA(tags_hier) = tags_flat.
 
     LOOP AT tags_hier ASSIGNING FIELD-SYMBOL(<tag>) WHERE parent_tag_id IS NOT INITIAL.
-      CLEAR: has_map_entry.
       " Find your parent in the current table
       ASSIGN tags_hier[ tag_id = <tag>-parent_tag_id ] TO <parent>.
       IF sy-subrc <> 0.
         " Maybe the tag was already removed and added to the map
         ASSIGN tmp_tag_map[ tag_id = <tag>-parent_tag_id ] TO FIELD-SYMBOL(<map_entry>).
-        IF sy-subrc <> 0.
-          DELETE tags_hier.
-        ELSE.
-          has_map_entry = abap_true.
+        IF sy-subrc = 0.
           ASSIGN <map_entry>-data->* TO <parent>.
+        ELSE.
+          DELETE tags_hier.
+          CONTINUE.
         ENDIF.
       ENDIF.
 
@@ -93,11 +91,9 @@ CLASS zcl_abaptags_tag_util IMPLEMENTATION.
       APPEND INITIAL LINE TO <children> ASSIGNING FIELD-SYMBOL(<ls_child>).
       <ls_child> = <tag>.
       SORT <children> BY name.
-      IF has_map_entry = abap_false.
-        INSERT VALUE #(
-          tag_id = <tag>-tag_id
-          data   = REF #( <ls_child> ) ) INTO TABLE tmp_tag_map.
-      ENDIF.
+      INSERT VALUE #(
+        tag_id = <tag>-tag_id
+        data   = REF #( <ls_child> ) ) INTO TABLE tmp_tag_map.
 
       DELETE tags_hier.
 
