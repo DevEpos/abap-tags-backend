@@ -39,6 +39,10 @@
         <tt:attribute name="atm:maxResults" value-ref="SEARCH_PARAMS.MAX_RESULTS"/>
       </tt:cond>
 
+      <tt:cond s-check="not-initial(SEARCH_PARAMS.RESULT_GROUP_LEVEL)">
+        <tt:attribute name="atm:resultGroupLevel" value-ref="SEARCH_PARAMS.RESULT_GROUP_LEVEL"/>
+      </tt:cond>
+
       <tt:cond s-check="not-initial(SEARCH_PARAMS.MATCHES_ALL_TAGS)">
         <tt:attribute name="atm:matchesAllTags" value-ref="SEARCH_PARAMS.MATCHES_ALL_TAGS" option="format(boolean)"/>
       </tt:cond>

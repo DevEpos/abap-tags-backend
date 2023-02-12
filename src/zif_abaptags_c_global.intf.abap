@@ -12,9 +12,19 @@ INTERFACE zif_abaptags_c_global
 
     "! Possible types for reading tag info of tagged objects
     BEGIN OF tag_info_types,
-      all      TYPE string VALUE 'all',
-      children TYPE string VALUE 'children',
+      "! All tags that are assigned to an object
+      all          TYPE string VALUE 'all',
+      "! Only tags are returned that are included as part of a search query
+      search_focus TYPE string VALUE 'searchFocus',
+      "! Information about tagged child objects
+      children     TYPE string VALUE 'children',
     END OF tag_info_types,
+
+    "! Grouping level of tagged object search
+    BEGIN OF search_result_group_level,
+      by_object         TYPE string VALUE 'byObject',
+      by_tag_and_object TYPE string VALUE 'byTagAndObject',
+    END OF search_result_group_level,
 
     "! Possible types of query for a tag search
     BEGIN OF tag_query_types,

@@ -24,7 +24,8 @@ CLASS zcl_abaptags_adt_res_tgobjsrch DEFINITION
       parent_object_name_range TYPE RANGE OF sobj_name,
       parent_object_type_range TYPE RANGE OF trobjtype,
       tagged_objects_db        TYPE zif_abaptags_ty_global=>ty_db_tagged_objects,
-      search_params            TYPE zabaptags_tgobj_search_params.
+      search_params            TYPE zabaptags_tgobj_search_params,
+      tag_id_range             TYPE zif_abaptags_ty_global=>ty_tag_id_range.
 
     METHODS:
       "! <p class="shorttext synchronized" lang="en">Retrieve Parameters</p>
@@ -67,8 +68,10 @@ CLASS zcl_abaptags_adt_res_tgobjsrch IMPLEMENTATION.
 
   METHOD post.
     request->get_body_data(
-      EXPORTING content_handler = get_request_content_handler( )
-      IMPORTING data            = search_params ).
+      EXPORTING
+        content_handler = get_request_content_handler( )
+      IMPORTING
+        data            = search_params ).
 
     IF search_params-tag_id IS INITIAL AND
       search_params-query IS INITIAL.
@@ -102,9 +105,11 @@ CLASS zcl_abaptags_adt_res_tgobjsrch IMPLEMENTATION.
 
     IF search_params-query_type = zif_abaptags_c_global=>tag_query_types-object_uri.
       zcl_abaptags_adt_util=>map_uri_to_wb_object(
-        EXPORTING uri         = query
-        IMPORTING object_name = DATA(object_name)
-                  tadir_type  = DATA(object_type) ).
+        EXPORTING
+          uri         = query
+        IMPORTING
+          object_name = DATA(object_name)
+          tadir_type  = DATA(object_type) ).
       obj_name_range = VALUE #( ( sign = 'I' option = 'EQ' low = object_name ) ).
       obj_type_range = VALUE #( ( sign = 'I' option = 'EQ' low = object_type ) ).
     ELSEIF search_params-query_type = zif_abaptags_c_global=>tag_query_types-object_name_type_combo.
@@ -225,25 +230,36 @@ CLASS zcl_abaptags_adt_res_tgobjsrch IMPLEMENTATION.
         name       = <tagged_object>-object_name ).
       CHECK adt_object_ref IS NOT INITIAL.
 
-      APPEND INITIAL LINE TO tagged_objects ASSIGNING FIELD-SYMBOL(<tagged_object_result>).
+      DATA(tagged_object) = VALUE zabaptags_tagged_object(
+        adt_obj_ref = VALUE #(
+          name         = <tagged_object>-object_name
+          type         = adt_object_ref-type
+          tadir_type   = <tagged_object>-object_type
+          uri          = adt_object_ref-uri
+          package_name = tadir_info-package_name
+          owner        = tadir_info-author ) ).
 
-      <tagged_object_result>-adt_obj_ref = VALUE #(
-        name         = <tagged_object>-object_name
-        type         = adt_object_ref-type
-        tadir_type   = <tagged_object>-object_type
-        uri          = adt_object_ref-uri
-        package_name = tadir_info-package_name
-        owner        = tadir_info-author ).
 
       LOOP AT tgobj_infos ASSIGNING FIELD-SYMBOL(<tag_info>) WHERE object_name = <tagged_object>-object_name
                                                                AND object_type = <tagged_object>-object_type.
-        <tagged_object_result>-tags = VALUE #( BASE <tagged_object_result>-tags
+        tagged_object-tags = VALUE #( BASE tagged_object-tags
           ( tag_id   = <tag_info>-tag_id
             tag_name = <tag_info>-tag_name
             owner    = <tag_info>-tag_owner ) ).
+
+        IF search_params-result_group_level = zif_abaptags_c_global=>search_result_group_level-by_tag_and_object.
+          APPEND tagged_object TO tagged_objects.
+          CLEAR tagged_object-tags.
+        ENDIF.
+
       ENDLOOP.
 
+      IF search_params-result_group_level IS INITIAL OR
+          search_params-result_group_level = zif_abaptags_c_global=>search_result_group_level-by_object.
+        tagged_objects = VALUE #( BASE tagged_objects ( tagged_object ) ).
+      ENDIF.
     ENDLOOP.
+
   ENDMETHOD.
 
 
@@ -252,13 +268,13 @@ CLASS zcl_abaptags_adt_res_tgobjsrch IMPLEMENTATION.
 
     CHECK search_params-with_tag_info = abap_true.
 
-    tgobj_infos = tags_dac->get_tagged_obj_info( tagged_objects_db ).
+    tgobj_infos = tags_dac->get_tagged_obj_info(
+      tag_id_range   = COND #(
+        WHEN search_params-tag_info_type = zif_abaptags_c_global=>tag_info_types-search_focus THEN tag_id_range )
+      tagged_objects = tagged_objects_db ).
 
-    IF tgobj_infos IS INITIAL.
-      RETURN.
-    ENDIF.
-
-    IF search_params-tag_info_type <> zif_abaptags_c_global=>tag_info_types-children.
+    IF tgobj_infos IS INITIAL OR
+        search_params-tag_info_type <> zif_abaptags_c_global=>tag_info_types-children.
       RETURN.
     ENDIF.
 
@@ -288,7 +304,7 @@ CLASS zcl_abaptags_adt_res_tgobjsrch IMPLEMENTATION.
 
 
   METHOD search.
-    DATA(tag_id_range) = VALUE zif_abaptags_ty_global=>ty_tag_id_range(
+    tag_id_range = VALUE zif_abaptags_ty_global=>ty_tag_id_range(
       FOR tag_id IN search_params-tag_id ( sign = 'I' option = 'EQ' low = tag_id ) ).
 
     tagged_objects_db = tags_dac->find_tagged_objects(

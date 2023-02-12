@@ -119,6 +119,7 @@ CLASS zcl_abaptags_tags_dac DEFINITION
       get_tagged_obj_info
         IMPORTING
           tagged_objects TYPE zif_abaptags_ty_global=>ty_db_tagged_objects
+          tag_id_range   TYPE zif_abaptags_ty_global=>ty_tag_id_range OPTIONAL
         RETURNING
           VALUE(result)  TYPE zif_abaptags_ty_global=>ty_tgobj_infos,
       "! <p class="shorttext synchronized" lang="en">Get info about children of tagged objects</p>
@@ -443,6 +444,7 @@ CLASS zcl_abaptags_tags_dac IMPLEMENTATION.
       FOR ALL ENTRIES IN @tagged_objects
       WHERE tagged_object~object_type = @tagged_objects-object_type
         AND tagged_object~object_name = @tagged_objects-object_name
+        AND tagged_object~tag_id IN @tag_id_range
       INTO CORRESPONDING FIELDS OF TABLE @result.
   ENDMETHOD.
 
