@@ -94,9 +94,8 @@ CLASS zcl_abaptags_adt_res_tags IMPLEMENTATION.
   METHOD post.
     DATA(binary_data) = request->get_inner_rest_request( )->get_entity( )->get_binary_data( ).
     IF binary_data IS NOT INITIAL.
-      request->get_body_data(
-        EXPORTING content_handler = get_tags_content_handler( )
-        IMPORTING data            = tags ).
+      request->get_body_data( EXPORTING content_handler = get_tags_content_handler( )
+                              IMPORTING data            = tags ).
     ENDIF.
 
     get_parameters( request ).
@@ -155,7 +154,7 @@ CLASS zcl_abaptags_adt_res_tags IMPLEMENTATION.
 
     IF with_object_count = abap_true.
       DATA(tag_counts) = tags_dac->get_tagged_obj_count( tag_ids = VALUE #(
-        FOR tag IN tags ( sign = 'I' option = 'EQ' low = tag-tag_id ) ) ).
+                                                         FOR tag IN tags ( sign = 'I' option = 'EQ' low = tag-tag_id ) ) ).
 
       IF tag_counts IS NOT INITIAL.
 
@@ -189,16 +188,16 @@ CLASS zcl_abaptags_adt_res_tags IMPLEMENTATION.
       request    = request ).
 
     do_not_resolve_hierarchy = zcl_abaptags_adt_request_util=>get_boolean_req_param(
-      param_name    = c_params-no_hierarchy
-      request       = request ).
+      param_name = c_params-no_hierarchy
+      request    = request ).
 
     with_object_count = zcl_abaptags_adt_request_util=>get_boolean_req_param(
-      param_name    = c_params-with_object_count
-      request       = request ).
+      param_name = c_params-with_object_count
+      request    = request ).
 
     action_name = zcl_abaptags_adt_request_util=>get_request_param_value(
-      param_name    = c_params-action
-      request       = request ).
+      param_name = c_params-action
+      request    = request ).
 
     scope = zcl_abaptags_adt_request_util=>get_request_param_value(
       param_name    = c_params-scope
@@ -229,9 +228,8 @@ CLASS zcl_abaptags_adt_res_tags IMPLEMENTATION.
 
     CHECK tags IS NOT INITIAL.
 
-    zcl_abaptags_tag_util=>determine_all_child_tags(
-      EXPORTING tag_id_only = abap_true
-      CHANGING  tags        = tags ).
+    zcl_abaptags_tag_util=>determine_all_child_tags( EXPORTING tag_id_only = abap_true
+                                                     CHANGING  tags        = tags ).
 
     SORT tags BY tag_id.
     DELETE ADJACENT DUPLICATES FROM tags COMPARING tag_id.
@@ -281,9 +279,8 @@ CLASS zcl_abaptags_adt_res_tags IMPLEMENTATION.
       ASSIGN tags_hierarchical TO <result>.
     ENDIF.
 
-    response->set_body_data(
-      content_handler = get_tags_content_handler( )
-      data            = <result> ).
+    response->set_body_data( content_handler = get_tags_content_handler( )
+                             data            = <result> ).
   ENDMETHOD.
 
 
@@ -308,9 +305,8 @@ CLASS zcl_abaptags_adt_res_tags IMPLEMENTATION.
           msgv1  = |{ existing_global_tag-name }|.
     ENDIF.
 
-    zcl_abaptags_tag_util=>determine_all_child_tags(
-      EXPORTING tag_id_only = abap_true
-      CHANGING  tags        = tags ).
+    zcl_abaptags_tag_util=>determine_all_child_tags( EXPORTING tag_id_only = abap_true
+                                                     CHANGING  tags        = tags ).
 
     DATA(tag_ids) = VALUE zif_abaptags_ty_global=>ty_tag_id_range(
       FOR tag IN tags ( sign = 'I' option = 'EQ' low = tag-tag_id ) ).
@@ -369,7 +365,7 @@ CLASS zcl_abaptags_adt_res_tags IMPLEMENTATION.
       tag_id_range        = tag_id_range
       parent_tag_id_range = VALUE #( ( sign = 'I' option = 'EQ' low = tag-parent_tag_id ) )
       owner_range         = VALUE #( ( sign = 'I' option = 'EQ' low = tag-owner ) )
-      name_upper_range    = VALUE #( ( sign = 'I' option = 'EQ' low = tag-name_upper  ) ) ).
+      name_upper_range    = VALUE #( ( sign = 'I' option = 'EQ' low = tag-name_upper ) ) ).
 
     IF tag_exists = abap_true.
       IF tag-parent_tag_id IS NOT INITIAL.
