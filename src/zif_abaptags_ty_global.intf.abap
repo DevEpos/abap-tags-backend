@@ -25,7 +25,7 @@ INTERFACE zif_abaptags_ty_global
     ty_db_tags           TYPE STANDARD TABLE OF zabaptags_tags WITH EMPTY KEY,
 
     "! <p class="shorttext synchronized" lang="en">List of tagged objects (DB)</p>
-    ty_db_tagged_objects TYPE STANDARD TABLE OF zabaptags_tgobj WITH EMPTY KEY,
+    ty_db_tagged_objects TYPE STANDARD TABLE OF zabaptags_tgobjn WITH EMPTY KEY,
 
     "! <p class="shorttext synchronized" lang="en">Range of TADIR object name</p>
     ty_wb_objname_range  TYPE RANGE OF tadir-obj_name,

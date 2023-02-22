@@ -65,7 +65,10 @@ CLASS zcl_abaptags_adt_res_tgobj DEFINITION
         CHANGING
           tags         TYPE zabaptags_adt_object_tag_t
         RAISING
-          cx_adt_rest.
+          cx_adt_rest,
+      fill_primary_keys
+        RAISING
+          zcx_abaptags_adt_error.
 ENDCLASS.
 
 
@@ -83,15 +86,17 @@ CLASS zcl_abaptags_adt_res_tgobj IMPLEMENTATION.
     DATA(binary_data) = request->get_inner_rest_request( )->get_entity( )->get_binary_data( ).
     IF binary_data IS NOT INITIAL.
       request->get_body_data(
-        EXPORTING content_handler = get_content_handler( )
-        IMPORTING data            = tagged_objects ).
+        EXPORTING
+          content_handler = get_content_handler( )
+        IMPORTING
+          data            = tagged_objects ).
     ENDIF.
 
     CHECK tagged_objects IS NOT INITIAL.
 
     action_name = zcl_abaptags_adt_request_util=>get_request_param_value(
-      param_name    = c_params-action
-      request       = request ).
+      param_name = c_params-action
+      request    = request ).
 
     IF action_name IS INITIAL.
 
@@ -118,15 +123,14 @@ CLASS zcl_abaptags_adt_res_tgobj IMPLEMENTATION.
     DATA: texts TYPE TABLE OF seu_objtxt.
 
     DATA(object_uri) = zcl_abaptags_adt_request_util=>get_request_param_value(
-      param_name    = c_params-object_uri
-      mandatory     = abap_true
-      request       = request ).
+      param_name = c_params-object_uri
+      mandatory  = abap_true
+      request    = request ).
 
-    zcl_abaptags_adt_util=>map_uri_to_wb_object(
-     EXPORTING uri         = object_uri
-     IMPORTING object_name = DATA(object_name)
-               tadir_type  = DATA(object_type)
-               object_type = DATA(adt_type) ).
+    zcl_abaptags_adt_util=>map_uri_to_wb_object( EXPORTING uri         = object_uri
+                                                 IMPORTING object_name = DATA(object_name)
+                                                           tadir_type  = DATA(object_type)
+                                                           object_type = DATA(adt_type) ).
 
     DATA(tadir_object) = VALUE zif_abaptags_ty_global=>ty_tadir_key( name = object_name type = object_type ).
     DATA(tags) = VALUE zif_abaptags_ty_global=>ty_tag_infos(
@@ -245,15 +249,30 @@ CLASS zcl_abaptags_adt_res_tgobj IMPLEMENTATION.
 
     LOOP AT tagged_objects ASSIGNING <tagged_object>.
 
-      zcl_abaptags_adt_util=>map_uri_to_wb_object(
-        EXPORTING uri         = <tagged_object>-adt_obj_ref-uri
-        IMPORTING object_name = tadir_object
-                  tadir_type  = tadir_type ).
+      zcl_abaptags_adt_util=>map_uri_to_wb_object( EXPORTING uri         = <tagged_object>-adt_obj_ref-uri
+                                                   IMPORTING object_name = tadir_object
+                                                             tadir_type  = tadir_type ).
 
-      collect_tgobj_for_insert(
-        EXPORTING tadir_object = tadir_object
-                  tadir_type   = tadir_type
-        CHANGING  tags         = <tagged_object>-tags ).
+      collect_tgobj_for_insert( EXPORTING tadir_object = tadir_object
+                                          tadir_type   = tadir_type
+                                CHANGING  tags         = <tagged_object>-tags ).
+    ENDLOOP.
+
+    tags_dac->filter_existing_tagged_objects( CHANGING tagged_objects = tagged_objects_db ).
+    fill_primary_keys( ).
+  ENDMETHOD.
+
+
+  METHOD fill_primary_keys.
+
+    LOOP AT tagged_objects_db ASSIGNING FIELD-SYMBOL(<tgobj_db_new>).
+      TRY.
+          <tgobj_db_new>-id = cl_system_uuid=>create_uuid_x16_static( ).
+        CATCH cx_uuid_error.
+          RAISE EXCEPTION TYPE zcx_abaptags_adt_error
+            EXPORTING
+              textid = zcx_abaptags_adt_error=>tags_persisting_failure.
+      ENDTRY.
     ENDLOOP.
 
   ENDMETHOD.
@@ -270,10 +289,9 @@ CLASS zcl_abaptags_adt_res_tgobj IMPLEMENTATION.
 
     LOOP AT tagged_objects ASSIGNING <tagged_object>.
 
-      zcl_abaptags_adt_util=>map_uri_to_wb_object(
-        EXPORTING uri         = <tagged_object>-adt_obj_ref-uri
-        IMPORTING object_name = tadir_object
-                  tadir_type  = tadir_type ).
+      zcl_abaptags_adt_util=>map_uri_to_wb_object( EXPORTING uri         = <tagged_object>-adt_obj_ref-uri
+                                                   IMPORTING object_name = tadir_object
+                                                             tadir_type  = tadir_type ).
 
       LOOP AT <tagged_object>-tags ASSIGNING <tag>.
         tagged_objects_db = VALUE #( BASE tagged_objects_db
@@ -366,16 +384,16 @@ CLASS zcl_abaptags_adt_res_tgobj IMPLEMENTATION.
       ENDIF.
 
       IF <tag>-parent_uri IS NOT INITIAL.
-        zcl_abaptags_adt_util=>map_uri_to_wb_object(
-          EXPORTING uri         = <tag>-parent_uri
-          IMPORTING object_name = parent_object
-                    tadir_type  = parent_type ).
+        zcl_abaptags_adt_util=>map_uri_to_wb_object( EXPORTING uri         = <tag>-parent_uri
+                                                     IMPORTING object_name = parent_object
+                                                               tadir_type  = parent_type ).
       ENDIF.
 
       tagged_objects_db = VALUE #( BASE tagged_objects_db
        ( object_type        = tadir_type
          object_name        = tadir_object
          tag_id             = <tag>-tag_id
+         parent_tag_id      = <tag>-parent_tag_id
          parent_object_type = parent_type
          parent_object_name = parent_object
          tagged_by          = sy-uname
@@ -383,6 +401,5 @@ CLASS zcl_abaptags_adt_res_tgobj IMPLEMENTATION.
     ENDLOOP.
 
   ENDMETHOD.
-
 
 ENDCLASS.

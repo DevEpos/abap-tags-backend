@@ -48,6 +48,11 @@
      <DESCRIPT>Checks if tag exists for given parameters</DESCRIPT>
     </SEOCOMPOTX>
     <SEOCOMPOTX>
+     <CMPNAME>FILTER_EXISTING_TAGGED_OBJECTS</CMPNAME>
+     <LANGU>E</LANGU>
+     <DESCRIPT>Finds existing tagged objects</DESCRIPT>
+    </SEOCOMPOTX>
+    <SEOCOMPOTX>
      <CMPNAME>FIND_FIRST_GLOBAL_TAG</CMPNAME>
      <LANGU>E</LANGU>
      <DESCRIPT>Finds first matching global tag</DESCRIPT>

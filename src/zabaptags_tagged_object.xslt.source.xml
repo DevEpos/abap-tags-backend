@@ -74,6 +74,10 @@
       <tt:attribute name="atm:owner" value-ref="OBJECT_TAG.OWNER"/>
     </tt:cond>
 
+    <tt:cond check="not-initial(OBJECT_TAG.PARENT_TAG_ID)">
+      <tt:attribute name="atm:parentTagId" value-ref="OBJECT_TAG.PARENT_TAG_ID" option="format(guid)"/>
+    </tt:cond>
+
     <tt:cond check="not-initial(OBJECT_TAG.PARENT_URI)">
       <tt:attribute name="atm:parentObjectUri" value-ref="OBJECT_TAG.PARENT_URI"/>
     </tt:cond>
