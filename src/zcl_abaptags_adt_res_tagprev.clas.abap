@@ -19,9 +19,10 @@ CLASS zcl_abaptags_adt_res_tagprev DEFINITION
       tags_raw          TYPE zabaptags_tag_data_t,
       tagged_obj_counts TYPE zif_abaptags_ty_global=>ty_tag_counts.
 
-    METHODS: get_content_handler
-      RETURNING
-        VALUE(content_handler) TYPE REF TO if_adt_rest_content_handler,
+    METHODS:
+      get_content_handler
+        RETURNING
+          VALUE(content_handler) TYPE REF TO if_adt_rest_content_handler,
       "! <p class="shorttext synchronized" lang="en">Collect object references from request body</p>
       collect_object_refs,
       read_tags_flat,
@@ -46,9 +47,8 @@ CLASS zcl_abaptags_adt_res_tagprev IMPLEMENTATION.
     DATA(binary_data) = request->get_inner_rest_request( )->get_entity( )->get_binary_data( ).
 
     IF binary_data IS NOT INITIAL.
-      request->get_body_data(
-        EXPORTING content_handler = content_handler
-        IMPORTING data            = preview_info ).
+      request->get_body_data( EXPORTING content_handler = content_handler
+                              IMPORTING data            = preview_info ).
     ENDIF.
 
     collect_object_refs( ).
@@ -76,13 +76,13 @@ CLASS zcl_abaptags_adt_res_tagprev IMPLEMENTATION.
     LOOP AT preview_info-object_refs ASSIGNING FIELD-SYMBOL(<obj_ref>).
       DATA(obj_ref_int) = CORRESPONDING zabaptags_adt_obj_ref( <obj_ref> ).
       TRY.
-          zcl_abaptags_adt_util=>map_uri_to_wb_object(
-            EXPORTING uri         = <obj_ref>-uri
-            IMPORTING object_name = obj_ref_int-name
-                      object_type = DATA(object_type)
-                      tadir_type  = obj_ref_int-tadir_type ).
-          obj_ref_int-type = COND #( WHEN object_type-subtype_wb IS NOT INITIAL THEN object_type-objtype_tr && '/' && object_type-subtype_wb
-                                                                                ELSE object_type-objtype_tr ).
+          zcl_abaptags_adt_util=>map_uri_to_wb_object( EXPORTING uri         = <obj_ref>-uri
+                                                       IMPORTING object_name = obj_ref_int-name
+                                                                 object_type = DATA(object_type)
+                                                                 tadir_type  = obj_ref_int-tadir_type ).
+          obj_ref_int-type = COND #( WHEN object_type-subtype_wb IS NOT INITIAL
+            THEN object_type-objtype_tr && '/' && object_type-subtype_wb
+            ELSE object_type-objtype_tr ).
           CONDENSE obj_ref_int-name.
           IF obj_ref_int-name CA ' '.
             DATA(whitespace_off) = find( val = obj_ref_int-name regex = '\s' ).
@@ -90,7 +90,8 @@ CLASS zcl_abaptags_adt_res_tagprev IMPLEMENTATION.
               obj_ref_int-name = obj_ref_int-name(whitespace_off).
             ENDIF.
 
-            obj_ref_int-uri = zcl_abaptags_adt_util=>get_adt_obj_ref( name = |{ obj_ref_int-name }| wb_type = object_type )-uri.
+            obj_ref_int-uri = zcl_abaptags_adt_util=>get_adt_obj_ref( name = |{ obj_ref_int-name }|
+                                                                      wb_type = object_type )-uri.
           ENDIF.
           INSERT obj_ref_int INTO TABLE object_refs.
         CATCH cx_adt_uri_mapping.
@@ -105,16 +106,15 @@ CLASS zcl_abaptags_adt_res_tagprev IMPLEMENTATION.
 
   METHOD read_tags_flat.
     tags_raw = VALUE #(
-      ( LINES OF tags_dac->find_tags(
-          owner_range = VALUE #(
-            ( sign = 'I' option = 'EQ' low = sy-uname )
-            ( sign = 'I' option = 'EQ' low = space  ) ) ) )
+      ( LINES OF tags_dac->find_tags( owner_range = VALUE #(
+          ( sign = 'I' option = 'EQ' low = sy-uname )
+          ( sign = 'I' option = 'EQ' low = space  ) ) ) )
       ( LINES OF zcl_abaptags_tag_util=>get_shared_tags( abap_true ) ) ).
   ENDMETHOD.
 
 
   METHOD determine_tagged_object_count.
-    tagged_obj_counts = tags_dac->get_tagged_obj_count( object_refs =  CORRESPONDING #( object_refs ) ).
+    tagged_obj_counts = tags_dac->get_tagged_obj_count( object_refs = CORRESPONDING #( object_refs ) ).
   ENDMETHOD.
 
 
