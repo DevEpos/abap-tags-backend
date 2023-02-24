@@ -16,8 +16,6 @@ CLASS zcl_abaptags_adt_res_tgobj DEFINITION
   PRIVATE SECTION.
     CONSTANTS:
       BEGIN OF c_actions,
-        lock         TYPE string VALUE 'lock',
-        unlock       TYPE string VALUE 'unlock',
         batch_delete TYPE string VALUE 'batchDelete',
       END OF c_actions,
       BEGIN OF c_params,
@@ -99,18 +97,11 @@ CLASS zcl_abaptags_adt_res_tgobj IMPLEMENTATION.
       request    = request ).
 
     IF action_name IS INITIAL.
-
-*      " create/update tags
+      " create/update tags
       create_tagged_objects( ).
     ELSE.
       CASE action_name.
-*
-*        WHEN c_actions-lock.
-*          lock( ).
-*
-*        WHEN c_actions-unlock.
-*          unlock( ).
-*
+
         WHEN c_actions-batch_delete.
           delete_tags_from_objects( ).
       ENDCASE.
@@ -289,9 +280,11 @@ CLASS zcl_abaptags_adt_res_tgobj IMPLEMENTATION.
 
     LOOP AT tagged_objects ASSIGNING <tagged_object>.
 
-      zcl_abaptags_adt_util=>map_uri_to_wb_object( EXPORTING uri         = <tagged_object>-adt_obj_ref-uri
-                                                   IMPORTING object_name = tadir_object
-                                                             tadir_type  = tadir_type ).
+      IF <tagged_object>-adt_obj_ref-uri IS NOT INITIAL.
+        zcl_abaptags_adt_util=>map_uri_to_wb_object( EXPORTING uri         = <tagged_object>-adt_obj_ref-uri
+                                                     IMPORTING object_name = tadir_object
+                                                               tadir_type  = tadir_type ).
+      ENDIF.
 
       LOOP AT <tagged_object>-tags ASSIGNING <tag>.
         tagged_objects_db = VALUE #( BASE tagged_objects_db
@@ -302,7 +295,7 @@ CLASS zcl_abaptags_adt_res_tgobj IMPLEMENTATION.
 
     ENDLOOP.
 
-    tags_dac->delete_tagged_objects( tagged_objects_db ).
+    NEW zcl_abaptags_tgobj_delete( tagged_objects_db )->run( ).
   ENDMETHOD.
 
 

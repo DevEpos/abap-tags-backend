@@ -33,11 +33,6 @@
      <DESCRIPT>Unshares list of tags</DESCRIPT>
     </SEOCOMPOTX>
     <SEOCOMPOTX>
-     <CMPNAME>DELETE_TAGGED_OBJECTS</CMPNAME>
-     <LANGU>E</LANGU>
-     <DESCRIPT>Deletes tagged objects from DB</DESCRIPT>
-    </SEOCOMPOTX>
-    <SEOCOMPOTX>
      <CMPNAME>DELETE_TAG_BY_ID</CMPNAME>
      <LANGU>E</LANGU>
      <DESCRIPT>Deletes tag db entries by id range</DESCRIPT>
