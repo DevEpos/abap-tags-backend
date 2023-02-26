@@ -259,10 +259,19 @@ CLASS zcl_abaptags_adt_res_tgobj IMPLEMENTATION.
       ENDIF.
 
       LOOP AT <tagged_object>-tags ASSIGNING <tag>.
+        IF <tag>-parent_uri IS NOT INITIAL.
+          zcl_abaptags_adt_util=>map_uri_to_wb_object( EXPORTING uri         = <tag>-parent_uri
+                                                       IMPORTING object_name = DATA(parent_obj_name)
+                                                                 tadir_type  = DATA(parent_tadir_type) ).
+        ENDIF.
+
         tagged_objects_db = VALUE #( BASE tagged_objects_db
-         ( object_type = tadir_type
-           object_name = tadir_object
-           tag_id      = <tag>-tag_id ) ).
+         ( object_type        = tadir_type
+           object_name        = tadir_object
+           tag_id             = <tag>-tag_id
+           parent_tag_id      = <tag>-parent_tag_id
+           parent_object_name = parent_obj_name
+           parent_object_type = parent_tadir_type ) ).
       ENDLOOP.
 
     ENDLOOP.
