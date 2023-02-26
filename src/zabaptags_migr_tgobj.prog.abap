@@ -17,10 +17,14 @@ CLASS lcl_migrator DEFINITION.
   PRIVATE SECTION.
     CONSTANTS: c_package_size TYPE i VALUE 10.
     DATA:
-      tgobj_old      TYPE STANDARD TABLE OF zabaptags_tgobjn,
       migrated_count TYPE i.
-    METHODS migrate_data.
-    METHODS print_migration_count.
+
+    METHODS:
+      migrate_data,
+      print_migration_count,
+      filter_existing
+        CHANGING
+          tagged_objects TYPE zif_abaptags_ty_global=>ty_db_tagged_objects.
 ENDCLASS.
 
 CLASS lcl_migrator IMPLEMENTATION.
@@ -43,9 +47,7 @@ CLASS lcl_migrator IMPLEMENTATION.
 
 
   METHOD migrate_data.
-    DATA: tgobjs_to_migr TYPE STANDARD TABLE OF zabaptags_tgobjn.
-
-    DELETE FROM zabaptags_tgobjn.
+    DATA: tgobjs_to_migr TYPE zif_abaptags_ty_global=>ty_db_tagged_objects.
 
     OPEN CURSOR WITH HOLD @DATA(tgobj_curs) FOR
       SELECT tgobj~object_type,
@@ -68,6 +70,8 @@ CLASS lcl_migrator IMPLEMENTATION.
         EXIT.
       ENDIF.
 
+      filter_existing( CHANGING tagged_objects = tgobjs_to_migr ).
+
       LOOP AT tgobjs_to_migr ASSIGNING FIELD-SYMBOL(<tgobj_to_migr>).
         TRY.
             <tgobj_to_migr>-id = cl_system_uuid=>create_uuid_x16_static( ).
@@ -88,6 +92,39 @@ CLASS lcl_migrator IMPLEMENTATION.
 
   METHOD print_migration_count.
     WRITE: / |{ migrated_count } entries were migrated from ZABAPTAGS_TGOBJ to ZABAPTAGS_TGOBJN|.
+  ENDMETHOD.
+
+
+  METHOD filter_existing.
+    DATA: existing_entries TYPE SORTED TABLE OF zabaptags_tgobjn
+            WITH UNIQUE KEY tag_id object_type object_name parent_tag_id parent_object_type parent_object_name.
+
+    IF tagged_objects IS INITIAL.
+      RETURN.
+    ENDIF.
+
+    SELECT *
+      FROM zabaptags_tgobjn
+      FOR ALL ENTRIES IN @tagged_objects
+      WHERE tag_id = @tagged_objects-tag_id
+        AND object_name = @tagged_objects-object_name
+        AND object_type = @tagged_objects-object_type
+        AND parent_tag_id = @tagged_objects-parent_tag_id
+        AND parent_object_type = @tagged_objects-parent_object_type
+        AND parent_object_name = @tagged_objects-parent_object_name
+      INTO CORRESPONDING FIELDS OF TABLE @existing_entries.
+
+    LOOP AT tagged_objects ASSIGNING FIELD-SYMBOL(<tagged_object>).
+      IF line_exists( existing_entries[ tag_id             = <tagged_object>-tag_id
+                                        object_type        = <tagged_object>-object_type
+                                        object_name        = <tagged_object>-object_name
+                                        parent_tag_id      = <tagged_object>-parent_tag_id
+                                        parent_object_type = <tagged_object>-parent_object_type
+                                        parent_object_name = <tagged_object>-parent_object_name ] ).
+        DELETE tagged_objects.
+      ENDIF.
+    ENDLOOP.
+
   ENDMETHOD.
 
 ENDCLASS.
