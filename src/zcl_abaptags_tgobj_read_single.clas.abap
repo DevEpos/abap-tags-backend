@@ -44,6 +44,9 @@ CLASS zcl_abaptags_tgobj_read_single DEFINITION
       find_shared_tags_of_object
         RETURNING
           VALUE(result) TYPE ty_tgobj_infos,
+      find_shared_tags_of_logon_user
+        RETURNING
+          VALUE(result) TYPE zif_abaptags_ty_global=>ty_tag_id_range,
       read_tags_of_object,
       get_result
         RETURNING
@@ -104,6 +107,13 @@ CLASS zcl_abaptags_tgobj_read_single IMPLEMENTATION.
 
 
   METHOD find_shared_tags_of_object.
+
+    DATA(shared_tags_of_logon_user) = find_shared_tags_of_logon_user( ).
+
+    IF shared_tags_of_logon_user IS INITIAL.
+      RETURN.
+    ENDIF.
+
     SELECT DISTINCT
            tag~tag_id,
            tgobj~parent_tag_id,
@@ -117,15 +127,43 @@ CLASS zcl_abaptags_tgobj_read_single IMPLEMENTATION.
           ON tgobj~tag_id = tag~tag_id
         LEFT OUTER JOIN zabaptags_tags AS parent
           ON tgobj~parent_tag_id = parent~tag_id
-        INNER JOIN zabaptags_shtags AS shared_tag
-          ON tag~tag_id = shared_tag~tag_id
-      WHERE tgobj~object_name = @object_name
+      WHERE tgobj~tag_id IN @shared_tags_of_logon_user
+        AND tgobj~object_name = @object_name
         AND tgobj~object_type = @tadir_type
         AND tag~owner <> @sy-uname
         AND tag~owner <> @space
-        AND tag~is_shared = @abap_true
-        AND shared_tag~shared_user = @sy-uname
       INTO CORRESPONDING FIELDS OF TABLE @result.
+  ENDMETHOD.
+
+
+  METHOD find_shared_tags_of_logon_user.
+    DATA: current_usr_shared_tags TYPE RANGE OF zabaptags_tag_id.
+
+    SELECT 'I' AS sign,
+           'EQ' AS option,
+           tag_id AS low
+      FROM zabaptags_shtags
+      WHERE shared_user = @sy-uname
+      INTO CORRESPONDING FIELDS OF TABLE @current_usr_shared_tags.
+
+    result = current_usr_shared_tags.
+
+    WHILE current_usr_shared_tags IS NOT INITIAL.
+      SELECT tag_id
+        FROM zabaptags_tags
+        WHERE parent_tag_id IN @current_usr_shared_tags
+        INTO TABLE @DATA(child_tags).
+
+      CLEAR current_usr_shared_tags.
+
+      LOOP AT child_tags ASSIGNING FIELD-SYMBOL(<child_tag>).
+        current_usr_shared_tags = VALUE #(
+          BASE current_usr_shared_tags ( sign = 'I' option = 'EQ' low = <child_tag>-tag_id ) ).
+        result = VALUE #(
+          BASE result ( sign = 'I' option = 'EQ' low = <child_tag>-tag_id ) ).
+      ENDLOOP.
+    ENDWHILE.
+
   ENDMETHOD.
 
 
