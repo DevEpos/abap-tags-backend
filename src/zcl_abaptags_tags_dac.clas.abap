@@ -514,7 +514,7 @@ CLASS zcl_abaptags_tags_dac IMPLEMENTATION.
       " via different tags/parent objects a helper CDS view will be used to get the
       " correct tag count for the list of given objects
       SELECT tag_id, COUNT( * ) AS count
-        FROM zabaptags_i_taggedobjgrouped
+        FROM zabaptags_i_taggedobjaggr
         WHERE (where)
           AND tag_id IN @tag_ids
         GROUP BY tag_id

@@ -3,7 +3,7 @@
  <asx:abap xmlns:asx="http://www.sap.com/abapxml" version="1.0">
   <asx:values>
    <DDLS>
-    <DDLNAME>ZABAPTAGS_I_TAGGEDOBJGROUPED</DDLNAME>
+    <DDLNAME>ZABAPTAGS_I_TAGGEDOBJAGGR</DDLNAME>
     <DDLANGUAGE>E</DDLANGUAGE>
     <DDTEXT>Tagged Objects grouped by tag/object</DDTEXT>
     <SOURCE_TYPE>V</SOURCE_TYPE>
