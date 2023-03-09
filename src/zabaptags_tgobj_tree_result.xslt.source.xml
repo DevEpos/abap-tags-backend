@@ -58,7 +58,11 @@
     </tt:context>
 
     <atm:object>
-      <tt:attribute name="atm:taggedObjecCount" value-ref="object.tagged_object_count"/>
+      <tt:attribute name="atm:taggedObjectCount" value-ref="object.tagged_object_count"/>
+      <tt:attribute name="atm:expandable" value-ref="object.expandable" option="format(boolean)" />
+      <tt:cond check="not-initial(object.parent_tag_id)">
+        <tt:attribute name="atm:parentTagId" value-ref="object.parent_tag_id" option="format(guid)" />
+      </tt:cond>
 
       <tt:apply name="adtObjRef">
         <tt:with-root name="adt_obj_ref" ref="object.object_ref"/>

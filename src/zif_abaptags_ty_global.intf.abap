@@ -55,7 +55,7 @@ INTERFACE zif_abaptags_ty_global
     END OF ty_tadir_key,
 
     "! <p class="shorttext synchronized" lang="en">List of TADIR key entries</p>
-    ty_tadir_keys TYPE SORTED TABLE OF ty_tadir_key WITH UNIQUE KEY type name,
+    ty_tadir_keys TYPE STANDARD TABLE OF ty_tadir_key WITH EMPTY KEY,
 
     "! <p class="shorttext synchronized" lang="en">Extract of table TADIR</p>
     BEGIN OF ty_tadir_info,

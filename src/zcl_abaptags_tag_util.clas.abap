@@ -15,9 +15,10 @@ CLASS zcl_abaptags_tag_util DEFINITION
       "! <p class="shorttext synchronized" lang="en">Builds hierarchical tags from flat tags table</p>
       build_hierarchical_tags
         IMPORTING
-          tags_flat          TYPE zabaptags_tag_data_t
+          tags_flat              TYPE zabaptags_tag_data_t
+          ignore_missing_parents TYPE abap_bool OPTIONAL
         RETURNING
-          VALUE(tags_result) TYPE zabaptags_tag_data_t,
+          VALUE(tags_result)     TYPE zabaptags_tag_data_t,
       "! <p class="shorttext synchronized" lang="en">Unlocks tags</p>
       unlock_tags
         IMPORTING
@@ -78,7 +79,9 @@ CLASS zcl_abaptags_tag_util IMPLEMENTATION.
         IF sy-subrc = 0.
           ASSIGN <map_entry>-data->* TO <parent>.
         ELSE.
-          DELETE tags_hier.
+          IF ignore_missing_parents = abap_false.
+            DELETE tags_hier.
+          ENDIF.
           CONTINUE.
         ENDIF.
       ENDIF.
