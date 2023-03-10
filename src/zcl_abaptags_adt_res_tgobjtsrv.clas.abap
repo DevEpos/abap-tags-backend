@@ -317,6 +317,20 @@ CLASS zcl_abaptags_adt_res_tgobjtsrv IMPLEMENTATION.
                tag~description,
                tag~is_shared
       INTO CORRESPONDING FIELDS OF TABLE @tree_result-tags.
+
+    IF sy-subrc = 0.
+      DATA(shared_tags) = get_shared_tags( ).
+
+      LOOP AT tree_result-tags ASSIGNING FIELD-SYMBOL(<tag>) WHERE owner <> space
+                                                               AND owner <> sy-uname.
+        IF <tag>-tag_id IN shared_tags.
+          <tag>-is_shared_for_me = abap_true.
+        ELSE.
+          DELETE tree_result-tags.
+        ENDIF.
+      ENDLOOP.
+
+    ENDIF.
   ENDMETHOD.
 
 
@@ -452,7 +466,7 @@ CLASS zcl_abaptags_adt_res_tgobjtsrv IMPLEMENTATION.
       WHERE child_tgobj~parent_tag_id IN @tag_id_range
         AND child_tgobj~parent_object_type IN @parent_object_type_range
         AND child_tgobj~parent_object_name IN @parent_object_name_range
-      group by child_tgobj~tag_id,
+      GROUP BY child_tgobj~tag_id,
                child_tgobj~parent_tag_id,
                child_tgobj~object_name,
                child_tgobj~object_type,
