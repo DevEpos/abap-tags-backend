@@ -321,14 +321,19 @@ CLASS zcl_abaptags_adt_res_tgobjtsrv IMPLEMENTATION.
     IF sy-subrc = 0.
       DATA(shared_tags) = get_shared_tags( ).
 
-      LOOP AT tree_result-tags ASSIGNING FIELD-SYMBOL(<tag>) WHERE owner <> space
-                                                               AND owner <> sy-uname.
-        IF <tag>-tag_id IN shared_tags.
-          <tag>-is_shared_for_me = abap_true.
-        ELSE.
-          DELETE tree_result-tags.
-        ENDIF.
-      ENDLOOP.
+      IF shared_tags IS INITIAL.
+        DELETE tree_result-tags WHERE owner <> space
+                                  AND owner <> sy-uname.
+      ELSE.
+        LOOP AT tree_result-tags ASSIGNING FIELD-SYMBOL(<tag>) WHERE owner <> space
+                                                                 AND owner <> sy-uname.
+          IF <tag>-tag_id IN shared_tags.
+            <tag>-is_shared_for_me = abap_true.
+          ELSE.
+            DELETE tree_result-tags.
+          ENDIF.
+        ENDLOOP.
+      ENDIF.
 
     ENDIF.
   ENDMETHOD.
