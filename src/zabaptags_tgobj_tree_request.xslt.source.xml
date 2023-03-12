@@ -1,0 +1,33 @@
+<?sap.transform simple?>
+<tt:transform xmlns:tt="http://www.sap.com/transformation-templates" xmlns:ddic="http://www.sap.com/abapxml/types/dictionary" xmlns:atm="http://www.devepos.com/adt/atm">
+
+  <tt:root name="request_data" type="ddic:zabaptags_tgobj_tree_request"/>
+
+  <tt:template>
+    <tt:apply name="taggedObjectTreeRequest">
+      <tt:with-root name="request_data" ref="request_data"/>
+    </tt:apply>
+  </tt:template>
+
+  <tt:template name="taggedObjectTreeRequest">
+    <tt:context>
+      <tt:root name="request_data"/>
+    </tt:context>
+
+    <atm:taggedObjectTreeRequest tt:extensible="deep">
+
+      <tt:cond s-check="not-initial(request_data.tag_id)">
+        <tt:attribute name="atm:tagId" option="format(guid)" value-ref="request_data.tag_id"/>
+      </tt:cond>
+      <tt:cond s-check="not-initial(request_data.parent_object_name)">
+        <tt:attribute name="atm:parentObjectName" value-ref="request_data.parent_object_name"/>
+      </tt:cond>
+      <tt:cond s-check="not-initial(request_data.parent_object_type)">
+        <tt:attribute name="atm:parentObjectType" value-ref="request_data.parent_object_type"/>
+      </tt:cond>
+
+    </atm:taggedObjectTreeRequest>
+  </tt:template>
+
+
+</tt:transform>

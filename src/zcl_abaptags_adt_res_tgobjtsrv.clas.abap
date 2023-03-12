@@ -19,23 +19,15 @@ CLASS zcl_abaptags_adt_res_tgobjtsrv DEFINITION
       ty_tag_data_sorted TYPE SORTED TABLE OF zabaptags_tag_data WITH UNIQUE KEY tag_id.
 
     DATA:
-      object_name_range        TYPE RANGE OF sobj_name,
-      object_type_range        TYPE RANGE OF trobjtype,
       parent_object_name_range TYPE RANGE OF sobj_name,
       parent_object_type_range TYPE RANGE OF trobjtype,
-      search_params            TYPE zabaptags_tgobj_search_params,
-      owner_range              TYPE RANGE OF sy-uname,
+      request_data             TYPE zabaptags_tgobj_tree_request,
       tree_result              TYPE zabaptags_tgobj_tree_result,
       matching_tags            TYPE zabaptags_tag_data_t,
       tag_infos                TYPE ty_tag_infos,
       tag_id_range             TYPE zif_abaptags_ty_global=>ty_tag_id_range.
 
     METHODS:
-      determine_obj_name_range
-        IMPORTING
-          query TYPE string
-        RAISING
-          cx_adt_rest,
       get_parameters
         IMPORTING
           io_request TYPE REF TO if_adt_rest_request
@@ -69,7 +61,7 @@ CLASS zcl_abaptags_adt_res_tgobjtsrv IMPLEMENTATION.
 
   METHOD post.
     request->get_body_data( EXPORTING content_handler = get_request_content_handler( )
-                            IMPORTING data            = search_params ).
+                            IMPORTING data            = request_data ).
 
     get_parameters( request ).
     retrieve_addtnl_input_infos( ).
@@ -85,77 +77,22 @@ CLASS zcl_abaptags_adt_res_tgobjtsrv IMPLEMENTATION.
 
 
   METHOD get_parameters.
-    DATA(scope) = COND #(
-      WHEN search_params-search_scope IS INITIAL THEN zif_abaptags_c_global=>scopes-all
-      ELSE search_params-search_scope ).
-    owner_range = SWITCH #(  scope
-      WHEN zif_abaptags_c_global=>scopes-global THEN VALUE #( ( sign = 'I' option = 'EQ' low = space ) )
-      WHEN zif_abaptags_c_global=>scopes-user   THEN VALUE #( ( sign = 'I' option = 'EQ' low = sy-uname ) ) ).
-
-    IF search_params-query IS NOT INITIAL.
-      determine_obj_name_range( search_params-query ).
+    IF request_data-tag_id IS NOT INITIAL.
+      tag_id_range = VALUE #( ( sign = 'I' option = 'EQ' low = request_data-tag_id ) ).
     ENDIF.
 
-    tag_id_range = VALUE #( FOR tag_id IN search_params-tag_id ( sign = 'I' option = 'EQ' low = tag_id ) ).
-  ENDMETHOD.
-
-
-  METHOD determine_obj_name_range.
-    DATA: obj_name_type  TYPE TABLE OF string,
-          obj_name_range LIKE object_name_range,
-          obj_type_range LIKE object_type_range.
-
-    IF search_params-query_type = zif_abaptags_c_global=>tag_query_types-object_uri.
-      zcl_abaptags_adt_util=>map_uri_to_wb_object(
-        EXPORTING
-          uri         = query
-        IMPORTING
-          object_name = DATA(object_name)
-          tadir_type  = DATA(object_type) ).
-      obj_name_range = VALUE #( ( sign = 'I' option = 'EQ' low = object_name ) ).
-      obj_type_range = VALUE #( ( sign = 'I' option = 'EQ' low = object_type ) ).
-    ELSEIF search_params-query_type = zif_abaptags_c_global=>tag_query_types-object_name_type_combo.
-      SPLIT query AT ':' INTO TABLE obj_name_type.
-      IF lines( obj_name_type ) = 2.
-        obj_name_range = VALUE #( ( sign = 'I' option = 'EQ' low = obj_name_type[ 1 ] ) ).
-        obj_type_range = VALUE #( ( sign = 'I' option = 'EQ' low = obj_name_type[ 2 ] ) ).
-      ENDIF.
-    ELSE.
-      DATA(l_query) = to_upper( query ).
-      DATA(length) = strlen( query ).
-      DATA(last_char_offset) = length - 1.
-
-      DATA(option) = 'EQ'.
-      DATA(sign) = 'I'.
-
-      IF l_query+last_char_offset(1) = '<'.
-        l_query = l_query(last_char_offset).
-      ELSEIF l_query+last_char_offset(1) <> '*'.
-        l_query = |{ l_query }*|.
-      ENDIF.
-
-      IF l_query CA '+*'.
-        option = 'CP'.
-      ENDIF.
-
-      obj_name_range = VALUE #( ( sign = sign option = option low = l_query ) ).
+    IF request_data-parent_object_name IS NOT INITIAL AND
+        request_data-parent_object_type IS NOT INITIAL.
+      parent_object_name_range = VALUE #( ( sign = 'I' option = 'EQ' low = request_data-parent_object_name ) ).
+      parent_object_type_range = VALUE #( ( sign = 'I' option = 'EQ' low = request_data-parent_object_type ) ).
     ENDIF.
-
-    IF search_params-query_focus = zif_abaptags_c_global=>tag_query_focus-parent_object.
-      parent_object_name_range = obj_name_range.
-      parent_object_type_range = obj_type_range.
-    ELSE.
-      object_name_range = obj_name_range.
-      object_type_range = obj_type_range.
-    ENDIF.
-
   ENDMETHOD.
 
 
   METHOD get_request_content_handler.
     result = cl_adt_rest_cnt_hdl_factory=>get_instance( )->get_handler_for_xml_using_st(
-      st_name      = 'ZABAPTAGS_TGOBJ_SEARCH_PARAMS'
-      root_name    = 'SEARCH_PARAMS'
+      st_name      = 'ZABAPTAGS_TGOBJ_TREE_REQUEST'
+      root_name    = 'REQUEST_DATA'
       content_type = if_rest_media_type=>gc_appl_xml ).
   ENDMETHOD.
 
@@ -176,8 +113,6 @@ CLASS zcl_abaptags_adt_res_tgobjtsrv IMPLEMENTATION.
       IF parent_object_name_range IS NOT INITIAL.
         read_sub_level_objs_with_tags( ).
       ELSE.
-        " [1st draft] retrieve all sub tags
-        " [final solution]  only retrieve sub tags if there tagged objects without parent objects for that tags
         read_sub_level_tags( ).
       ENDIF.
     ENDIF.
@@ -509,10 +444,7 @@ CLASS zcl_abaptags_adt_res_tgobjtsrv IMPLEMENTATION.
 
         tree_result-objects = VALUE #( BASE tree_result-objects
           ( parent_tag_id = <obj_with_tag_group>-tag_id
-            " TODO: do another select with grouping to determine the count of child elements
-*            expandable    = abap_true
             expandable    = xsdbool( <obj_with_tag_group_entry>-grand_child_obj_count > 0 )
-            " tagged_object_count
             object_ref    = VALUE #(
               name         = <obj_with_tag_group_entry>-object_name
               type         = adt_object_ref-type
