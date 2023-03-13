@@ -16,14 +16,20 @@ CLASS zcl_abaptags_adt_res_tgobjtsrv DEFINITION
     TYPES END OF ty_tag_infos.
 
     TYPES:
-      ty_tag_data_sorted TYPE SORTED TABLE OF zabaptags_tag_data WITH UNIQUE KEY tag_id.
+      BEGIN OF ty_tag_to_root_tag,
+        tag_id      TYPE zabaptags_tag_id,
+        root_tag_id TYPE zabaptags_tag_id,
+        has_objects TYPE abap_bool,
+      END OF ty_tag_to_root_tag,
+
+      ty_tag_to_root_tag_ind TYPE SORTED TABLE OF ty_tag_to_root_tag WITH UNIQUE KEY tag_id root_tag_id,
+      ty_tag_data_sorted     TYPE SORTED TABLE OF zabaptags_tag_data WITH UNIQUE KEY tag_id.
 
     DATA:
       parent_object_name_range TYPE RANGE OF sobj_name,
       parent_object_type_range TYPE RANGE OF trobjtype,
       request_data             TYPE zabaptags_tgobj_tree_request,
       tree_result              TYPE zabaptags_tgobj_tree_result,
-      matching_tags            TYPE zabaptags_tag_data_t,
       tag_infos                TYPE ty_tag_infos,
       tag_id_range             TYPE zif_abaptags_ty_global=>ty_tag_id_range.
 
@@ -50,6 +56,13 @@ CLASS zcl_abaptags_adt_res_tgobjtsrv DEFINITION
       retrieve_addtnl_input_infos,
       enhance_first_level_tags,
       read_sub_level_objs_with_tags,
+      collect_child_info
+        IMPORTING
+          root_tag_id         TYPE zabaptags_tag_id
+          tags                TYPE zabaptags_tag_data_t
+        CHANGING
+          tag_to_root_tag_ind TYPE ty_tag_to_root_tag_ind
+          child_tag_range     TYPE zif_abaptags_ty_global=>ty_tag_id_range,
       get_tags_in_hierarchy
         RETURNING
           VALUE(result) TYPE ty_tag_data_sorted.
@@ -232,45 +245,119 @@ CLASS zcl_abaptags_adt_res_tgobjtsrv IMPLEMENTATION.
 
 
   METHOD read_first_level_tags.
+    DATA: tag_to_root_tag_ind TYPE ty_tag_to_root_tag_ind,
+          all_child_tag_range TYPE zif_abaptags_ty_global=>ty_tag_id_range,
+          all_tags            TYPE zabaptags_tag_data_t.
+
+    FIELD-SYMBOLS: <child_tags> TYPE zabaptags_tag_data_t.
+
+    " 1) Select all tags with corresponding information
     SELECT tag~tag_id,
            tag~parent_tag_id,
            tag~name,
            tag~name_upper,
            tag~owner,
            tag~description,
-           tag~is_shared,
-           COUNT(*) AS tagged_object_count
+           tag~is_shared
+      FROM zabaptags_tags AS tag
+      INTO CORRESPONDING FIELDS OF TABLE @all_tags.
+
+    " 2) build hierarchical tags
+    DATA(hier_tags) = zcl_abaptags_tag_util=>build_hierarchical_tags( tags_flat = all_tags ).
+
+    " 3) map child tags to root tags
+    LOOP AT hier_tags ASSIGNING FIELD-SYMBOL(<hier_tag>) WHERE child_tags IS NOT INITIAL.
+      ASSIGN <hier_tag>-child_tags->* TO <child_tags>.
+      collect_child_info( EXPORTING root_tag_id         = <hier_tag>-tag_id
+                                    tags                = <child_tags>
+                          CHANGING  tag_to_root_tag_ind = tag_to_root_tag_ind
+                                    child_tag_range     = all_child_tag_range ).
+    ENDLOOP.
+
+    " 4) get object counts on root/flat tags
+    SELECT tag~tag_id, COUNT(*) AS tagged_object_count
       FROM zabaptags_i_taggedobjaggr AS aggr
         INNER JOIN zabaptags_tags AS tag
           ON aggr~tag_id = tag~tag_id
       WHERE tag~parent_tag_id IS INITIAL
-      GROUP BY tag~tag_id,
-               tag~parent_tag_id,
-               tag~name,
-               tag~name_upper,
-               tag~owner,
-               tag~description,
-               tag~is_shared
-      INTO CORRESPONDING FIELDS OF TABLE @tree_result-tags.
+      GROUP BY tag~tag_id
+      INTO TABLE @DATA(root_tags_w_counts).
 
-    IF sy-subrc = 0.
-      DATA(shared_tags) = get_shared_tags( ).
+    " 5) find tags in hierarchy with at least 1 object assigned
+    IF all_child_tag_range IS NOT INITIAL.
+      SELECT DISTINCT tag~tag_id
+        FROM zabaptags_i_taggedobjaggr AS aggr
+          INNER JOIN zabaptags_tags AS tag
+            ON aggr~tag_id = tag~tag_id
+        WHERE tag~tag_id IN @all_child_tag_range
+        INTO TABLE @DATA(child_tags_w_objects).
 
-      IF shared_tags IS INITIAL.
-        DELETE tree_result-tags WHERE owner <> space
-                                  AND owner <> sy-uname.
-      ELSE.
-        LOOP AT tree_result-tags ASSIGNING FIELD-SYMBOL(<tag>) WHERE owner <> space
-                                                                 AND owner <> sy-uname.
-          IF <tag>-tag_id IN shared_tags.
-            <tag>-is_shared_for_me = abap_true.
-          ELSE.
-            DELETE tree_result-tags.
-          ENDIF.
+      IF sy-subrc = 0.
+        " fill map table
+        LOOP AT child_tags_w_objects ASSIGNING FIELD-SYMBOL(<child_tag_w_objects>).
+          tag_to_root_tag_ind[ tag_id = <child_tag_w_objects>-tag_id ]-has_objects = abap_true.
         ENDLOOP.
       ENDIF.
-
     ENDIF.
+
+    IF root_tags_w_counts IS INITIAL AND
+        child_tags_w_objects IS INITIAL.
+      RETURN.
+    ENDIF.
+
+    " 6) collect only tags with object counts
+    LOOP AT hier_tags ASSIGNING <hier_tag> WHERE parent_tag_id IS INITIAL.
+      DATA(tag_info) = CORRESPONDING zabaptags_tag_data( <hier_tag> EXCEPT child_tags ).
+      ASSIGN root_tags_w_counts[ tag_id = <hier_tag>-tag_id ] TO FIELD-SYMBOL(<obj_count>).
+      IF sy-subrc = 0.
+        tag_info-tagged_object_count = <obj_count>-tagged_object_count.
+      ELSEIF line_exists( tag_to_root_tag_ind[ root_tag_id = <hier_tag>-tag_id
+                                               has_objects = abap_true ] ).
+      ELSE.
+        CONTINUE.
+      ENDIF.
+
+      tree_result-tags = VALUE #( BASE tree_result-tags ( tag_info ) ).
+    ENDLOOP.
+
+    " 7) enhance root tags
+    DATA(shared_tags) = get_shared_tags( ).
+    IF shared_tags IS INITIAL.
+      DELETE tree_result-tags WHERE owner <> space
+                                AND owner <> sy-uname.
+    ELSE.
+      LOOP AT tree_result-tags ASSIGNING FIELD-SYMBOL(<tag>) WHERE owner <> space
+                                                               AND owner <> sy-uname.
+        IF <tag>-tag_id IN shared_tags.
+          <tag>-is_shared_for_me = abap_true.
+        ELSE.
+          DELETE tree_result-tags.
+        ENDIF.
+      ENDLOOP.
+    ENDIF.
+
+  ENDMETHOD.
+
+  METHOD collect_child_info.
+
+    FIELD-SYMBOLS: <child_tags> TYPE zabaptags_tag_data_t.
+
+    LOOP AT tags ASSIGNING FIELD-SYMBOL(<tag>).
+      INSERT VALUE #(
+        tag_id = <tag>-tag_id
+        root_tag_id = root_tag_id ) INTO TABLE tag_to_root_tag_ind.
+      child_tag_range = VALUE #(
+        BASE child_tag_range ( sign = 'I' option = 'EQ' low = <tag>-tag_id ) ).
+
+      IF <tag>-child_tags IS NOT INITIAL.
+        ASSIGN <tag>-child_tags->* TO <child_tags>.
+        collect_child_info( EXPORTING root_tag_id         = root_tag_id
+                                      tags                = <child_tags>
+                            CHANGING  tag_to_root_tag_ind = tag_to_root_tag_ind
+                                      child_tag_range     = child_tag_range ).
+      ENDIF.
+    ENDLOOP.
+
   ENDMETHOD.
 
 
