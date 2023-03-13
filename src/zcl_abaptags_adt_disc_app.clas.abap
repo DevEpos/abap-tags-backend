@@ -10,6 +10,7 @@ CLASS zcl_abaptags_adt_disc_app DEFINITION
       c_root_scheme                TYPE string VALUE 'http://www.devepos.com/adt/atm',
       c_root_rel_scheme            TYPE string VALUE 'http://www.devepos.com/adt/relations/atm',
       c_tags_uri                   TYPE string VALUE '/tags',
+      c_tags_deletion_check_uri    TYPE string VALUE '/tags/deletion/check',
       c_tags_share_uri             TYPE string VALUE '/tags/share',
       c_object_tagging_uri         TYPE string VALUE '/taggedobjects',
       c_tagged_object_search_uri   TYPE string VALUE '/taggedobjects/search',
@@ -104,12 +105,19 @@ CLASS zcl_abaptags_adt_disc_app IMPLEMENTATION.
   METHOD register_tag_management.
     DATA: collection TYPE REF TO if_adt_discovery_collection.
 
-    collection = registry->register_discoverable_resource(
+    registry->register_discoverable_resource(
       url             = c_tags_uri
       handler_class   = c_tags_management_handler
       description     = 'Tags'
       category_scheme = c_root_scheme
       category_term   = 'tags' ).
+
+    registry->register_discoverable_resource(
+      url             = c_tags_deletion_check_uri
+      handler_class   = 'ZCL_ABAPTAGS_ADT_RES_TAGDELCHK'
+      description     = 'Tag Deletion Check'
+      category_scheme = c_root_scheme
+      category_term   = 'tagsDeletionCheck' ).
 
     collection = registry->register_discoverable_resource(
       url             = c_tags_share_uri

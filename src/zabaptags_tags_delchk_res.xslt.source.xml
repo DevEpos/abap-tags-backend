@@ -1,0 +1,64 @@
+<?sap.transform simple?>
+<tt:transform xmlns:tt="http://www.sap.com/transformation-templates" xmlns:ddic="http://www.sap.com/abapxml/types/dictionary" xmlns:atm="http://www.devepos.com/adt/atm">
+
+  <tt:root name="check_result" type="ddic:zabaptags_tags_delchk_result"/>
+
+  <tt:template>
+    <tt:apply name="deletionCheckResult">
+      <tt:with-root name="check_result" ref="check_result"/>
+    </tt:apply>
+  </tt:template>
+
+  <tt:template name="deletionCheckResult">
+    <tt:context>
+      <tt:root name="check_result"/>
+    </tt:context>
+
+    <atm:deletionCheckResult tt:extensible="deep">
+      <tt:cond check="exist(check_result.tags)">
+        <tt:cond check="not-initial(check_result.tags)">
+          <tt:apply name="tags">
+            <tt:with-root name="tags" ref="check_result.tags"/>
+          </tt:apply>
+        </tt:cond>
+      </tt:cond>
+    </atm:deletionCheckResult>
+  </tt:template>
+
+  <tt:template name="tags">
+    <tt:context>
+      <tt:root name="tags"/>
+    </tt:context>
+
+    <tt:loop ref="tags">
+      <tt:apply name="tag">
+        <tt:with-root name="tag" ref="$ref"/>
+      </tt:apply>
+    </tt:loop>
+  </tt:template>
+
+  <tt:template name="tag">
+    <tt:context>
+      <tt:root name="tag"/>
+    </tt:context>
+
+    <atm:checkedTag tt:extensible="deep">
+      <tt:cond s-check="not-initial(tag.tag_id)">
+        <tt:attribute name="atm:tagId" option="format(guid)" value-ref="tag.tag_id"/>
+      </tt:cond>
+
+      <tt:cond s-check="not-initial(tag.is_deletable)">
+        <tt:attribute name="atm:isDeletable" option="format(boolean)" value-ref="tag.is_deletable"/>
+      </tt:cond>
+
+      <tt:cond s-check="not-initial(tag.message)">
+        <tt:attribute name="atm:message" value-ref="tag.message"/>
+      </tt:cond>
+
+      <tt:cond s-check="not-initial(tag.message_type)">
+        <tt:attribute name="atm:messageType" value-ref="tag.message_type"/>
+      </tt:cond>
+    </atm:checkedTag>
+  </tt:template>
+
+</tt:transform>
