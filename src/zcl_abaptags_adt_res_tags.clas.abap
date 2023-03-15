@@ -77,7 +77,10 @@ CLASS zcl_abaptags_adt_res_tags DEFINITION
         IMPORTING
           tag TYPE zabaptags_tag_data
         RAISING
-          cx_adt_rest.
+          cx_adt_rest,
+      map_tags_to_root
+        IMPORTING
+          tags_for_root_mapping TYPE zif_abaptags_ty_global=>ty_tag_with_parent_maps.
 ENDCLASS.
 
 
@@ -101,7 +104,6 @@ CLASS zcl_abaptags_adt_res_tags IMPLEMENTATION.
     get_parameters( request ).
 
     IF action_name IS INITIAL.
-      " create/update tags
       create_or_update_tags( ).
     ELSE.
       CASE action_name.
@@ -228,26 +230,37 @@ CLASS zcl_abaptags_adt_res_tags IMPLEMENTATION.
 
     CHECK tags IS NOT INITIAL.
 
-    zcl_abaptags_tag_util=>determine_all_child_tags( EXPORTING tag_id_only = abap_true
-                                                     CHANGING  tags        = tags ).
+    " determine sub tags via root/tag map
+    SELECT *
+      FROM zabaptags_tagsrm
+      FOR ALL ENTRIES IN @tags
+      WHERE root_tag_id = @tags-tag_id
+      INTO TABLE @DATA(root_maps).
 
-    SORT tags BY tag_id.
-    DELETE ADJACENT DUPLICATES FROM tags COMPARING tag_id.
+    LOOP AT root_maps ASSIGNING FIELD-SYMBOL(<root_map>).
+      tag_id_range = VALUE #( BASE tag_id_range ( sign = 'I' option = 'EQ' low = <root_map>-tag_id ) ).
+    ENDLOOP.
 
-    tag_id_range = VALUE #( FOR tag IN tags ( sign = 'I' option = 'EQ' low = tag-tag_id ) ).
+    " collect all selected tags for later deletion
+    LOOP AT tags ASSIGNING FIELD-SYMBOL(<tag>).
+      tag_id_range = VALUE #( BASE tag_id_range ( sign = 'I' option = 'EQ' low = <tag>-tag_id ) ).
+    ENDLOOP.
+
+    SORT tag_id_range.
+    DELETE ADJACENT DUPLICATES FROM tag_id_range.
 
     zcl_abaptags_tags_dac=>get_instance( )->delete_tag_by_id( tag_id_range ).
   ENDMETHOD.
 
 
   METHOD create_or_update_tags.
-    DATA: tags_to_update     TYPE zif_abaptags_ty_global=>ty_db_tags.
+    DATA: tags_to_update        TYPE zif_abaptags_ty_global=>ty_db_tags,
+          tags_for_root_mapping TYPE zif_abaptags_ty_global=>ty_tag_with_parent_maps.
 
     LOOP AT tags ASSIGNING FIELD-SYMBOL(<tag>).
       <tag>-name_upper = to_upper( <tag>-name ).
       validate_tag( <tag> ).
       IF <tag>-tag_id IS INITIAL.
-
         TRY.
             <tag>-tag_id = cl_uuid_factory=>create_system_uuid( )->create_uuid_x16( ).
           CATCH cx_uuid_error INTO DATA(uuid_error).
@@ -255,6 +268,13 @@ CLASS zcl_abaptags_adt_res_tags IMPLEMENTATION.
               EXPORTING
                 previous = uuid_error.
         ENDTRY.
+
+        IF <tag>-parent_tag_id IS NOT INITIAL.
+          tags_for_root_mapping = VALUE #( BASE tags_for_root_mapping
+            ( tag_id        = <tag>-tag_id
+              parent_tag_id = <tag>-parent_tag_id ) ).
+        ENDIF.
+
         <tag>-created_by = sy-uname.
         GET TIME STAMP FIELD <tag>-created_date_time.
       ELSE.
@@ -264,6 +284,8 @@ CLASS zcl_abaptags_adt_res_tags IMPLEMENTATION.
 
       tags_to_update = VALUE #( BASE tags_to_update ( CORRESPONDING #( <tag> ) ) ).
     ENDLOOP.
+
+    map_tags_to_root( tags_for_root_mapping ).
 
     tags_dac->modify_tags( tags_to_update ).
   ENDMETHOD.
@@ -385,5 +407,35 @@ CLASS zcl_abaptags_adt_res_tags IMPLEMENTATION.
     ENDIF.
   ENDMETHOD.
 
+
+  METHOD map_tags_to_root.
+    DATA: new_map_entries TYPE zif_abaptags_ty_global=>ty_db_tags_root_maps.
+
+    CHECK tags_for_root_mapping IS NOT INITIAL.
+
+    SELECT tag_id,
+           root_tag_id
+      FROM zabaptags_tagsrm
+      FOR ALL ENTRIES IN @tags_for_root_mapping
+      WHERE tag_id = @tags_for_root_mapping-parent_tag_id
+      INTO TABLE @DATA(upper_root_maps).
+
+    LOOP AT tags_for_root_mapping ASSIGNING FIELD-SYMBOL(<tag_for_mapping>).
+      new_map_entries = VALUE #( BASE new_map_entries
+       ( tag_id = <tag_for_mapping>-tag_id root_tag_id = <tag_for_mapping>-parent_tag_id ) ).
+
+      " collect map entries in upper hierarchy levels
+      LOOP AT upper_root_maps ASSIGNING FIELD-SYMBOL(<upper_root_map>) WHERE tag_id = <tag_for_mapping>-parent_tag_id.
+        new_map_entries = VALUE #( BASE new_map_entries
+         ( root_tag_id = <upper_root_map>-root_tag_id tag_id = <tag_for_mapping>-tag_id ) ).
+      ENDLOOP.
+
+    ENDLOOP.
+
+    IF new_map_entries IS NOT INITIAL.
+      INSERT zabaptags_tagsrm FROM TABLE new_map_entries ACCEPTING DUPLICATE KEYS.
+    ENDIF.
+
+  ENDMETHOD.
 
 ENDCLASS.

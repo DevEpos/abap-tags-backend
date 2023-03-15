@@ -27,6 +27,11 @@
      <DESCRIPT>List of Tag masterdata</DESCRIPT>
     </SEOCOMPOTX>
     <SEOCOMPOTX>
+     <CMPNAME>TY_DB_TAGS_ROOT_MAPS</CMPNAME>
+     <LANGU>E</LANGU>
+     <DESCRIPT>List of Tag Root Maps</DESCRIPT>
+    </SEOCOMPOTX>
+    <SEOCOMPOTX>
      <CMPNAME>TY_FUNC_MODULE_INFO</CMPNAME>
      <LANGU>E</LANGU>
      <DESCRIPT>Function module info</DESCRIPT>

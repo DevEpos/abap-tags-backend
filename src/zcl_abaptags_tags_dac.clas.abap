@@ -240,6 +240,8 @@ CLASS zcl_abaptags_tags_dac IMPLEMENTATION.
     DELETE FROM zabaptags_tgobjn WHERE tag_id IN id_range.
     DELETE FROM zabaptags_tags WHERE tag_id IN id_range.
     DELETE FROM zabaptags_shtags WHERE tag_id IN id_range.
+    DELETE FROM zabaptags_tagsrm WHERE tag_id IN id_range
+                                    OR root_tag_id IN id_range.
 
     COMMIT WORK.
   ENDMETHOD.

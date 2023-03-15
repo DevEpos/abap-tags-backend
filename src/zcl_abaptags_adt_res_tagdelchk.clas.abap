@@ -83,11 +83,10 @@ CLASS zcl_abaptags_adt_res_tagdelchk IMPLEMENTATION.
 
     IF lines( counts ) <> lines( tags_to_delete ).
       " check if there are child tags with tagged objects
-      SELECT tag~tag_id,
-             COUNT(*) AS count
-        FROM zabaptags_i_childtgobj AS tag
-        WHERE tag~tag_id IN @tags_range
-        GROUP BY tag~tag_id
+      SELECT tagid AS tag_id,
+             objectcount AS count
+        FROM zabaptags_i_roottagswocnt
+        WHERE tagid IN @tags_range
         INTO TABLE @DATA(root_counts).
 
       LOOP AT root_counts ASSIGNING FIELD-SYMBOL(<root_count>).
