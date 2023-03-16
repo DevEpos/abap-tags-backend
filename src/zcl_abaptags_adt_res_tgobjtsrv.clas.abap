@@ -306,6 +306,7 @@ CLASS zcl_abaptags_adt_res_tgobjtsrv IMPLEMENTATION.
         INNER JOIN zabaptags_tgobjn AS tgobj
           ON tgobj~tag_id = map~tag_id
       WHERE map~root_tag_id IN @tag_id_range
+        AND tgobj~parent_object_name = @space
       GROUP BY map~tag_id
       INTO TABLE @DATA(sub_tags_with_obj_counts).
 
