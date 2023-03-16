@@ -27,7 +27,7 @@ CLASS zcl_abaptags_adt_res_tgobjtsrv DEFINITION
 
       BEGIN OF ty_tag_with_obj_count,
         tag_id              TYPE zabaptags_tags-tag_id,
-        tagged_object_count TYPE int8,
+        tagged_object_count TYPE i,
       END OF ty_tag_with_obj_count,
 
       ty_tags_with_obj_counts TYPE STANDARD TABLE OF ty_tag_with_obj_count WITH EMPTY KEY,
