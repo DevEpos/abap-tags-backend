@@ -57,12 +57,6 @@
       <tt:cond s-check="not-initial(tag.is_shared_for_me)">
         <tt:attribute name="atm:sharedForMe" option="format(boolean)" value-ref="tag.is_shared_for_me"/>
       </tt:cond>
-      <tt:cond s-check="not-initial(tag.tree_level)">
-        <tt:attribute name="atm:treeLevel" value-ref="tag.tree_level"/>
-      </tt:cond>
-      <tt:cond s-check="not-initial(tag.root_tag_id)">
-        <tt:attribute name="atm:rootTagId" option="format(guid)" value-ref="tag.root_tag_id"/>
-      </tt:cond>
 
       <!-- Serialize child tags -->
       <tt:call-method class="zcl_abaptags_adt_tags_serlzer" d-name="deserialize" reader="reader" s-name="serialize" writer="writer">

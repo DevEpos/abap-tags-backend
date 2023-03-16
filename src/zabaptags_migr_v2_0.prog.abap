@@ -2,9 +2,9 @@
 *& Migration Report for ABAP Tags to version v1.2.0
 *&---------------------------------------------------------------------*
 *&  -> new database table ZABAPTAGS_TGOBJN as successor of ZABAPTAGS_TGOBJ
-*&  -> new columns in table ZABAPTAGS_TAGS
+*&  -> new mapping table ZABAPTAGS_TAGSRM for root node of tree to all child nodes
 *&---------------------------------------------------------------------*
-REPORT zabaptags_migr_v1_2.
+REPORT zabaptags_migr_v2_0.
 
 CLASS lcl_migrator DEFINITION.
 
@@ -20,32 +20,19 @@ CLASS lcl_migrator DEFINITION.
 
     DATA:
       migrated_tgobj_count  TYPE i,
-      migrated_tags_count   TYPE i,
       migrated_tagsrm_count TYPE i.
 
     METHODS:
       is_tgobj_migration_required
         RETURNING
           VALUE(result) TYPE abap_bool,
-      is_tags_migration_required
-        RETURNING
-          VALUE(result) TYPE abap_bool,
       is_tagsrm_migration_required
         RETURNING
           VALUE(result) TYPE abap_bool,
       migrate_tgobj,
-      migrate_tags,
       migrate_tagsrm,
-      print_tags_migr_count,
       print_tgobj_migr_count,
       print_tagsrm_migr_count,
-      collect_child_tags
-        IMPORTING
-          root_tag_id    TYPE zabaptags_tag_id
-          tree_level     TYPE i
-          tags           TYPE zabaptags_tag_data_t
-        CHANGING
-          tags_to_update TYPE zif_abaptags_ty_global=>ty_db_tags,
       filter_existing_tgobj
         CHANGING
           tagged_objects TYPE zif_abaptags_ty_global=>ty_db_tagged_objects,
@@ -62,18 +49,14 @@ CLASS lcl_migrator IMPLEMENTATION.
   METHOD start.
     IF is_tgobj_migration_required( ).
       migrate_tgobj( ).
-      print_tgobj_migr_count( ).
-    ENDIF.
-
-    IF is_tags_migration_required( ).
-      migrate_tags( ).
-      print_tags_migr_count( ).
     ENDIF.
 
     IF is_tagsrm_migration_required( ).
       migrate_tagsrm( ).
-      print_tagsrm_migr_count( ).
     ENDIF.
+
+    print_tgobj_migr_count( ).
+    print_tagsrm_migr_count( ).
 
   ENDMETHOD.
 
@@ -81,15 +64,6 @@ CLASS lcl_migrator IMPLEMENTATION.
   METHOD is_tgobj_migration_required.
     SELECT SINGLE @abap_true
       FROM zabaptags_tgobj
-      INTO @result.
-  ENDMETHOD.
-
-
-  METHOD is_tags_migration_required.
-    SELECT SINGLE @abap_true
-      FROM zabaptags_tags
-      WHERE parent_tag_id <> '00000000000000000000000000000000'
-        AND root_tag_id IS NULL
       INTO @result.
   ENDMETHOD.
 
@@ -150,7 +124,7 @@ CLASS lcl_migrator IMPLEMENTATION.
 
     " delete entries in old db table
     " TODO: uncomment the next line if all is correct
-*    DELETE FROM zabaptags_tgobj.
+    DELETE FROM zabaptags_tgobj.
   ENDMETHOD.
 
 
@@ -183,74 +157,21 @@ CLASS lcl_migrator IMPLEMENTATION.
   ENDMETHOD.
 
 
-  METHOD migrate_tags.
-    " NOTE: cursor processing skipped due to unlikely situation that there is really a big number tags
-    DATA: tags_to_update TYPE zif_abaptags_ty_global=>ty_db_tags.
-    FIELD-SYMBOLS: <child_tags> TYPE zabaptags_tag_data_t.
-
-    SELECT *
-      FROM zabaptags_tags
-      INTO TABLE @DATA(flat_tags).
-
-    DATA(hier_tags) = zcl_abaptags_tag_util=>build_hierarchical_tags( tags_flat = CORRESPONDING #( flat_tags ) ).
-
-    " flat tags are not relevant
-    DELETE hier_tags WHERE child_tags IS INITIAL.
-
-    LOOP AT hier_tags ASSIGNING FIELD-SYMBOL(<root_tag>).
-      ASSIGN <root_tag>-child_tags->* TO <child_tags>.
-
-      collect_child_tags( EXPORTING root_tag_id    = <root_tag>-tag_id
-                                    tree_level     = 0
-                                    tags           = <child_tags>
-                          CHANGING  tags_to_update = tags_to_update ).
-    ENDLOOP.
-
-    IF tags_to_update IS NOT INITIAL.
-      UPDATE zabaptags_tags FROM TABLE tags_to_update.
-      migrated_tags_count = sy-dbcnt.
-    ENDIF.
-
-  ENDMETHOD.
-
-
-  METHOD collect_child_tags.
-
-    FIELD-SYMBOLS: <child_tags> TYPE zabaptags_tag_data_t.
-
-    LOOP AT tags ASSIGNING FIELD-SYMBOL(<tag>).
-      IF <tag>-root_tag_id IS INITIAL OR
-          <tag>-tree_level IS INITIAL.
-        DATA(tag_to_update) = CORRESPONDING zabaptags_tags( <tag> ).
-        tag_to_update-root_tag_id = root_tag_id.
-        tag_to_update-tree_level = tree_level + 1.
-        tags_to_update = VALUE #( BASE tags_to_update ( tag_to_update ) ).
-      ENDIF.
-
-      IF <tag>-child_tags IS NOT INITIAL.
-        ASSIGN <tag>-child_tags->* TO <child_tags>.
-        collect_child_tags( EXPORTING root_tag_id    = root_tag_id
-                                      tree_level     = tree_level + 1
-                                      tags           = <child_tags>
-                            CHANGING  tags_to_update = tags_to_update ).
-      ENDIF.
-    ENDLOOP.
-
-  ENDMETHOD.
-
-
   METHOD print_tgobj_migr_count.
-    WRITE: / |{ migrated_tgobj_count } entries were migrated from ZABAPTAGS_TGOBJ to ZABAPTAGS_TGOBJN|.
-  ENDMETHOD.
-
-
-  METHOD print_tags_migr_count.
-    WRITE: / |{ migrated_tags_count } entries in table ZABAPTAGS_TAGS were migrated.|.
+    IF migrated_tgobj_count > 0.
+      WRITE: / |{ migrated_tgobj_count } entries were migrated from ZABAPTAGS_TGOBJ to ZABAPTAGS_TGOBJN|.
+    ELSE.
+      WRITE: / |Migration for ZABAPTAGS_TGOBJ not necessary|.
+    ENDIF.
   ENDMETHOD.
 
 
   METHOD print_tagsrm_migr_count.
-    WRITE: / |{ migrated_tagsrm_count } tags were mapped into table ZABAPTAGS_TAGSRM.|.
+    IF migrated_tagsrm_count > 0.
+      WRITE: / |{ migrated_tagsrm_count } tags were mapped into table ZABAPTAGS_TAGSRM.|.
+    ELSE.
+      WRITE: / |Migration for ZABAPTAGS_TAGSRM is not necessary|.
+    ENDIF.
   ENDMETHOD.
 
 
