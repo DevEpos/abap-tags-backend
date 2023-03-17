@@ -43,6 +43,7 @@ INTERFACE zif_abaptags_c_global
       function       TYPE trobjtype VALUE 'FUNC',
       function_group TYPE trobjtype VALUE 'FUGR',
       program        TYPE trobjtype VALUE 'PROG',
+      package        TYPE trobjtype VALUE 'DEVC',
     END OF object_types.
 
 ENDINTERFACE.

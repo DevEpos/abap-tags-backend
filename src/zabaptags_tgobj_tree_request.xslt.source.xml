@@ -25,7 +25,6 @@
       <tt:cond s-check="not-initial(request_data.parent_object_type)">
         <tt:attribute name="atm:parentObjectType" value-ref="request_data.parent_object_type"/>
       </tt:cond>
-
     </atm:taggedObjectTreeRequest>
   </tt:template>
 

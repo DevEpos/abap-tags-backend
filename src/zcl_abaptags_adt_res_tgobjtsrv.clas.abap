@@ -39,6 +39,9 @@ CLASS zcl_abaptags_adt_res_tgobjtsrv DEFINITION
       request_data             TYPE zabaptags_tgobj_tree_request,
       tree_result              TYPE zabaptags_tgobj_tree_result,
       tag_infos                TYPE ty_tag_infos,
+      read_full_tree_count     TYPE abap_bool,
+      is_shared_tags_read      TYPE abap_bool,
+      shared_tags_range        TYPE zif_abaptags_ty_global=>ty_tag_id_range,
       tag_id_range             TYPE zif_abaptags_ty_global=>ty_tag_id_range.
 
     METHODS:
@@ -62,7 +65,7 @@ CLASS zcl_abaptags_adt_res_tgobjtsrv DEFINITION
       read_first_level_tags,
       read_sub_level_tags,
       retrieve_addtnl_input_infos,
-      enhance_first_level_tags,
+      post_process_root_tags,
       read_sub_level_objs_with_tags,
       get_tags_in_hierarchy
         RETURNING
@@ -72,7 +75,8 @@ CLASS zcl_abaptags_adt_res_tgobjtsrv DEFINITION
           VALUE(result) TYPE ty_tags_with_obj_counts,
       get_deep_root_tag_counts
         RETURNING
-          VALUE(result) TYPE ty_tags_with_obj_counts.
+          VALUE(result) TYPE ty_tags_with_obj_counts,
+      fetch_full_tree_count.
 ENDCLASS.
 
 
@@ -85,10 +89,13 @@ CLASS zcl_abaptags_adt_res_tgobjtsrv IMPLEMENTATION.
 
     get_parameters( request ).
     retrieve_addtnl_input_infos( ).
-    " retrieves tags at current level that have object or child tags
+    IF read_full_tree_count = abap_true.
+      fetch_full_tree_count( ).
+    ENDIF.
+
     get_matching_tags( ).
-    " retrieves objects at the current level
     get_matching_objects( ).
+    fill_descriptions( ).
 
     response->set_body_data(
       content_handler = get_response_content_handler( )
@@ -99,6 +106,8 @@ CLASS zcl_abaptags_adt_res_tgobjtsrv IMPLEMENTATION.
   METHOD get_parameters.
     IF request_data-tag_id IS NOT INITIAL.
       tag_id_range = VALUE #( ( sign = 'I' option = 'EQ' low = request_data-tag_id ) ).
+    ELSE.
+      read_full_tree_count = abap_true.
     ENDIF.
 
     IF request_data-parent_object_name IS NOT INITIAL AND
@@ -128,7 +137,7 @@ CLASS zcl_abaptags_adt_res_tgobjtsrv IMPLEMENTATION.
   METHOD get_matching_tags.
     IF tag_id_range IS INITIAL.
       read_first_level_tags( ).
-      enhance_first_level_tags( ).
+      post_process_root_tags( ).
     ELSE.
       IF parent_object_name_range IS NOT INITIAL.
         read_sub_level_objs_with_tags( ).
@@ -160,8 +169,8 @@ CLASS zcl_abaptags_adt_res_tgobjtsrv IMPLEMENTATION.
              tgobj~objectname AS name,
              tgobj~objecttype AS type,
              coalesce( sub_tgobj~dummy, @abap_false ) AS has_children
-        FROM ZAbapTags_I_TgObjn AS tgobj
-          LEFT OUTER JOIN ZAbapTags_I_TgObjn AS sub_tgobj
+        FROM zabaptags_i_tgobjn AS tgobj
+          LEFT OUTER JOIN zabaptags_i_tgobjn AS sub_tgobj
             ON  tgobj~objectname = sub_tgobj~parentobjectname
             AND tgobj~objecttype = sub_tgobj~parentobjecttype
             AND tgobj~tagid      = sub_tgobj~parenttagid
@@ -195,6 +204,7 @@ CLASS zcl_abaptags_adt_res_tgobjtsrv IMPLEMENTATION.
             name = <matching_obj>-name
             type = <matching_obj>-type ).
         CATCH cx_sy_itab_line_not_found.
+          " TODO: handle some edge cases, like $-packages
           CONTINUE.
       ENDTRY.
 
@@ -215,13 +225,13 @@ CLASS zcl_abaptags_adt_res_tgobjtsrv IMPLEMENTATION.
       tree_result-objects = VALUE #( BASE tree_result-objects ( tagged_object ) ).
     ENDLOOP.
 
-    fill_descriptions( ).
-
   ENDMETHOD.
 
 
   METHOD fill_descriptions.
     DATA: texts TYPE STANDARD TABLE OF seu_objtxt.
+
+    CHECK tree_result-objects IS NOT INITIAL.
 
     texts = VALUE #(
       FOR tagged_obj IN tree_result-objects
@@ -241,14 +251,20 @@ CLASS zcl_abaptags_adt_res_tgobjtsrv IMPLEMENTATION.
 
 
   METHOD get_shared_tags.
-    SELECT 'I' AS sign,
-           'EQ' AS option,
-            shared~tag_id AS low
-      FROM zabaptags_shtags AS shared
-        INNER JOIN zabaptags_tags AS tags
-          ON shared~tag_id = tags~tag_id
-      WHERE shared_user = @sy-uname
-      INTO CORRESPONDING FIELDS OF TABLE @result.
+    IF is_shared_tags_read = abap_false.
+      SELECT 'I' AS sign,
+             'EQ' AS option,
+              shared~tag_id AS low
+        FROM zabaptags_shtags AS shared
+          INNER JOIN zabaptags_tags AS tags
+            ON shared~tag_id = tags~tag_id
+        WHERE shared_user = @sy-uname
+        INTO CORRESPONDING FIELDS OF TABLE @shared_tags_range.
+
+      is_shared_tags_read = abap_true.
+    ENDIF.
+
+    result = shared_tags_range.
   ENDMETHOD.
 
 
@@ -281,21 +297,6 @@ CLASS zcl_abaptags_adt_res_tgobjtsrv IMPLEMENTATION.
         tree_result-tags = VALUE #( BASE tree_result-tags ( CORRESPONDING #( <root_tag> ) ) ).
       ENDIF.
     ENDLOOP.
-
-    DATA(shared_tags) = get_shared_tags( ).
-    IF shared_tags IS INITIAL.
-      DELETE tree_result-tags WHERE owner <> space
-                                AND owner <> sy-uname.
-    ELSE.
-      LOOP AT tree_result-tags ASSIGNING FIELD-SYMBOL(<tag>) WHERE owner <> space
-                                                               AND owner <> sy-uname.
-        IF <tag>-tag_id IN shared_tags.
-          <tag>-is_shared_for_me = abap_true.
-        ELSE.
-          DELETE tree_result-tags.
-        ENDIF.
-      ENDLOOP.
-    ENDIF.
 
   ENDMETHOD.
 
@@ -388,20 +389,23 @@ CLASS zcl_abaptags_adt_res_tgobjtsrv IMPLEMENTATION.
   ENDMETHOD.
 
 
-  METHOD enhance_first_level_tags.
+  METHOD post_process_root_tags.
     CHECK tree_result-tags IS NOT INITIAL.
 
     DATA(shared_tags) = get_shared_tags( ).
     IF shared_tags IS INITIAL.
-      RETURN.
+      DELETE tree_result-tags WHERE owner <> space
+                                AND owner <> sy-uname.
+    ELSE.
+      LOOP AT tree_result-tags ASSIGNING FIELD-SYMBOL(<tag>) WHERE owner <> space
+                                                               AND owner <> sy-uname.
+        IF <tag>-tag_id IN shared_tags.
+          <tag>-is_shared_for_me = abap_true.
+        ELSE.
+          DELETE tree_result-tags.
+        ENDIF.
+      ENDLOOP.
     ENDIF.
-
-    LOOP AT tree_result-tags ASSIGNING FIELD-SYMBOL(<tag>) WHERE is_shared = abap_true.
-      IF <tag>-tag_id IN shared_tags.
-        <tag>-is_shared_for_me = abap_true.
-      ENDIF.
-    ENDLOOP.
-
   ENDMETHOD.
 
 
@@ -522,6 +526,25 @@ CLASS zcl_abaptags_adt_res_tgobjtsrv IMPLEMENTATION.
            objectcount AS tagged_object_count
       FROM (dyn_from)
       INTO CORRESPONDING FIELDS OF TABLE @result.
+  ENDMETHOD.
+
+
+  METHOD fetch_full_tree_count.
+    SELECT COUNT(*)
+      FROM zabaptags_tgobjn AS tgobj
+        INNER JOIN zabaptags_tags AS tag
+          ON tgobj~tag_id = tag~tag_id
+      WHERE tag~owner = @sy-uname
+         OR tag~owner = @space
+      INTO @tree_result-tagged_object_count.
+
+    DATA(shared_tags) = get_shared_tags( ).
+    IF shared_tags IS NOT INITIAL.
+      SELECT COUNT(*) FROM zabaptags_tgobjn
+        WHERE tag_id IN @shared_tags
+        INTO @DATA(temp_count).
+      tree_result-tagged_object_count = tree_result-tagged_object_count + temp_count.
+    ENDIF.
   ENDMETHOD.
 
 ENDCLASS.
