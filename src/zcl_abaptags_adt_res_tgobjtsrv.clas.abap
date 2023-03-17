@@ -142,10 +142,10 @@ CLASS zcl_abaptags_adt_res_tgobjtsrv IMPLEMENTATION.
   METHOD get_matching_objects.
     TYPES:
       BEGIN OF ty_tgobj_with_count,
-        tag_id        TYPE zabaptags_tgobjn-tag_id,
-        name          TYPE zabaptags_tgobjn-object_name,
-        type          TYPE zabaptags_tgobjn-object_type,
-        sub_obj_count TYPE i,
+        tag_id       TYPE zabaptags_tgobjn-tag_id,
+        name         TYPE zabaptags_tgobjn-object_name,
+        type         TYPE zabaptags_tgobjn-object_type,
+        has_children TYPE abap_bool,
       END OF ty_tgobj_with_count.
 
     DATA: matching_objects TYPE STANDARD TABLE OF ty_tgobj_with_count.
@@ -156,27 +156,28 @@ CLASS zcl_abaptags_adt_res_tgobjtsrv IMPLEMENTATION.
     ENDIF.
 
     IF tag_infos-has_children = abap_true.
-      SELECT tgobj~tag_id,
-             tgobj~object_name AS name,
-             tgobj~object_type AS type,
-             COUNT( * ) AS sub_obj_count
-        FROM zabaptags_tgobjn AS tgobj
-          LEFT OUTER JOIN zabaptags_tgobjn AS sub_tgobj
-            ON  tgobj~object_name = sub_tgobj~parent_object_name
-            AND tgobj~object_type = sub_tgobj~parent_object_type
-            AND tgobj~tag_id      = sub_tgobj~parent_tag_id
-        WHERE tgobj~tag_id IN @tag_id_range
-          AND tgobj~parent_object_name = @space
-        GROUP BY tgobj~tag_id,
-                 tgobj~object_name,
-                 tgobj~object_type
+      SELECT tgobj~tagid AS tag_id,
+             tgobj~objectname AS name,
+             tgobj~objecttype AS type,
+             coalesce( sub_tgobj~dummy, @abap_false ) AS has_children
+        FROM ZAbapTags_I_TgObjn AS tgobj
+          LEFT OUTER JOIN ZAbapTags_I_TgObjn AS sub_tgobj
+            ON  tgobj~objectname = sub_tgobj~parentobjectname
+            AND tgobj~objecttype = sub_tgobj~parentobjecttype
+            AND tgobj~tagid      = sub_tgobj~parenttagid
+        WHERE tgobj~tagid IN @tag_id_range
+          AND tgobj~parentobjectname = @space
+        GROUP BY tgobj~tagid,
+                 tgobj~objectname,
+                 tgobj~objecttype,
+                 sub_tgobj~dummy
         INTO CORRESPONDING FIELDS OF TABLE @matching_objects.
     ELSE.
       SELECT DISTINCT
              tgobj~tag_id,
              tgobj~object_name AS name,
              tgobj~object_type AS type,
-             0 AS sub_obj_count
+             @abap_false AS has_children
         FROM zabaptags_tgobjn AS tgobj
         WHERE tgobj~tag_id IN @tag_id_range
           AND tgobj~parent_object_name = @space
@@ -202,7 +203,7 @@ CLASS zcl_abaptags_adt_res_tgobjtsrv IMPLEMENTATION.
         name       = <matching_obj>-name ).
 
       DATA(tagged_object) = VALUE zabaptags_tgobj_tree_object(
-        expandable = xsdbool( <matching_obj>-sub_obj_count > 0 )
+        expandable = <matching_obj>-has_children
         object_ref = VALUE #(
           name         = <matching_obj>-name
           type         = adt_object_ref-type
