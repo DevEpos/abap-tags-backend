@@ -16,8 +16,6 @@ CLASS zcl_abaptags_adt_res_tgobj DEFINITION
   PRIVATE SECTION.
     CONSTANTS:
       BEGIN OF c_actions,
-        lock         TYPE string VALUE 'lock',
-        unlock       TYPE string VALUE 'unlock',
         batch_delete TYPE string VALUE 'batchDelete',
       END OF c_actions,
       BEGIN OF c_params,
@@ -65,7 +63,10 @@ CLASS zcl_abaptags_adt_res_tgobj DEFINITION
         CHANGING
           tags         TYPE zabaptags_adt_object_tag_t
         RAISING
-          cx_adt_rest.
+          cx_adt_rest,
+      fill_primary_keys
+        RAISING
+          zcx_abaptags_adt_error.
 ENDCLASS.
 
 
@@ -83,29 +84,24 @@ CLASS zcl_abaptags_adt_res_tgobj IMPLEMENTATION.
     DATA(binary_data) = request->get_inner_rest_request( )->get_entity( )->get_binary_data( ).
     IF binary_data IS NOT INITIAL.
       request->get_body_data(
-        EXPORTING content_handler = get_content_handler( )
-        IMPORTING data            = tagged_objects ).
+        EXPORTING
+          content_handler = get_content_handler( )
+        IMPORTING
+          data            = tagged_objects ).
     ENDIF.
 
     CHECK tagged_objects IS NOT INITIAL.
 
     action_name = zcl_abaptags_adt_request_util=>get_request_param_value(
-      param_name    = c_params-action
-      request       = request ).
+      param_name = c_params-action
+      request    = request ).
 
     IF action_name IS INITIAL.
-
-*      " create/update tags
+      " create/update tags
       create_tagged_objects( ).
     ELSE.
       CASE action_name.
-*
-*        WHEN c_actions-lock.
-*          lock( ).
-*
-*        WHEN c_actions-unlock.
-*          unlock( ).
-*
+
         WHEN c_actions-batch_delete.
           delete_tags_from_objects( ).
       ENDCASE.
@@ -117,43 +113,14 @@ CLASS zcl_abaptags_adt_res_tgobj IMPLEMENTATION.
   METHOD get.
     DATA: texts TYPE TABLE OF seu_objtxt.
 
+
+
     DATA(object_uri) = zcl_abaptags_adt_request_util=>get_request_param_value(
-      param_name    = c_params-object_uri
-      mandatory     = abap_true
-      request       = request ).
+      param_name = c_params-object_uri
+      mandatory  = abap_true
+      request    = request ).
 
-    zcl_abaptags_adt_util=>map_uri_to_wb_object(
-     EXPORTING uri         = object_uri
-     IMPORTING object_name = DATA(object_name)
-               tadir_type  = DATA(object_type)
-               object_type = DATA(adt_type) ).
-
-    DATA(tadir_object) = VALUE zif_abaptags_ty_global=>ty_tadir_key( name = object_name type = object_type ).
-    DATA(tags) = VALUE zif_abaptags_ty_global=>ty_tag_infos(
-      ( LINES OF tags_dac->find_tags_of_object( tadir_object ) )
-      ( LINES OF tags_dac->find_shared_tags_of_object( tadir_object ) ) ).
-
-    zcl_abaptags_tag_util=>det_hierarchical_tag_names( CHANGING tag_info = tags ).
-
-    texts = VALUE #( ( object = object_type obj_name = object_name ) ).
-
-    CALL FUNCTION 'RS_SHORTTEXT_GET'
-      TABLES
-        obj_tab = texts.
-
-    tagged_objects = VALUE #(
-      ( adt_obj_ref = VALUE #(
-          name        = object_name
-          description = texts[ 1 ]-stext
-          tadir_type  = object_type
-          type        = COND #(
-            WHEN adt_type-subtype_wb <> space THEN |{ adt_type-objtype_tr }/{ adt_type-subtype_wb }| ELSE adt_type )
-          uri         = object_uri )
-        tags = VALUE #(
-          FOR tag IN tags
-          ( tag_id   = tag-tag_id
-            tag_name = tag-full_hierarchy
-            owner    = tag-owner ) ) ) ).
+    tagged_objects = VALUE #( ( NEW zcl_abaptags_tgobj_read_single( object_uri )->run( ) ) ).
 
     response->set_body_data(
       content_handler = get_content_handler( )
@@ -245,15 +212,30 @@ CLASS zcl_abaptags_adt_res_tgobj IMPLEMENTATION.
 
     LOOP AT tagged_objects ASSIGNING <tagged_object>.
 
-      zcl_abaptags_adt_util=>map_uri_to_wb_object(
-        EXPORTING uri         = <tagged_object>-adt_obj_ref-uri
-        IMPORTING object_name = tadir_object
-                  tadir_type  = tadir_type ).
+      zcl_abaptags_adt_util=>map_uri_to_wb_object( EXPORTING uri         = <tagged_object>-adt_obj_ref-uri
+                                                   IMPORTING object_name = tadir_object
+                                                             tadir_type  = tadir_type ).
 
-      collect_tgobj_for_insert(
-        EXPORTING tadir_object = tadir_object
-                  tadir_type   = tadir_type
-        CHANGING  tags         = <tagged_object>-tags ).
+      collect_tgobj_for_insert( EXPORTING tadir_object = tadir_object
+                                          tadir_type   = tadir_type
+                                CHANGING  tags         = <tagged_object>-tags ).
+    ENDLOOP.
+
+    tags_dac->filter_existing_tagged_objects( CHANGING tagged_objects = tagged_objects_db ).
+    fill_primary_keys( ).
+  ENDMETHOD.
+
+
+  METHOD fill_primary_keys.
+
+    LOOP AT tagged_objects_db ASSIGNING FIELD-SYMBOL(<tgobj_db_new>).
+      TRY.
+          <tgobj_db_new>-id = cl_system_uuid=>create_uuid_x16_static( ).
+        CATCH cx_uuid_error.
+          RAISE EXCEPTION TYPE zcx_abaptags_adt_error
+            EXPORTING
+              textid = zcx_abaptags_adt_error=>tags_persisting_failure.
+      ENDTRY.
     ENDLOOP.
 
   ENDMETHOD.
@@ -270,21 +252,31 @@ CLASS zcl_abaptags_adt_res_tgobj IMPLEMENTATION.
 
     LOOP AT tagged_objects ASSIGNING <tagged_object>.
 
-      zcl_abaptags_adt_util=>map_uri_to_wb_object(
-        EXPORTING uri         = <tagged_object>-adt_obj_ref-uri
-        IMPORTING object_name = tadir_object
-                  tadir_type  = tadir_type ).
+      IF <tagged_object>-adt_obj_ref-uri IS NOT INITIAL.
+        zcl_abaptags_adt_util=>map_uri_to_wb_object( EXPORTING uri         = <tagged_object>-adt_obj_ref-uri
+                                                     IMPORTING object_name = tadir_object
+                                                               tadir_type  = tadir_type ).
+      ENDIF.
 
       LOOP AT <tagged_object>-tags ASSIGNING <tag>.
+        IF <tag>-parent_uri IS NOT INITIAL.
+          zcl_abaptags_adt_util=>map_uri_to_wb_object( EXPORTING uri         = <tag>-parent_uri
+                                                       IMPORTING object_name = DATA(parent_obj_name)
+                                                                 tadir_type  = DATA(parent_tadir_type) ).
+        ENDIF.
+
         tagged_objects_db = VALUE #( BASE tagged_objects_db
-         ( object_type = tadir_type
-           object_name = tadir_object
-           tag_id      = <tag>-tag_id ) ).
+         ( object_type        = tadir_type
+           object_name        = tadir_object
+           tag_id             = <tag>-tag_id
+           parent_tag_id      = <tag>-parent_tag_id
+           parent_object_name = parent_obj_name
+           parent_object_type = parent_tadir_type ) ).
       ENDLOOP.
 
     ENDLOOP.
 
-    tags_dac->delete_tagged_objects( tagged_objects_db ).
+    NEW zcl_abaptags_tgobj_delete( tagged_objects_db )->run( ).
   ENDMETHOD.
 
 
@@ -366,16 +358,16 @@ CLASS zcl_abaptags_adt_res_tgobj IMPLEMENTATION.
       ENDIF.
 
       IF <tag>-parent_uri IS NOT INITIAL.
-        zcl_abaptags_adt_util=>map_uri_to_wb_object(
-          EXPORTING uri         = <tag>-parent_uri
-          IMPORTING object_name = parent_object
-                    tadir_type  = parent_type ).
+        zcl_abaptags_adt_util=>map_uri_to_wb_object( EXPORTING uri         = <tag>-parent_uri
+                                                     IMPORTING object_name = parent_object
+                                                               tadir_type  = parent_type ).
       ENDIF.
 
       tagged_objects_db = VALUE #( BASE tagged_objects_db
        ( object_type        = tadir_type
          object_name        = tadir_object
          tag_id             = <tag>-tag_id
+         parent_tag_id      = <tag>-parent_tag_id
          parent_object_type = parent_type
          parent_object_name = parent_object
          tagged_by          = sy-uname
@@ -383,6 +375,5 @@ CLASS zcl_abaptags_adt_res_tgobj IMPLEMENTATION.
     ENDLOOP.
 
   ENDMETHOD.
-
 
 ENDCLASS.

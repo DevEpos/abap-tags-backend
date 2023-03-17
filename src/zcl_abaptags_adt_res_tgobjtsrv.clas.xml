@@ -1,0 +1,28 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<abapGit version="v1.0.0" serializer="LCL_OBJECT_CLAS" serializer_version="v1.0.0">
+ <asx:abap xmlns:asx="http://www.sap.com/abapxml" version="1.0">
+  <asx:values>
+   <VSEOCLASS>
+    <CLSNAME>ZCL_ABAPTAGS_ADT_RES_TGOBJTSRV</CLSNAME>
+    <LANGU>E</LANGU>
+    <DESCRIPT>Resource for Tagged object tree services</DESCRIPT>
+    <STATE>1</STATE>
+    <CLSCCINCL>X</CLSCCINCL>
+    <FIXPT>X</FIXPT>
+    <UNICODE>X</UNICODE>
+   </VSEOCLASS>
+   <DESCRIPTIONS>
+    <SEOCOMPOTX>
+     <CMPNAME>GET_REQUEST_CONTENT_HANDLER</CMPNAME>
+     <LANGU>E</LANGU>
+     <DESCRIPT>Get Content handler for request</DESCRIPT>
+    </SEOCOMPOTX>
+    <SEOCOMPOTX>
+     <CMPNAME>GET_RESPONSE_CONTENT_HANDLER</CMPNAME>
+     <LANGU>E</LANGU>
+     <DESCRIPT>Get Content handler for response</DESCRIPT>
+    </SEOCOMPOTX>
+   </DESCRIPTIONS>
+  </asx:values>
+ </asx:abap>
+</abapGit>

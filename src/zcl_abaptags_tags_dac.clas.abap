@@ -32,10 +32,6 @@ CLASS zcl_abaptags_tags_dac DEFINITION
       delete_shared_tags
         IMPORTING
           shared_tags_db TYPE zif_abaptags_ty_global=>ty_db_shared_tags OPTIONAL,
-      "! <p class="shorttext synchronized" lang="en">Deletes tagged objects from DB</p>
-      delete_tagged_objects
-        IMPORTING
-          tagged_objects TYPE zif_abaptags_ty_global=>ty_db_tagged_objects,
       "! <p class="shorttext synchronized" lang="en">Deletes tag db entries by id range</p>
       delete_tag_by_id
         IMPORTING
@@ -115,10 +111,15 @@ CLASS zcl_abaptags_tags_dac DEFINITION
           parent_object_type_range TYPE zif_abaptags_ty_global=>ty_obj_type_range OPTIONAL
         RETURNING
           VALUE(result)            TYPE zif_abaptags_ty_global=>ty_db_tagged_objects,
+      "! <p class="shorttext synchronized" lang="en">Finds existing tagged objects</p>
+      filter_existing_tagged_objects
+        CHANGING
+          tagged_objects TYPE zif_abaptags_ty_global=>ty_db_tagged_objects,
       "! <p class="shorttext synchronized" lang="en">Get info about tagged objects</p>
       get_tagged_obj_info
         IMPORTING
           tagged_objects TYPE zif_abaptags_ty_global=>ty_db_tagged_objects
+          tag_id_range   TYPE zif_abaptags_ty_global=>ty_tag_id_range OPTIONAL
         RETURNING
           VALUE(result)  TYPE zif_abaptags_ty_global=>ty_tgobj_infos,
       "! <p class="shorttext synchronized" lang="en">Get info about children of tagged objects</p>
@@ -233,21 +234,14 @@ CLASS zcl_abaptags_tags_dac IMPLEMENTATION.
   ENDMETHOD.
 
 
-  METHOD delete_tagged_objects.
-    CHECK tagged_objects IS NOT INITIAL.
-    DELETE zabaptags_tgobj FROM TABLE tagged_objects.
-    IF sy-subrc = 0.
-      COMMIT WORK.
-    ENDIF.
-  ENDMETHOD.
-
-
   METHOD delete_tag_by_id.
     CHECK id_range IS NOT INITIAL.
 
-    DELETE FROM zabaptags_tgobj WHERE tag_id IN id_range.
+    DELETE FROM zabaptags_tgobjn WHERE tag_id IN id_range.
     DELETE FROM zabaptags_tags WHERE tag_id IN id_range.
     DELETE FROM zabaptags_shtags WHERE tag_id IN id_range.
+    DELETE FROM zabaptags_tagsrm WHERE tag_id IN id_range
+                                    OR root_tag_id IN id_range.
 
     COMMIT WORK.
   ENDMETHOD.
@@ -367,7 +361,7 @@ CLASS zcl_abaptags_tags_dac IMPLEMENTATION.
            tag~parent_tag_id,
            tag~owner,
            tag~name
-      FROM zabaptags_tgobj AS tgobj
+      FROM zabaptags_tgobjn AS tgobj
         INNER JOIN zabaptags_tags AS tag
           ON tgobj~tag_id = tag~tag_id
       WHERE tgobj~object_name = @tadir_obj-name
@@ -384,7 +378,7 @@ CLASS zcl_abaptags_tags_dac IMPLEMENTATION.
            tag~parent_tag_id,
            tag~owner,
            tag~name
-      FROM zabaptags_tgobj AS tgobj
+      FROM zabaptags_tgobjn AS tgobj
         INNER JOIN zabaptags_tags AS tag
           ON tgobj~tag_id = tag~tag_id
         INNER JOIN zabaptags_shtags AS shared_tag
@@ -403,7 +397,7 @@ CLASS zcl_abaptags_tags_dac IMPLEMENTATION.
     IF only_matching_all_tag = abap_true
          AND tag_count > 0.
       SELECT object_name, object_type
-        FROM zabaptags_tgobj
+        FROM zabaptags_tgobjn
         WHERE tag_id IN @tag_id_range
           AND object_name IN @object_name_range
           AND object_type IN @object_type_range
@@ -416,7 +410,7 @@ CLASS zcl_abaptags_tags_dac IMPLEMENTATION.
         UP TO @max_results ROWS.
     ELSE.
       SELECT DISTINCT object_name, object_type
-        FROM zabaptags_tgobj
+        FROM zabaptags_tgobjn
         WHERE tag_id IN @tag_id_range
           AND object_name IN @object_name_range
           AND object_type IN @object_type_range
@@ -429,6 +423,45 @@ CLASS zcl_abaptags_tags_dac IMPLEMENTATION.
   ENDMETHOD.
 
 
+  METHOD filter_existing_tagged_objects.
+    DATA: existing_tgobj TYPE SORTED TABLE OF zabaptags_tgobjn WITH NON-UNIQUE KEY object_name
+                                                                                   object_type
+                                                                                   tag_id.
+
+    CHECK tagged_objects IS NOT INITIAL.
+
+    SELECT object_name,
+           object_type,
+           tag_id,
+           parent_tag_id,
+           parent_object_name,
+           parent_object_type
+      FROM zabaptags_tgobjn
+      FOR ALL ENTRIES IN @tagged_objects
+      " do not use the whole key (performance??)
+      WHERE object_name = @tagged_objects-object_name
+        AND object_type = @tagged_objects-object_type
+        AND tag_id      = @tagged_objects-tag_id
+      INTO CORRESPONDING FIELDS OF TABLE @existing_tgobj.
+
+    IF sy-subrc <> 0.
+      RETURN. " no existing entries in database
+    ENDIF.
+
+    LOOP AT tagged_objects ASSIGNING FIELD-SYMBOL(<tagged_obj>).
+      IF line_exists( existing_tgobj[ object_name        = <tagged_obj>-object_name
+                                      object_type        = <tagged_obj>-object_type
+                                      tag_id             = <tagged_obj>-tag_id
+                                      parent_tag_id      = <tagged_obj>-parent_tag_id
+                                      parent_object_name = <tagged_obj>-parent_object_name
+                                      parent_object_type = <tagged_obj>-parent_object_type ] ).
+        DELETE tagged_objects.
+      ENDIF.
+    ENDLOOP.
+
+  ENDMETHOD.
+
+
   METHOD get_tagged_obj_info.
     CHECK tagged_objects IS NOT INITIAL.
 
@@ -438,11 +471,12 @@ CLASS zcl_abaptags_tags_dac IMPLEMENTATION.
            tag~name AS tag_name,
            tag~owner AS tag_owner
       FROM zabaptags_tags AS tag
-        INNER JOIN zabaptags_tgobj AS tagged_object
+        INNER JOIN zabaptags_tgobjn AS tagged_object
           ON tag~tag_id = tagged_object~tag_id
       FOR ALL ENTRIES IN @tagged_objects
       WHERE tagged_object~object_type = @tagged_objects-object_type
         AND tagged_object~object_name = @tagged_objects-object_name
+        AND tagged_object~tag_id IN @tag_id_range
       INTO CORRESPONDING FIELDS OF TABLE @result.
   ENDMETHOD.
 
@@ -457,9 +491,9 @@ CLASS zcl_abaptags_tags_dac IMPLEMENTATION.
            tgobj~parent_object_name,
            tgobj~parent_object_type
       FROM zabaptags_tags AS tag
-        INNER JOIN zabaptags_tgobj AS tgobj
+        INNER JOIN zabaptags_tgobjn AS tgobj
           ON tag~tag_id = tgobj~tag_id
-      WHERE parent_tag_id IN @parent_tag_ids
+      WHERE tag~parent_tag_id IN @parent_tag_ids
       INTO CORRESPONDING FIELDS OF TABLE @result.
   ENDMETHOD.
 
@@ -477,19 +511,30 @@ CLASS zcl_abaptags_tags_dac IMPLEMENTATION.
 
     CLEAR log_op.
 
-    SELECT tag_id, COUNT( * ) AS count
-      FROM zabaptags_tgobj
-      WHERE (where)
-        AND tag_id IN @tag_ids
-      GROUP BY tag_id
-      INTO CORRESPONDING FIELDS OF TABLE @result.
+    IF where IS NOT INITIAL.
+      " As hierarchical tags can be assigned multiple times to an object
+      " via different tags/parent objects a helper CDS view will be used to get the
+      " correct tag count for the list of given objects
+      SELECT tag_id, COUNT( * ) AS count
+        FROM zabaptags_i_taggedobjaggr
+        WHERE (where)
+          AND tag_id IN @tag_ids
+        GROUP BY tag_id
+        INTO CORRESPONDING FIELDS OF TABLE @result.
+    ELSE.
+      SELECT tag_id, COUNT( * ) AS count
+        FROM zabaptags_tgobjn
+        WHERE tag_id IN @tag_ids
+        GROUP BY tag_id
+        INTO CORRESPONDING FIELDS OF TABLE @result.
+    ENDIF.
   ENDMETHOD.
 
 
   METHOD insert_tagged_objects.
     CHECK new_tagged_objects IS NOT INITIAL.
 
-    INSERT zabaptags_tgobj FROM TABLE new_tagged_objects ACCEPTING DUPLICATE KEYS.
+    INSERT zabaptags_tgobjn FROM TABLE new_tagged_objects.
     IF sy-dbcnt > 0.
       COMMIT WORK.
     ENDIF.

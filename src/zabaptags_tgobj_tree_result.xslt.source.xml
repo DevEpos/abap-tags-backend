@@ -1,0 +1,78 @@
+<?sap.transform simple?>
+<tt:transform xmlns:tt="http://www.sap.com/transformation-templates" xmlns:ddic="http://www.sap.com/abapxml/types/dictionary" xmlns:atm="http://www.devepos.com/adt/atm">
+
+  <tt:root name="tree_result" type="ddic:zabaptags_tgobj_tree_result"/>
+  <tt:include name="zabaptags_adt_obj_ref" template="adtObjRef"/>
+  <tt:include name="zabaptags_tag" template="tags"/>
+
+  <tt:template>
+    <tt:apply name="tagTreeResult">
+      <tt:with-root name="tree_result" ref="tree_result"/>
+    </tt:apply>
+  </tt:template>
+
+  <tt:template name="tagTreeResult">
+    <tt:context>
+      <tt:root name="tree_result"/>
+    </tt:context>
+
+    <atm:tagTreeResult tt:extensible="deep">
+      <tt:cond check="not-initial(tree_result.tagged_object_count)">
+        <tt:attribute name="atm:taggedObjectCount" value-ref="tree_result.tagged_object_count"/>
+      </tt:cond>
+
+      <!-- Tags -->
+      <tt:cond check="exist(tree_result.tags)">
+        <tt:cond check="not-initial(tree_result.tags)">
+          <tt:apply name="tags">
+            <tt:with-root name="tags" ref="tree_result.tags"/>
+          </tt:apply>
+        </tt:cond>
+      </tt:cond>
+
+      <!-- Tagged Objects -->
+      <tt:cond check="exist(tree_result.objects)">
+        <tt:cond check="not-initial(tree_result.objects)">
+          <tt:apply name="objects">
+            <tt:with-root name="objects" ref="tree_result.objects"/>
+          </tt:apply>
+        </tt:cond>
+      </tt:cond>
+
+    </atm:tagTreeResult>
+  </tt:template>
+
+  <!-- Objects with tagged object count -->
+  <tt:template name="objects">
+    <tt:context>
+      <tt:root name="objects" type="ddic:zabaptags_tgobj_tree_object_t"/>
+    </tt:context>
+    <tt:cond check="not-initial(objects)">
+      <tt:loop ref="objects">
+        <tt:apply name="object">
+          <tt:with-root name="object" ref="$ref"/>
+        </tt:apply>
+      </tt:loop>
+    </tt:cond>
+  </tt:template>
+
+  <tt:template name="object">
+    <tt:context>
+      <tt:root name="object" type="ddic:zabaptags_tgobj_tree_object"/>
+    </tt:context>
+
+    <atm:object>
+      <tt:attribute name="atm:taggedObjectCount" value-ref="object.tagged_object_count"/>
+      <tt:attribute name="atm:expandable" option="format(boolean)" value-ref="object.expandable"/>
+      <tt:cond check="not-initial(object.parent_tag_id)">
+        <tt:attribute name="atm:parentTagId" option="format(guid)" value-ref="object.parent_tag_id"/>
+      </tt:cond>
+
+      <tt:apply name="adtObjRef">
+        <tt:with-root name="adt_obj_ref" ref="object.object_ref"/>
+      </tt:apply>
+    </atm:object>
+
+  </tt:template>
+
+</tt:transform>

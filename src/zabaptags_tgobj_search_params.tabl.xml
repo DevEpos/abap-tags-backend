@@ -56,6 +56,15 @@
      <DDTEXT>The focus for the query string</DDTEXT>
     </DD03P>
     <DD03P>
+     <FIELDNAME>RESULT_GROUP_LEVEL</FIELDNAME>
+     <ADMINFIELD>0</ADMINFIELD>
+     <INTTYPE>g</INTTYPE>
+     <INTLEN>000008</INTLEN>
+     <DATATYPE>STRG</DATATYPE>
+     <MASK>  STRG</MASK>
+     <DDTEXT>Grouping level of search result</DDTEXT>
+    </DD03P>
+    <DD03P>
      <FIELDNAME>MAX_RESULTS</FIELDNAME>
      <ADMINFIELD>0</ADMINFIELD>
      <INTTYPE>X</INTTYPE>

@@ -25,7 +25,10 @@ INTERFACE zif_abaptags_ty_global
     ty_db_tags           TYPE STANDARD TABLE OF zabaptags_tags WITH EMPTY KEY,
 
     "! <p class="shorttext synchronized" lang="en">List of tagged objects (DB)</p>
-    ty_db_tagged_objects TYPE STANDARD TABLE OF zabaptags_tgobj WITH EMPTY KEY,
+    ty_db_tagged_objects TYPE STANDARD TABLE OF zabaptags_tgobjn WITH EMPTY KEY,
+
+    "! <p class="shorttext synchronized" lang="en">List of Tag Root Maps</p>
+    ty_db_tags_root_maps TYPE STANDARD TABLE OF zabaptags_tagsrm WITH EMPTY KEY,
 
     "! <p class="shorttext synchronized" lang="en">Range of TADIR object name</p>
     ty_wb_objname_range  TYPE RANGE OF tadir-obj_name,
@@ -43,8 +46,15 @@ INTERFACE zif_abaptags_ty_global
       group    TYPE rs38l_area,
     END OF ty_func_module_info,
 
+    BEGIN OF ty_tag_with_parent_map,
+      tag_id        TYPE zabaptags_tag_id,
+      parent_tag_id TYPE zabaptags_tag_id,
+    END OF ty_tag_with_parent_map,
+
+    ty_tag_with_parent_maps TYPE STANDARD TABLE OF ty_tag_with_parent_map WITH EMPTY KEY,
+
     "! <p class="shorttext synchronized" lang="en">List of function module infos</p>
-    ty_func_module_infos TYPE STANDARD TABLE OF ty_func_module_info
+    ty_func_module_infos    TYPE STANDARD TABLE OF ty_func_module_info
       WITH EMPTY KEY
       WITH UNIQUE SORTED KEY function COMPONENTS function,
 
@@ -55,7 +65,7 @@ INTERFACE zif_abaptags_ty_global
     END OF ty_tadir_key,
 
     "! <p class="shorttext synchronized" lang="en">List of TADIR key entries</p>
-    ty_tadir_keys TYPE SORTED TABLE OF ty_tadir_key WITH UNIQUE KEY type name,
+    ty_tadir_keys TYPE STANDARD TABLE OF ty_tadir_key WITH EMPTY KEY,
 
     "! <p class="shorttext synchronized" lang="en">Extract of table TADIR</p>
     BEGIN OF ty_tadir_info,
