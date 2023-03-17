@@ -222,6 +222,7 @@ CLASS zcl_abaptags_adt_res_tgobjsrch IMPLEMENTATION.
             name = <tagged_object>-object_name
             type = <tagged_object>-object_type ).
         CATCH cx_sy_itab_line_not_found.
+          " TODO: handle some edge cases, like $-packages
           CONTINUE.
       ENDTRY.
 
@@ -238,7 +239,6 @@ CLASS zcl_abaptags_adt_res_tgobjsrch IMPLEMENTATION.
           uri          = adt_object_ref-uri
           package_name = tadir_info-package_name
           owner        = tadir_info-author ) ).
-
 
       LOOP AT tgobj_infos ASSIGNING FIELD-SYMBOL(<tag_info>) WHERE object_name = <tagged_object>-object_name
                                                                AND object_type = <tagged_object>-object_type.
