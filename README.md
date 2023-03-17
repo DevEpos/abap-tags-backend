@@ -1,4 +1,6 @@
-![](https://img.shields.io/badge/ABAP-v7.40sp08+-orange)
+![](https://img.shields.io/badge/ABAP-v7.40sp08+-green)
+[![abap package version](https://img.shields.io/endpoint?url=https://shield.abap.space/version-shield-json/github/stockbal/abap-tags-backend/src/zif_abaptags_version.intf.abap/version&label=version)](https://github/stockbal/abap-tags-backend/src/zif_abaptags_version.intf.abap)
+
 # abap-tags-backend
 
 This Repository contains the ADT Backend that is needed to use the eclipse plugin
@@ -6,7 +8,14 @@ This Repository contains the ADT Backend that is needed to use the eclipse plugi
 
 ## Installation
 
-Install this repository using [abapGit](https://github.com/larshp/abapGit#abapgit).
+Install this repository using [abapGit](https://github.com/abapGit/abapGit#abapgit).
+
+## Upgrade to v2.0.0
+
+> **Warning**  
+
+Due to the introduction of new database tables it is necessary to execute the program `ZABAPTAGS_MIGR_v2_0` if you are upgrading from a previous version.  
+It is _not_ required for new installations.
 
 ## Necessary Authorizations
 
