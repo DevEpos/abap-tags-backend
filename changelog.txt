@@ -12,8 +12,7 @@ Legend
 2023-03-18 v2.0.0
 -------------------
 
-! MIGRATION REQUIRED due to new DB Tables 
-  Please run report ZABAPTAGS_MIGR_v2_0
+! MIGRATION REQUIRED due to new DB Tables ==> see Report ZABAPTAGS_MIGR_v2_0
 ! Allow multiple object assignments to different parent objects
 ! Minor enhancements to search API
 + New feature 'Tagged Object Trees'
