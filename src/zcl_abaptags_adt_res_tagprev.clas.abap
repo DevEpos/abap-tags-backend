@@ -80,18 +80,27 @@ CLASS zcl_abaptags_adt_res_tagprev IMPLEMENTATION.
                                                        IMPORTING object_name = obj_ref_int-name
                                                                  object_type = DATA(object_type)
                                                                  tadir_type  = obj_ref_int-tadir_type ).
-          obj_ref_int-type = COND #( WHEN object_type-subtype_wb IS NOT INITIAL
-            THEN object_type-objtype_tr && '/' && object_type-subtype_wb
-            ELSE object_type-objtype_tr ).
-          CONDENSE obj_ref_int-name.
-          IF obj_ref_int-name CA ' '.
-            DATA(whitespace_off) = find( val = obj_ref_int-name regex = '\s' ).
-            IF whitespace_off <> -1.
-              obj_ref_int-name = obj_ref_int-name(whitespace_off).
-            ENDIF.
 
-            obj_ref_int-uri = zcl_abaptags_adt_util=>get_adt_obj_ref( name = |{ obj_ref_int-name }|
-                                                                      wb_type = object_type )-uri.
+          IF <obj_ref>-type = zif_abaptags_c_global=>wb_object_types-local_class or
+              <obj_ref>-type = zif_abaptags_c_global=>wb_object_types-local_interface.
+            DATA(glob_class_name) = COND #(
+              WHEN strlen( obj_ref_int-name ) > 30 THEN obj_ref_int-name(30) ELSE obj_ref_int-name ).
+            obj_ref_int-parent_name = condense( translate( val = glob_class_name from = '=' to = space ) ).
+            obj_ref_int-name = <obj_ref>-name.
+          ELSE.
+            obj_ref_int-type = COND #( WHEN object_type-subtype_wb IS NOT INITIAL
+              THEN object_type-objtype_tr && '/' && object_type-subtype_wb
+              ELSE object_type-objtype_tr ).
+            CONDENSE obj_ref_int-name.
+            IF obj_ref_int-name CA ' '.
+              DATA(whitespace_off) = find( val = obj_ref_int-name regex = '\s' ).
+              IF whitespace_off <> -1.
+                obj_ref_int-name = obj_ref_int-name(whitespace_off).
+              ENDIF.
+
+              obj_ref_int-uri = zcl_abaptags_adt_util=>get_adt_obj_ref( name = |{ obj_ref_int-name }|
+                                                                        wb_type = object_type )-uri.
+            ENDIF.
           ENDIF.
           INSERT obj_ref_int INTO TABLE object_refs.
         CATCH cx_adt_uri_mapping.
