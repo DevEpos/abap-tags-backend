@@ -28,6 +28,11 @@
      <DESCRIPT>Retrieve ADT Object Ref for the given name/tadir type</DESCRIPT>
     </SEOCOMPOTX>
     <SEOCOMPOTX>
+     <CMPNAME>GET_LOCAL_ADT_OBJ_REF</CMPNAME>
+     <LANGU>E</LANGU>
+     <DESCRIPT>Retrieves</DESCRIPT>
+    </SEOCOMPOTX>
+    <SEOCOMPOTX>
      <CMPNAME>MAP_TADIR_OBJ_TO_OBJECT_REF</CMPNAME>
      <LANGU>E</LANGU>
      <DESCRIPT>Maps wb object to ADT object reference</DESCRIPT>

@@ -4,23 +4,23 @@
   xmlns:ddic="http://www.sap.com/abapxml/types/dictionary"
   xmlns:adtbase="http://www.devepos.com/adt/base">
 
-  <tt:root name="ADT_OBJ_REF" type="ddic:ZABAPTAGS_ADT_OBJ_REF"/>
+  <tt:root name="adt_obj_ref" type="ddic:zabaptags_adt_obj_ref"/>
 
   <tt:template>
     <tt:apply name="adtObjRef">
-      <tt:with-root name="ADT_OBJ_REF" ref="ADT_OBJ_REF"/>
+      <tt:with-root name="adt_obj_ref" ref="adt_obj_ref"/>
     </tt:apply>
   </tt:template>
 
   <!-- PUBLIC TEMPLATES (can be called from other transformations) -->
   <tt:template name="adtObjRef">
     <tt:context>
-      <tt:root name="ADT_OBJ_REF"/>
+      <tt:root name="adt_obj_ref"/>
     </tt:context>
 
     <adtbase:adtObjRef tt:extensible="deep">
       <tt:apply name="adtObjRefAttributes">
-        <tt:with-root name="ADT_OBJ_REF" ref="ADT_OBJ_REF"/>
+        <tt:with-root name="adt_obj_ref" ref="adt_obj_ref"/>
       </tt:apply>
     </adtbase:adtObjRef>
   </tt:template>
@@ -28,46 +28,54 @@
   <!-- PUBLIC TEMPLATES (can be called from other transformations) -->
   <tt:template name="adtObjRefAttributes">
     <tt:context>
-      <tt:root name="ADT_OBJ_REF"/>
+      <tt:root name="adt_obj_ref"/>
     </tt:context>
 
-    <tt:cond check="not-initial(ADT_OBJ_REF.URI)">
-      <tt:attribute name="adtbase:uri" value-ref="ADT_OBJ_REF.URI"/>
+    <tt:cond check="not-initial(adt_obj_ref.uri)">
+      <tt:attribute name="adtbase:uri" value-ref="adt_obj_ref.uri"/>
     </tt:cond>
 
-    <tt:cond check="not-initial(ADT_OBJ_REF.TYPE)">
-      <tt:attribute name="adtbase:type" value-ref="ADT_OBJ_REF.TYPE"/>
+    <tt:cond check="not-initial(adt_obj_ref.type)">
+      <tt:attribute name="adtbase:type" value-ref="adt_obj_ref.type"/>
     </tt:cond>
 
-    <tt:cond check="not-initial(ADT_OBJ_REF.TADIR_TYPE)">
-      <tt:attribute name="adtbase:tadirType" value-ref="ADT_OBJ_REF.TADIR_TYPE"/>
+    <tt:cond check="not-initial(adt_obj_ref.tadir_type)">
+      <tt:attribute name="adtbase:tadirType" value-ref="adt_obj_ref.tadir_type"/>
     </tt:cond>
 
-    <tt:cond s-check="not-initial(ADT_OBJ_REF.NAME)">
-      <tt:attribute name="adtbase:name" value-ref="ADT_OBJ_REF.NAME"/>
+    <tt:cond s-check="not-initial(adt_obj_ref.name)">
+      <tt:attribute name="adtbase:name" value-ref="adt_obj_ref.name"/>
     </tt:cond>
 
-    <tt:cond check="not-initial(ADT_OBJ_REF.OWNER)">
-      <tt:attribute name="adtbase:owner" value-ref="ADT_OBJ_REF.OWNER"/>
+    <tt:cond check="not-initial(adt_obj_ref.owner)">
+      <tt:attribute name="adtbase:owner" value-ref="adt_obj_ref.owner"/>
     </tt:cond>
 
-    <tt:cond check="not-initial(ADT_OBJ_REF.PACKAGE_NAME)">
-      <tt:attribute name="adtbase:packageName" value-ref="ADT_OBJ_REF.PACKAGE_NAME"/>
+    <tt:cond check="not-initial(adt_obj_ref.package_name)">
+      <tt:attribute name="adtbase:packageName" value-ref="adt_obj_ref.package_name"/>
+    </tt:cond>
+
+    <tt:cond check="not-initial(adt_obj_ref.parent_name)">
+      <tt:attribute name="adtbase:parentName" value-ref="adt_obj_ref.parent_name"/>
+    </tt:cond>
+
+    <tt:cond check="not-initial(adt_obj_ref.parent_uri)">
+      <tt:attribute name="adtbase:parentUri" value-ref="adt_obj_ref.parent_uri"/>
     </tt:cond>
 
     <tt:cond check="not-initial(ADT_OBJ_REF.DESCRIPTION)">
-      <tt:attribute name="adtbase:description" value-ref="ADT_OBJ_REF.DESCRIPTION"/>
+      <tt:attribute name="adtbase:description" value-ref="adt_obj_ref.description"/>
     </tt:cond>
   </tt:template>
 
   <tt:template name="adtObjRefs">
     <tt:context>
-      <tt:root name="ADT_OBJ_REFS" type="ddic:ZABAPTAGS_ADT_OBJ_REF_T"/>
+      <tt:root name="adt_obj_refs" type="ddic:zabaptags_adt_obj_ref_t"/>
     </tt:context>
     <tt:cond check="not-initial(ADT_OBJ_REFS)">
-      <tt:loop ref="ADT_OBJ_REFS">
+      <tt:loop ref="adt_obj_refs">
         <tt:apply name="adtObjRef">
-          <tt:with-root name="ADT_OBJ_REF" ref="$ref"/>
+          <tt:with-root name="adt_obj_ref" ref="$ref"/>
         </tt:apply>
       </tt:loop>
     </tt:cond>

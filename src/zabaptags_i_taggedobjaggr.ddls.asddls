@@ -9,5 +9,7 @@ define view ZAbapTags_I_TaggedObjAggr
 {
   tag_id,
   object_name,
-  object_type
+  object_type,
+  sub_object_name,
+  sub_object_type
 }

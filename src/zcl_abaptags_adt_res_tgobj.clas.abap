@@ -113,14 +113,14 @@ CLASS zcl_abaptags_adt_res_tgobj IMPLEMENTATION.
   METHOD get.
     DATA: texts TYPE TABLE OF seu_objtxt.
 
-
-
     DATA(object_uri) = zcl_abaptags_adt_request_util=>get_request_param_value(
       param_name = c_params-object_uri
       mandatory  = abap_true
       request    = request ).
 
-    tagged_objects = VALUE #( ( NEW zcl_abaptags_tgobj_read_single( object_uri )->run( ) ) ).
+    tagged_objects = VALUE #(
+      ( NEW zcl_abaptags_tgobj_read_single( object_uri )->run( ) )
+      ( LINES OF NEW zcl_abaptags_tgobj_read_locals( object_uri )->run( ) ) ).
 
     response->set_body_data(
       content_handler = get_content_handler( )
