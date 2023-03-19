@@ -225,6 +225,45 @@ CLASS zcl_abaptags_adt_res_tgobjtsrv IMPLEMENTATION.
       tree_result-objects = VALUE #( BASE tree_result-objects ( tagged_object ) ).
     ENDLOOP.
 
+    " Test: Add a local test class
+**********************************************************************
+**    DATA(local_class) = VALUE zabaptags_adt_obj_ref(
+**        name         = 'LTCL_ABAP_UNIT'
+**        type         = zif_abaptags_c_global=>wb_object_types-local_class
+**        tadir_type   = 'CLAS'
+**        parent_name  = 'ZCL_ADCOSET_SCS_SEQU_EXTENDED'
+**        owner        = 'DEVELOPER'
+**    ).
+**
+**    DATA(main_prog) = cl_oo_classname_service=>get_classpool_name( CONV #( local_class-parent_name ) ).
+**    DATA(compiler) = zcl_acallh_abap_compiler=>get( main_prog = main_prog ).
+**    DATA(fullname) = |\\PR:{ main_prog }\\TY:{ local_class-name }|.
+**    DATA(refs) = compiler->get_refs_by_fullname( full_name = fullname grade = cl_abap_compiler=>grade_definition ).
+**
+**    IF refs IS NOT INITIAL.
+**      DATA(ref) = refs[ 1 ].
+**      IF ref-statement IS NOT INITIAL.
+**        DATA(adt_tools_factory) = cl_adt_tools_core_factory=>get_instance( ).
+**        DATA(uri_mapper) = adt_tools_factory->get_uri_mapper( ).
+**        DATA(mapping_options) = adt_tools_factory->create_mapping_options( ).
+**
+**        TRY.
+**            DATA(obj_ref) = uri_mapper->map_include_to_objref(
+**              program     = main_prog
+**              include     = CONV #( ref-statement->source_info->name )
+**              line        = ref-statement->start_line
+**              line_offset = ref-statement->start_column ).
+**            local_class-uri = obj_ref->ref_data-uri.
+**            local_class-description = obj_ref->ref_data-description.
+**            local_class-package_name = obj_ref->ref_data-package_name.
+**            tree_result-objects = VALUE #( BASE tree_result-objects (
+**              object_ref = local_class
+**            ) ).
+**          CATCH cx_adt_uri_mapping.
+**        ENDTRY.
+**      ENDIF.
+**    ENDIF.
+
   ENDMETHOD.
 
 
