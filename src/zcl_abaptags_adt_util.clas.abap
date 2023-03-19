@@ -59,7 +59,14 @@ CLASS zcl_abaptags_adt_util DEFINITION
           VALUE(object_type) TYPE wbobjtype
           VALUE(tadir_type)  TYPE trobjtype
         RAISING
-          cx_adt_uri_mapping.
+          cx_adt_uri_mapping,
+
+      "! <p class="shorttext synchronized" lang="en">Retrieves</p>
+      get_local_adt_obj_ref
+        IMPORTING
+          local_obj_ref TYPE zif_abaptags_ty_global=>ty_local_adt_obj_info
+        RETURNING
+          VALUE(result) TYPE ty_adt_obj_ref_info.
   PROTECTED SECTION.
   PRIVATE SECTION.
     CONSTANTS:
@@ -159,9 +166,11 @@ CLASS zcl_abaptags_adt_util IMPLEMENTATION.
 
       IF program IS SUPPLIED.
         adt_uri_mapper->map_objref_to_include(
-          EXPORTING uri     = adt_objectref->ref_data-uri
-          IMPORTING program = program
-                    include = include ).
+          EXPORTING
+            uri     = adt_objectref->ref_data-uri
+          IMPORTING
+            program = program
+            include = include ).
       ENDIF.
     ENDIF.
   ENDMETHOD.
@@ -205,12 +214,12 @@ CLASS zcl_abaptags_adt_util IMPLEMENTATION.
       TRY.
           get_adt_objects_and_names(
             EXPORTING
-              object_name        = name
-              object_type        = tadir_type
+              object_name     = name
+              object_type     = tadir_type
               retrieve_parent = retrieve_parent
             IMPORTING
-              adt_objectref  = DATA(adt_objectref)
-              adt_uri_mapper = DATA(uri_mapper) ).
+              adt_objectref   = DATA(adt_objectref)
+              adt_uri_mapper  = DATA(uri_mapper) ).
           IF adt_objectref->ref_data-uri IS INITIAL.
             RETURN.
           ENDIF.
@@ -318,9 +327,11 @@ CLASS zcl_abaptags_adt_util IMPLEMENTATION.
 
   METHOD resolve_parent_uri.
     map_uri_to_wb_object(
-      EXPORTING uri         = adt_obj_info-parent_uri
-      IMPORTING object_name = DATA(parent_name)
-                object_type = DATA(parent_type) ).
+      EXPORTING
+        uri         = adt_obj_info-parent_uri
+      IMPORTING
+        object_name = DATA(parent_name)
+        object_type = DATA(parent_type) ).
     adt_obj_info-parent_name = parent_name.
     IF adt_obj_info-parent_name CP 'SAPL*'.
       adt_obj_info-parent_name = adt_obj_info-parent_name+4.
@@ -340,5 +351,46 @@ CLASS zcl_abaptags_adt_util IMPLEMENTATION.
     ENDIF.
   ENDMETHOD.
 
+
+  METHOD get_local_adt_obj_ref.
+    DATA(main_prog) = cl_oo_classname_service=>get_classpool_name( CONV #( local_obj_ref-global_name ) ).
+    DATA(compiler) = NEW cl_abap_compiler(
+        p_name             = main_prog
+        p_no_package_check = abap_true ).
+
+    DATA(fullname) = |\\PR:{ main_prog }\\TY:{ local_obj_ref-local_name }|.
+    compiler->get_single_ref(
+      EXPORTING
+        p_full_name  = fullname
+        p_grade      = cl_abap_compiler=>grade_definition
+        p_only_first = abap_true
+        p_extended   = abap_true
+      IMPORTING
+        p_result     = data(local_type_refs)
+      EXCEPTIONS
+        OTHERS       = 1 ).
+
+    IF sy-subrc = 0 and local_type_refs IS NOT INITIAL.
+      DATA(ref) = local_type_refs[ 1 ].
+
+      IF ref-statement IS NOT INITIAL.
+        DATA(adt_tools_factory) = cl_adt_tools_core_factory=>get_instance( ).
+        DATA(uri_mapper) = adt_tools_factory->get_uri_mapper( ).
+        DATA(mapping_options) = adt_tools_factory->create_mapping_options( ).
+
+        TRY.
+            DATA(obj_ref) = uri_mapper->map_include_to_objref(
+              program     = main_prog
+              include     = CONV #( ref-statement->source_info->name )
+              line        = ref-statement->start_line
+              line_offset = ref-statement->start_column ).
+            result-uri = obj_ref->ref_data-uri.
+            result-description = obj_ref->ref_data-description.
+            result-package_name = obj_ref->ref_data-package_name.
+          CATCH cx_adt_uri_mapping.
+        ENDTRY.
+      ENDIF.
+    ENDIF.
+  ENDMETHOD.
 
 ENDCLASS.

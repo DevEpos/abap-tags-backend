@@ -1,6 +1,6 @@
-"! <p class="shorttext synchronized" lang="en">Reads Tagged Object information about a single object</p>
-CLASS zcl_abaptags_tgobj_read_single DEFINITION
-  PUBLIC
+"! <p class="shorttext synchronized" lang="en">Reads tagged object infos for local clas, intf, etc.</p>
+CLASS zcl_abaptags_tgobj_read_locals DEFINITION
+ PUBLIC
   FINAL
   CREATE PUBLIC.
 
@@ -11,7 +11,7 @@ CLASS zcl_abaptags_tgobj_read_single DEFINITION
           object_uri TYPE string,
       run
         RETURNING
-          VALUE(result) TYPE zabaptags_tagged_object
+          VALUE(result) TYPE zabaptags_tagged_object_t
         RAISING
           cx_adt_uri_mapping.
   PROTECTED SECTION.
@@ -19,6 +19,8 @@ CLASS zcl_abaptags_tgobj_read_single DEFINITION
     TYPES BEGIN OF ty_tgobj_info.
     INCLUDE TYPE zif_abaptags_ty_global=>ty_tag_info.
     TYPES parent_tag_name TYPE string.
+    TYPES sub_object_name TYPE sobj_name.
+    TYPES sub_object_type TYPE swo_objtyp.
     TYPES parent_object_name TYPE sobj_name.
     TYPES parent_object_type TYPE trobjtype.
     TYPES parent_object_uri TYPE string.
@@ -28,20 +30,20 @@ CLASS zcl_abaptags_tgobj_read_single DEFINITION
       ty_tgobj_infos TYPE TABLE OF ty_tgobj_info WITH EMPTY KEY.
 
     DATA:
-      object_uri    TYPE string,
-      object_name   TYPE string,
-      object_type   TYPE wbobjtype,
-      tadir_type    TYPE trobjtype,
-      tgobj_infos   TYPE TABLE OF ty_tgobj_info,
-      texts         TYPE TABLE OF seu_objtxt,
+      object_uri     TYPE string,
+      object_name    TYPE string,
+      object_type    TYPE wbobjtype,
+      tadir_type     TYPE trobjtype,
+      tgobj_infos    TYPE TABLE OF ty_tgobj_info,
+      texts          TYPE TABLE OF seu_objtxt,
 
-      tagged_object TYPE zabaptags_tagged_object.
+      tagged_objects TYPE zabaptags_tagged_object_t.
 
     METHODS:
-      find_tags_of_object
+      find_tags_of_of_local_objects
         RETURNING
           VALUE(result) TYPE ty_tgobj_infos,
-      find_shared_tags_of_object
+      find_shared_tags_of_loc_objs
         RETURNING
           VALUE(result) TYPE ty_tgobj_infos,
       find_shared_tags_of_logon_user
@@ -50,8 +52,7 @@ CLASS zcl_abaptags_tgobj_read_single DEFINITION
       read_tags_of_object,
       get_result
         RETURNING
-          VALUE(result) TYPE zabaptags_tagged_object,
-      read_object_texts,
+          VALUE(result) TYPE zabaptags_tagged_object_t,
       read_parent_obj_infos,
       get_adt_obj
         IMPORTING
@@ -63,7 +64,7 @@ ENDCLASS.
 
 
 
-CLASS zcl_abaptags_tgobj_read_single IMPLEMENTATION.
+CLASS zcl_abaptags_tgobj_read_locals IMPLEMENTATION.
 
   METHOD constructor.
     me->object_uri = object_uri.
@@ -76,21 +77,21 @@ CLASS zcl_abaptags_tgobj_read_single IMPLEMENTATION.
                                                            tadir_type  = tadir_type
                                                            object_type = object_type ).
     read_tags_of_object( ).
-
     read_parent_obj_infos( ).
-    read_object_texts( ).
 
     result = get_result( ).
   ENDMETHOD.
 
 
-  METHOD find_tags_of_object.
+  METHOD find_tags_of_of_local_objects.
     SELECT DISTINCT
            tag~tag_id,
            tgobj~parent_tag_id,
            tag~owner,
            tag~name,
            parent~name AS parent_tag_name,
+           tgobj~sub_object_name,
+           tgobj~sub_object_type,
            tgobj~parent_object_name,
            tgobj~parent_object_type
       FROM zabaptags_tgobjn AS tgobj
@@ -98,16 +99,17 @@ CLASS zcl_abaptags_tgobj_read_single IMPLEMENTATION.
           ON tgobj~tag_id = tag~tag_id
         LEFT OUTER JOIN zabaptags_tags AS parent
           ON tgobj~parent_tag_id = parent~tag_id
-      WHERE tgobj~object_name = @object_name
+      WHERE tgobj~sub_object_name IS NOT NULL
+        AND tgobj~sub_object_name <> @space
+        AND tgobj~object_name = @object_name
         AND tgobj~object_type = @tadir_type
         AND ( tag~owner = @sy-uname OR tag~owner = @space )
-        AND ( tgobj~sub_object_name IS NULL OR tgobj~sub_object_name = @space )
       ORDER BY tag~owner, tag~name
       INTO CORRESPONDING FIELDS OF TABLE @result.
   ENDMETHOD.
 
 
-  METHOD find_shared_tags_of_object.
+  METHOD find_shared_tags_of_loc_objs.
 
     DATA(shared_tags_of_logon_user) = find_shared_tags_of_logon_user( ).
 
@@ -121,6 +123,8 @@ CLASS zcl_abaptags_tgobj_read_single IMPLEMENTATION.
            tag~owner,
            tag~name,
            parent~name AS parent_tag_name,
+           tgobj~sub_object_name,
+           tgobj~sub_object_type,
            tgobj~parent_object_name,
            tgobj~parent_object_type
       FROM zabaptags_tgobjn AS tgobj
@@ -128,12 +132,13 @@ CLASS zcl_abaptags_tgobj_read_single IMPLEMENTATION.
           ON tgobj~tag_id = tag~tag_id
         LEFT OUTER JOIN zabaptags_tags AS parent
           ON tgobj~parent_tag_id = parent~tag_id
-      WHERE tgobj~tag_id IN @shared_tags_of_logon_user
+      WHERE tgobj~sub_object_name IS NOT NULL
+        AND tgobj~sub_object_name <> @space
+        AND tgobj~tag_id IN @shared_tags_of_logon_user
         AND tgobj~object_name = @object_name
         AND tgobj~object_type = @tadir_type
         AND tag~owner <> @sy-uname
         AND tag~owner <> @space
-        AND ( tgobj~sub_object_name IS NULL OR tgobj~sub_object_name = @space )
       INTO CORRESPONDING FIELDS OF TABLE @result.
   ENDMETHOD.
 
@@ -166,44 +171,56 @@ CLASS zcl_abaptags_tgobj_read_single IMPLEMENTATION.
 
   METHOD read_tags_of_object.
     tgobj_infos = VALUE #(
-      ( LINES OF find_tags_of_object( ) )
-      ( LINES OF find_shared_tags_of_object( ) ) ).
+      ( LINES OF find_tags_of_of_local_objects( ) )
+      ( LINES OF find_shared_tags_of_loc_objs( ) ) ).
   ENDMETHOD.
 
 
   METHOD get_result.
-    result = VALUE #(
-      adt_obj_ref = VALUE #(
-        name        = object_name
-        description = VALUE #( texts[ object = tadir_type obj_name = object_name  ]-stext OPTIONAL )
-        tadir_type  = object_type
-        type        = COND #(
-          WHEN object_type-subtype_wb <> space THEN |{ object_type-objtype_tr }/{ object_type-subtype_wb }| ELSE object_type )
-        uri         = object_uri )
-      tags = VALUE #(
-        FOR tag IN tgobj_infos
-        LET parent = get_adt_obj(
-          object_name = tag-parent_object_name
-          object_type = tag-parent_object_type ) IN
-        ( tag_id        = tag-tag_id
-          tag_name      = tag-full_hierarchy
-          owner         = tag-owner
-          parent_name   = tag-parent_object_name
-          parent_type   = parent-type
-          parent_tag_id = tag-parent_tag_id
-          parent_uri    = parent-uri ) ) ).
-  ENDMETHOD.
 
+    LOOP AT tgobj_infos ASSIGNING FIELD-SYMBOL(<local_obj_info>)
+        GROUP BY ( sub_obj_name = <local_obj_info>-sub_object_name
+                   sub_obj_type = <local_obj_info>-sub_object_type )
+        ASSIGNING FIELD-SYMBOL(<local_obj_info_entry>).
 
-  METHOD read_object_texts.
-    texts = VALUE #( BASE texts ( object = tadir_type obj_name = object_name ) ).
+      DATA(local_adt_obj_ref) = zcl_abaptags_adt_util=>get_local_adt_obj_ref(
+        local_obj_ref = VALUE #( global_name = object_name
+                                 global_type = object_type-objtype_tr
+                                 local_name  = <local_obj_info_entry>-sub_obj_name
+                                 local_type  = <local_obj_info_entry>-sub_obj_type ) ).
 
-    SORT texts BY object obj_name.
-    DELETE ADJACENT DUPLICATES FROM texts COMPARING object obj_name.
+      IF local_adt_obj_ref IS INITIAL OR local_adt_obj_ref-uri IS INITIAL.
+        CONTINUE.
+      ENDIF.
 
-    CALL FUNCTION 'RS_SHORTTEXT_GET'
-      TABLES
-        obj_tab = texts.
+      DATA(tagged_local_obj) = VALUE zabaptags_tagged_object(
+        adt_obj_ref = VALUE #(
+          name        = <local_obj_info_entry>-sub_obj_name
+          " Type will be changed during mapping to a more generic type so
+          " we keep the originally persisted one
+          type        = <local_obj_info_entry>-sub_obj_type
+          parent_name = object_name
+          uri         = local_adt_obj_ref-uri
+          parent_uri  = object_uri ) ).
+
+      LOOP AT GROUP <local_obj_info_entry> ASSIGNING FIELD-SYMBOL(<local_obj_info_group_entry>).
+        DATA(parent) = get_adt_obj(
+          object_name = <local_obj_info_group_entry>-parent_object_name
+          object_type = <local_obj_info_group_entry>-parent_object_type ).
+
+        tagged_local_obj-tags = VALUE #( BASE tagged_local_obj-tags
+          ( tag_id        = <local_obj_info_group_entry>-tag_id
+            tag_name      = <local_obj_info_group_entry>-full_hierarchy
+            owner         = <local_obj_info_group_entry>-owner
+            parent_name   = <local_obj_info_group_entry>-parent_object_name
+            parent_type   = parent-type
+            parent_tag_id = <local_obj_info_group_entry>-parent_tag_id
+            parent_uri    = parent-uri ) ).
+        result = VALUE #( BASE result ( tagged_local_obj ) ).
+      ENDLOOP.
+
+    ENDLOOP.
+
   ENDMETHOD.
 
 

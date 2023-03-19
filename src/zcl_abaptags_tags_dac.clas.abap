@@ -432,6 +432,8 @@ CLASS zcl_abaptags_tags_dac IMPLEMENTATION.
 
     SELECT object_name,
            object_type,
+           sub_object_name,
+           sub_object_type,
            tag_id,
            parent_tag_id,
            parent_object_name,
@@ -451,6 +453,8 @@ CLASS zcl_abaptags_tags_dac IMPLEMENTATION.
     LOOP AT tagged_objects ASSIGNING FIELD-SYMBOL(<tagged_obj>).
       IF line_exists( existing_tgobj[ object_name        = <tagged_obj>-object_name
                                       object_type        = <tagged_obj>-object_type
+                                      sub_object_name    = <tagged_obj>-sub_object_name
+                                      sub_object_type    = <tagged_obj>-sub_object_type
                                       tag_id             = <tagged_obj>-tag_id
                                       parent_tag_id      = <tagged_obj>-parent_tag_id
                                       parent_object_name = <tagged_obj>-parent_object_name
@@ -503,9 +507,21 @@ CLASS zcl_abaptags_tags_dac IMPLEMENTATION.
           log_op TYPE string.
 
     LOOP AT object_refs ASSIGNING FIELD-SYMBOL(<obj_ref>).
+      DATA(obj_name) = COND #(
+        WHEN <obj_ref>-parent_name IS NOT INITIAL THEN <obj_ref>-parent_name ELSE <obj_ref>-name ).
+
+      DATA(cond) = |{ log_op }( OBJECT_TYPE = { cl_abap_dyn_prg=>quote( <obj_ref>-tadir_type ) }| &&
+        |{ c_where_and }OBJECT_NAME = { cl_abap_dyn_prg=>quote( obj_name ) }|.
+
+      IF <obj_ref>-parent_name IS NOT INITIAL AND <obj_ref>-type IS NOT INITIAL.
+        cond = |{ cond }{ c_where_and }SUB_OBJECT_NAME = { cl_abap_dyn_prg=>quote( <obj_ref>-name ) }|.
+        cond = |{ cond }{ c_where_and }SUB_OBJECT_TYPE = { cl_abap_dyn_prg=>quote( <obj_ref>-type ) }|.
+      ENDIF.
+
+      cond = |{ cond } )|.
+
       where = VALUE #( BASE where
-        ( |{ log_op }( OBJECT_TYPE = { cl_abap_dyn_prg=>quote( <obj_ref>-tadir_type ) }| &&
-          |{ c_where_and }OBJECT_NAME = { cl_abap_dyn_prg=>quote( <obj_ref>-name ) } )| ) ).
+        ( cond ) ).
       log_op = c_where_or.
     ENDLOOP.
 
