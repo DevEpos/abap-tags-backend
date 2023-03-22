@@ -19,8 +19,8 @@ CLASS zcl_abaptags_tgobj_read_locals DEFINITION
     TYPES BEGIN OF ty_tgobj_info.
     INCLUDE TYPE zif_abaptags_ty_global=>ty_tag_info.
     TYPES parent_tag_name TYPE string.
-    TYPES sub_object_name TYPE sobj_name.
-    TYPES sub_object_type TYPE swo_objtyp.
+    TYPES component_name TYPE sobj_name.
+    TYPES component_type TYPE swo_objtyp.
     TYPES parent_object_name TYPE sobj_name.
     TYPES parent_object_type TYPE trobjtype.
     TYPES parent_object_uri TYPE string.
