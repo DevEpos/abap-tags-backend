@@ -28,14 +28,17 @@ CLASS zcl_abaptags_tgobj_delete DEFINITION
       END OF ty_tag_info.
 
     DATA:
-      tagged_object_keys  TYPE zif_abaptags_ty_global=>ty_db_tagged_objects,
-      full_tgobj_keys     TYPE zif_abaptags_ty_global=>ty_db_tagged_objects,
-      tag_id_obj_keys     TYPE zif_abaptags_ty_global=>ty_db_tagged_objects,
-      child_tgobj_entries TYPE zif_abaptags_ty_global=>ty_db_tagged_objects,
-      tag_id_range_keys   TYPE RANGE OF zabaptags_tag_id,
-      tag_parent_infos    TYPE SORTED TABLE OF ty_tag_info WITH UNIQUE KEY tag_id parent_tag_id,
-      tgobj_delete         TYPE STANDARD TABLE OF ty_tgobj_info,
-      tgobj_update        TYPE zif_abaptags_ty_global=>ty_db_tagged_objects.
+      tagged_object_keys        TYPE zif_abaptags_ty_global=>ty_db_tagged_objects,
+      full_tgobj_keys           TYPE zif_abaptags_ty_global=>ty_db_tagged_objects,
+      comp_tgobj_keys           TYPE zif_abaptags_ty_global=>ty_db_tagged_objects,
+      tag_id_obj_keys           TYPE zif_abaptags_ty_global=>ty_db_tagged_objects,
+      child_tgobj_entries       TYPE zif_abaptags_ty_global=>ty_db_tagged_objects,
+      "! Tgobj-keys of rows without component name/type for finding dependent children
+      tgobj_keys_for_child_read TYPE STANDARD TABLE OF ty_tgobj_info,
+      tag_id_range_keys         TYPE RANGE OF zabaptags_tag_id,
+      tag_parent_infos          TYPE SORTED TABLE OF ty_tag_info WITH UNIQUE KEY tag_id parent_tag_id,
+      tgobj_delete              TYPE STANDARD TABLE OF ty_tgobj_info,
+      tgobj_update              TYPE zif_abaptags_ty_global=>ty_db_tagged_objects.
 
     METHODS:
       fill_semantic_key_tables,
@@ -74,8 +77,15 @@ CLASS zcl_abaptags_tgobj_delete IMPLEMENTATION.
     LOOP AT tagged_object_keys ASSIGNING FIELD-SYMBOL(<tgobj>).
       IF <tgobj>-parent_object_name IS NOT INITIAL AND
           <tgobj>-parent_object_type IS NOT INITIAL AND
-          <tgobj>-parent_tag_id IS NOT INITIAL.
+          <tgobj>-parent_tag_id IS NOT INITIAL AND
+          <tgobj>-component_name IS NOT INITIAL AND
+          <tgobj>-component_type IS NOT INITIAL.
         full_tgobj_keys = VALUE #( BASE full_tgobj_keys ( <tgobj> ) ).
+      ELSEIF <tgobj>-object_type IS NOT INITIAL AND
+          <tgobj>-object_name IS NOT INITIAL AND
+          <tgobj>-component_name IS NOT INITIAL AND
+          <tgobj>-component_type IS NOT INITIAL.
+        comp_tgobj_keys = VALUE #( BASE comp_tgobj_keys ( <tgobj> ) ).
       ELSEIF <tgobj>-object_type IS NOT INITIAL AND
           <tgobj>-object_name IS NOT INITIAL.
         tag_id_obj_keys = VALUE #( BASE tag_id_obj_keys ( <tgobj> ) ).
@@ -94,19 +104,40 @@ CLASS zcl_abaptags_tgobj_delete IMPLEMENTATION.
       SELECT id, tag_id, object_name, object_type
         FROM zabaptags_tgobjn
         FOR ALL ENTRIES IN @tag_id_obj_keys
-        WHERE object_name = @tag_id_obj_keys-object_name
-          AND object_type = @tag_id_obj_keys-object_type
-          AND tag_id      = @tag_id_obj_keys-tag_id
+        WHERE object_name    = @tag_id_obj_keys-object_name
+          AND object_type    = @tag_id_obj_keys-object_type
+          AND component_name = @space
+          AND component_type = @space
+          AND tag_id         = @tag_id_obj_keys-tag_id
+          AND parent_tag_id  = @tag_id_obj_keys-parent_tag_id
+        APPENDING TABLE @tgobj_delete.
+
+      tgobj_keys_for_child_read = tgobj_delete.
+    ENDIF.
+
+    " b) Collect the keys by object / component
+    IF comp_tgobj_keys IS NOT INITIAL.
+      SELECT id, tag_id, object_name, object_type
+        FROM zabaptags_tgobjn
+        FOR ALL ENTRIES IN @comp_tgobj_keys
+        WHERE object_name    = @comp_tgobj_keys-object_name
+          AND object_type    = @comp_tgobj_keys-object_type
+          AND component_name = @comp_tgobj_keys-component_name
+          AND component_type = @comp_tgobj_keys-component_type
+          AND tag_id         = @comp_tgobj_keys-tag_id
+          AND parent_tag_id  = @comp_tgobj_keys-parent_tag_id
         APPENDING TABLE @tgobj_delete.
     ENDIF.
 
-    " b) Collect the keys by full semantic key
+    " c) Collect the keys by full semantic key
     IF full_tgobj_keys IS NOT INITIAL.
       SELECT id, tag_id, object_name, object_type
         FROM zabaptags_tgobjn
         FOR ALL ENTRIES IN @full_tgobj_keys
         WHERE object_name        = @full_tgobj_keys-object_name
           AND object_type        = @full_tgobj_keys-object_type
+          AND component_name     = @full_tgobj_keys-component_name
+          AND component_type     = @full_tgobj_keys-component_type
           AND tag_id             = @full_tgobj_keys-tag_id
           AND parent_object_name = @full_tgobj_keys-parent_object_name
           AND parent_object_type = @full_tgobj_keys-parent_object_type
@@ -114,28 +145,37 @@ CLASS zcl_abaptags_tgobj_delete IMPLEMENTATION.
         APPENDING TABLE @tgobj_delete.
     ENDIF.
 
-    " c) Collect the keys by tag id only
+    " d) Collect the keys by tag id only
     IF tag_id_range_keys IS NOT INITIAL.
-      SELECT id, tag_id, object_name, object_type
+      SELECT id, tag_id, object_name, object_type, component_name
         FROM zabaptags_tgobjn
         WHERE tag_id IN @tag_id_range_keys
-        APPENDING TABLE @tgobj_delete.
+        INTO TABLE @DATA(temp_tgobj_keys).
+
+      tgobj_delete = VALUE #( BASE tgobj_delete ( LINES OF CORRESPONDING #( temp_tgobj_keys ) ) ).
+      tgobj_keys_for_child_read = VALUE #( BASE tgobj_keys_for_child_read
+        ( LINES OF VALUE #(
+            FOR <key> IN temp_tgobj_keys
+            WHERE ( component_name IS INITIAL )
+            ( CORRESPONDING #( <key> ) ) ) ) ).
     ENDIF.
   ENDMETHOD.
 
 
   METHOD find_dependent_children.
-    CHECK tgobj_delete IS NOT INITIAL.
+    CHECK tgobj_keys_for_child_read IS NOT INITIAL.
 
     SELECT *
       FROM zabaptags_tgobjn
-      FOR ALL ENTRIES IN @tgobj_delete
-      WHERE (     parent_tag_id      = @tgobj_delete-tag_id
-              AND parent_object_name = @tgobj_delete-object_name
-              AND parent_object_type = @tgobj_delete-object_type )
-         OR (     parent_tag_id      = @tgobj_delete-tag_id
-              AND parent_object_name = @space
-              AND parent_object_type = @space )
+      FOR ALL ENTRIES IN @tgobj_keys_for_child_read
+      WHERE (     parent_tag_id      = @tgobj_keys_for_child_read-tag_id
+              AND parent_object_name = @tgobj_keys_for_child_read-object_name
+              AND parent_object_type = @tgobj_keys_for_child_read-object_type )
+      " TODO: Why would these rows have to be processed at all???
+      "       They are just assignments in the tag folder :)
+**         OR (     parent_tag_id      = @tgobj_delete-tag_id
+**              AND parent_object_name = @space
+**              AND parent_object_type = @space )
       INTO CORRESPONDING FIELDS OF TABLE @child_tgobj_entries.
   ENDMETHOD.
 
@@ -156,14 +196,16 @@ CLASS zcl_abaptags_tgobj_delete IMPLEMENTATION.
     LOOP AT child_tgobj_entries ASSIGNING FIELD-SYMBOL(<child_tgobj>)
         GROUP BY ( tag_id      = <child_tgobj>-tag_id
                    object_name = <child_tgobj>-object_name
-                   object_type = <child_tgobj>-object_type )
+                   object_type = <child_tgobj>-object_type
+                   comp_name   = <child_tgobj>-component_name
+                   comp_type   = <child_tgobj>-component_type )
         ASSIGNING FIELD-SYMBOL(<child_tgobj_group>).
 
       DATA(counter) = 1.
 
       LOOP AT GROUP <child_tgobj_group> ASSIGNING FIELD-SYMBOL(<child_tgobj_group_entry>).
 
-        IF counter > 1.
+        IF counter > 1. " delete other rows to avoid duplicates with now empty parent object
           tgobj_delete = VALUE #( BASE tgobj_delete ( id = <child_tgobj_group_entry>-id ) ).
         ELSE.
           CLEAR: <child_tgobj_group_entry>-parent_object_name,
@@ -172,11 +214,11 @@ CLASS zcl_abaptags_tgobj_delete IMPLEMENTATION.
           DATA(new_parent_tag_id) = VALUE #(
             tag_parent_infos[ tag_id = <child_tgobj_group_entry>-tag_id ]-parent_tag_id OPTIONAL ).
 
-          " prevent unnecessary db update
-          IF <child_tgobj_group_entry>-parent_tag_id <> new_parent_tag_id.
-            <child_tgobj_group_entry>-parent_tag_id = new_parent_tag_id.
-            tgobj_update = VALUE #( BASE tgobj_update ( <child_tgobj_group_entry> ) ).
-          ENDIF.
+*          " prevent unnecessary db update
+*          IF <child_tgobj_group_entry>-parent_tag_id <> new_parent_tag_id.
+          <child_tgobj_group_entry>-parent_tag_id = new_parent_tag_id.
+          tgobj_update = VALUE #( BASE tgobj_update ( <child_tgobj_group_entry> ) ).
+*          ENDIF.
         ENDIF.
 
         counter = counter + 1.
