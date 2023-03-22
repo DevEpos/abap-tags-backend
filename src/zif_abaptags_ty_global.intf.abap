@@ -127,10 +127,10 @@ INTERFACE zif_abaptags_ty_global
     END OF ty_tgobj_info,
 
     BEGIN OF ty_local_adt_obj_info,
-      global_name TYPE sobj_name,
-      global_type TYPE trobjtype,
-      local_name  TYPE sobj_name,
-      local_type  TYPE swo_objtyp,
+      object_name    TYPE sobj_name,
+      object_type    TYPE trobjtype,
+      component_name TYPE sobj_name,
+      component_type TYPE swo_objtyp,
     END OF ty_local_adt_obj_info,
 
     ty_local_adt_obj_infos TYPE STANDARD TABLE OF ty_local_adt_obj_info WITH EMPTY KEY,

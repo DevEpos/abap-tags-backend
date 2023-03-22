@@ -432,8 +432,8 @@ CLASS zcl_abaptags_tags_dac IMPLEMENTATION.
 
     SELECT object_name,
            object_type,
-           sub_object_name,
-           sub_object_type,
+           component_name,
+           component_type,
            tag_id,
            parent_tag_id,
            parent_object_name,
@@ -453,8 +453,8 @@ CLASS zcl_abaptags_tags_dac IMPLEMENTATION.
     LOOP AT tagged_objects ASSIGNING FIELD-SYMBOL(<tagged_obj>).
       IF line_exists( existing_tgobj[ object_name        = <tagged_obj>-object_name
                                       object_type        = <tagged_obj>-object_type
-                                      sub_object_name    = <tagged_obj>-sub_object_name
-                                      sub_object_type    = <tagged_obj>-sub_object_type
+                                      component_name     = <tagged_obj>-component_name
+                                      component_type     = <tagged_obj>-component_type
                                       tag_id             = <tagged_obj>-tag_id
                                       parent_tag_id      = <tagged_obj>-parent_tag_id
                                       parent_object_name = <tagged_obj>-parent_object_name
@@ -514,8 +514,8 @@ CLASS zcl_abaptags_tags_dac IMPLEMENTATION.
         |{ c_where_and }OBJECT_NAME = { cl_abap_dyn_prg=>quote( obj_name ) }|.
 
       IF <obj_ref>-parent_name IS NOT INITIAL AND <obj_ref>-type IS NOT INITIAL.
-        cond = |{ cond }{ c_where_and }SUB_OBJECT_NAME = { cl_abap_dyn_prg=>quote( <obj_ref>-name ) }|.
-        cond = |{ cond }{ c_where_and }SUB_OBJECT_TYPE = { cl_abap_dyn_prg=>quote( <obj_ref>-type ) }|.
+        cond = |{ cond }{ c_where_and }COMPONENT_NAME = { cl_abap_dyn_prg=>quote( <obj_ref>-name ) }|.
+        cond = |{ cond }{ c_where_and }COMPONENT_TYPE = { cl_abap_dyn_prg=>quote( <obj_ref>-type ) }|.
       ENDIF.
 
       cond = |{ cond } )|.

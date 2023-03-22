@@ -10,6 +10,8 @@ define view ZAbapTags_I_TgObjn
   key id                 as Id,
       object_type        as ObjectType,
       object_name        as ObjectName,
+      component_name     as ComponentName,
+      component_type     as ComponentType,
       tag_id             as TagId,
       parent_tag_id      as ParentTagId,
       parent_object_type as ParentObjectType,
