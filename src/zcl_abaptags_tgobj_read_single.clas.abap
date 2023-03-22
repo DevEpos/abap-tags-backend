@@ -101,7 +101,7 @@ CLASS zcl_abaptags_tgobj_read_single IMPLEMENTATION.
       WHERE tgobj~object_name = @object_name
         AND tgobj~object_type = @tadir_type
         AND ( tag~owner = @sy-uname OR tag~owner = @space )
-        AND ( tgobj~sub_object_name IS NULL OR tgobj~sub_object_name = @space )
+        AND tgobj~component_name = @space
       ORDER BY tag~owner, tag~name
       INTO CORRESPONDING FIELDS OF TABLE @result.
   ENDMETHOD.
@@ -133,7 +133,7 @@ CLASS zcl_abaptags_tgobj_read_single IMPLEMENTATION.
         AND tgobj~object_type = @tadir_type
         AND tag~owner <> @sy-uname
         AND tag~owner <> @space
-        AND ( tgobj~sub_object_name IS NULL OR tgobj~sub_object_name = @space )
+        AND tgobj~component_name = @space
       INTO CORRESPONDING FIELDS OF TABLE @result.
   ENDMETHOD.
 

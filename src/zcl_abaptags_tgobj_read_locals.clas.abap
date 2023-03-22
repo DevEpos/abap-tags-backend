@@ -90,8 +90,8 @@ CLASS zcl_abaptags_tgobj_read_locals IMPLEMENTATION.
            tag~owner,
            tag~name,
            parent~name AS parent_tag_name,
-           tgobj~sub_object_name,
-           tgobj~sub_object_type,
+           tgobj~component_name,
+           tgobj~component_type,
            tgobj~parent_object_name,
            tgobj~parent_object_type
       FROM zabaptags_tgobjn AS tgobj
@@ -99,8 +99,7 @@ CLASS zcl_abaptags_tgobj_read_locals IMPLEMENTATION.
           ON tgobj~tag_id = tag~tag_id
         LEFT OUTER JOIN zabaptags_tags AS parent
           ON tgobj~parent_tag_id = parent~tag_id
-      WHERE tgobj~sub_object_name IS NOT NULL
-        AND tgobj~sub_object_name <> @space
+      WHERE tgobj~component_name <> @space
         AND tgobj~object_name = @object_name
         AND tgobj~object_type = @tadir_type
         AND ( tag~owner = @sy-uname OR tag~owner = @space )
@@ -123,8 +122,8 @@ CLASS zcl_abaptags_tgobj_read_locals IMPLEMENTATION.
            tag~owner,
            tag~name,
            parent~name AS parent_tag_name,
-           tgobj~sub_object_name,
-           tgobj~sub_object_type,
+           tgobj~component_name,
+           tgobj~component_type,
            tgobj~parent_object_name,
            tgobj~parent_object_type
       FROM zabaptags_tgobjn AS tgobj
@@ -132,8 +131,7 @@ CLASS zcl_abaptags_tgobj_read_locals IMPLEMENTATION.
           ON tgobj~tag_id = tag~tag_id
         LEFT OUTER JOIN zabaptags_tags AS parent
           ON tgobj~parent_tag_id = parent~tag_id
-      WHERE tgobj~sub_object_name IS NOT NULL
-        AND tgobj~sub_object_name <> @space
+      WHERE tgobj~component_name <> @space
         AND tgobj~tag_id IN @shared_tags_of_logon_user
         AND tgobj~object_name = @object_name
         AND tgobj~object_type = @tadir_type
@@ -179,15 +177,15 @@ CLASS zcl_abaptags_tgobj_read_locals IMPLEMENTATION.
   METHOD get_result.
 
     LOOP AT tgobj_infos ASSIGNING FIELD-SYMBOL(<local_obj_info>)
-        GROUP BY ( sub_obj_name = <local_obj_info>-sub_object_name
-                   sub_obj_type = <local_obj_info>-sub_object_type )
+        GROUP BY ( sub_obj_name = <local_obj_info>-component_name
+                   sub_obj_type = <local_obj_info>-component_type )
         ASSIGNING FIELD-SYMBOL(<local_obj_info_entry>).
 
       DATA(local_adt_obj_ref) = zcl_abaptags_adt_util=>get_local_adt_obj_ref(
-        local_obj_ref = VALUE #( global_name = object_name
-                                 global_type = object_type-objtype_tr
-                                 local_name  = <local_obj_info_entry>-sub_obj_name
-                                 local_type  = <local_obj_info_entry>-sub_obj_type ) ).
+        local_obj_ref = VALUE #( object_name = object_name
+                                 object_type = object_type-objtype_tr
+                                 component_name  = <local_obj_info_entry>-sub_obj_name
+                                 component_type  = <local_obj_info_entry>-sub_obj_type ) ).
 
       IF local_adt_obj_ref IS INITIAL OR local_adt_obj_ref-uri IS INITIAL.
         CONTINUE.
@@ -216,8 +214,9 @@ CLASS zcl_abaptags_tgobj_read_locals IMPLEMENTATION.
             parent_type   = parent-type
             parent_tag_id = <local_obj_info_group_entry>-parent_tag_id
             parent_uri    = parent-uri ) ).
-        result = VALUE #( BASE result ( tagged_local_obj ) ).
       ENDLOOP.
+
+      result = VALUE #( BASE result ( tagged_local_obj ) ).
 
     ENDLOOP.
 
