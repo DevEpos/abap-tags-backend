@@ -30,8 +30,23 @@ CLASS zcl_abaptags_adt_res_tgobjtsrv DEFINITION
         tagged_object_count TYPE i,
       END OF ty_tag_with_obj_count,
 
-      ty_tags_with_obj_counts TYPE STANDARD TABLE OF ty_tag_with_obj_count WITH EMPTY KEY,
-      ty_tag_data_sorted      TYPE SORTED TABLE OF zabaptags_tag_data WITH UNIQUE KEY tag_id.
+      BEGIN OF ty_sub_lvl_obj_with_tag,
+        tag_id             TYPE zabaptags_tag_id,
+        parent_tag_id      TYPE zabaptags_tag_id,
+        object_name        TYPE sobj_name,
+        object_type        TYPE trobjtype,
+        component_name     TYPE zabaptags_obj_comp_name,
+        component_type     TYPE swo_objtyp,
+        name               TYPE zabaptags_tag_name,
+        name_upper         TYPE zabaptags_tag_name,
+        description        TYPE zabaptags_tags-description,
+        owner              TYPE responsibl,
+        has_grand_children TYPE abap_bool,
+      END OF ty_sub_lvl_obj_with_tag,
+
+      ty_sub_lvl_objs_with_tag TYPE STANDARD TABLE OF ty_sub_lvl_obj_with_tag WITH EMPTY KEY,
+      ty_tags_with_obj_counts  TYPE STANDARD TABLE OF ty_tag_with_obj_count WITH EMPTY KEY,
+      ty_tag_data_sorted       TYPE SORTED TABLE OF zabaptags_tag_data WITH UNIQUE KEY tag_id.
 
     DATA:
       parent_object_name_range TYPE RANGE OF sobj_name,
@@ -66,6 +81,12 @@ CLASS zcl_abaptags_adt_res_tgobjtsrv DEFINITION
       read_sub_level_tags,
       retrieve_addtnl_input_infos,
       post_process_root_tags,
+      find_sub_level_objs_with_tags
+        RETURNING
+          VALUE(result) TYPE ty_sub_lvl_objs_with_tag,
+      find_sub_level_comps_with_tags
+        RETURNING
+          VALUE(result) TYPE ty_sub_lvl_objs_with_tag,
       read_sub_level_objs_with_tags,
       get_tags_in_hierarchy
         RETURNING
@@ -154,10 +175,13 @@ CLASS zcl_abaptags_adt_res_tgobjtsrv IMPLEMENTATION.
         tag_id       TYPE zabaptags_tgobjn-tag_id,
         name         TYPE zabaptags_tgobjn-object_name,
         type         TYPE zabaptags_tgobjn-object_type,
+        comp_name    TYPE zabaptags_obj_comp_name,
+        comp_type    TYPE swo_objtyp,
         has_children TYPE abap_bool,
       END OF ty_tgobj_with_count.
 
-    DATA: matching_objects TYPE STANDARD TABLE OF ty_tgobj_with_count.
+    DATA: matching_objects TYPE STANDARD TABLE OF ty_tgobj_with_count,
+          adt_object_ref   TYPE zcl_abaptags_adt_util=>ty_adt_obj_ref_info.
 
     " root level only has tags, but no objects
     IF tag_id_range IS INITIAL OR parent_object_name_range IS NOT INITIAL.
@@ -168,6 +192,8 @@ CLASS zcl_abaptags_adt_res_tgobjtsrv IMPLEMENTATION.
       SELECT tgobj~tagid AS tag_id,
              tgobj~objectname AS name,
              tgobj~objecttype AS type,
+             tgobj~componentname AS comp_name,
+             tgobj~componenttype AS comp_type,
              coalesce( sub_tgobj~dummy, @abap_false ) AS has_children
         FROM zabaptags_i_tgobjn AS tgobj
           LEFT OUTER JOIN zabaptags_i_tgobjn AS sub_tgobj
@@ -179,17 +205,21 @@ CLASS zcl_abaptags_adt_res_tgobjtsrv IMPLEMENTATION.
         GROUP BY tgobj~tagid,
                  tgobj~objectname,
                  tgobj~objecttype,
+                 tgobj~componentname,
+                 tgobj~componenttype,
                  sub_tgobj~dummy
         INTO CORRESPONDING FIELDS OF TABLE @matching_objects.
     ELSE.
       SELECT DISTINCT
-             tgobj~tag_id,
-             tgobj~object_name AS name,
-             tgobj~object_type AS type,
+             tgobj~tagid AS tag_id,
+             tgobj~objectname AS name,
+             tgobj~objecttype AS type,
+             tgobj~componentname AS comp_name,
+             tgobj~componenttype AS comp_type,
              @abap_false AS has_children
-        FROM zabaptags_tgobjn AS tgobj
-        WHERE tgobj~tag_id IN @tag_id_range
-          AND tgobj~parent_object_name = @space
+        FROM zabaptags_i_tgobjn AS tgobj
+        WHERE tgobj~tagid IN @tag_id_range
+          AND tgobj~parentobjectname = @space
         INTO CORRESPONDING FIELDS OF TABLE @matching_objects.
     ENDIF.
     IF sy-subrc <> 0.
@@ -208,15 +238,33 @@ CLASS zcl_abaptags_adt_res_tgobjtsrv IMPLEMENTATION.
           CONTINUE.
       ENDTRY.
 
-      DATA(adt_object_ref) = zcl_abaptags_adt_util=>get_adt_obj_ref_for_tadir_type(
-        tadir_type = <matching_obj>-type
-        name       = <matching_obj>-name ).
+      DATA(object_name) = ``.
+      DATA(parent_object_name) = ``.
+      DATA(adt_type) = ``.
+
+      IF <matching_obj>-comp_name IS NOT INITIAL.
+        adt_object_ref = zcl_abaptags_adt_util=>get_local_adt_obj_ref(
+          local_obj_ref = VALUE #( object_name    = <matching_obj>-name
+                                   object_type    = <matching_obj>-type
+                                   component_name = <matching_obj>-comp_name
+                                   component_type = <matching_obj>-comp_type ) ).
+        adt_type = <matching_obj>-comp_type.
+        object_name = <matching_obj>-comp_name.
+        parent_object_name = <matching_obj>-name.
+      ELSE.
+        adt_object_ref = zcl_abaptags_adt_util=>get_adt_obj_ref_for_tadir_type(
+          tadir_type = tadir_info-type
+          name       = <matching_obj>-name ).
+        adt_type = adt_object_ref-type.
+        object_name = <matching_obj>-name.
+      ENDIF.
 
       DATA(tagged_object) = VALUE zabaptags_tgobj_tree_object(
         expandable = <matching_obj>-has_children
         object_ref = VALUE #(
-          name         = <matching_obj>-name
-          type         = adt_object_ref-type
+          name         = object_name
+          parent_name  = parent_object_name
+          type         = adt_type
           tadir_type   = <matching_obj>-type
           uri          = adt_object_ref-uri
           package_name = tadir_info-package_name
@@ -224,45 +272,6 @@ CLASS zcl_abaptags_adt_res_tgobjtsrv IMPLEMENTATION.
 
       tree_result-objects = VALUE #( BASE tree_result-objects ( tagged_object ) ).
     ENDLOOP.
-
-    " Test: Add a local test class
-**********************************************************************
-**    DATA(local_class) = VALUE zabaptags_adt_obj_ref(
-**        name         = 'LTCL_ABAP_UNIT'
-**        type         = zif_abaptags_c_global=>wb_object_types-local_class
-**        tadir_type   = 'CLAS'
-**        parent_name  = 'ZCL_ADCOSET_SCS_SEQU_EXTENDED'
-**        owner        = 'DEVELOPER'
-**    ).
-**
-**    DATA(main_prog) = cl_oo_classname_service=>get_classpool_name( CONV #( local_class-parent_name ) ).
-**    DATA(compiler) = zcl_acallh_abap_compiler=>get( main_prog = main_prog ).
-**    DATA(fullname) = |\\PR:{ main_prog }\\TY:{ local_class-name }|.
-**    DATA(refs) = compiler->get_refs_by_fullname( full_name = fullname grade = cl_abap_compiler=>grade_definition ).
-**
-**    IF refs IS NOT INITIAL.
-**      DATA(ref) = refs[ 1 ].
-**      IF ref-statement IS NOT INITIAL.
-**        DATA(adt_tools_factory) = cl_adt_tools_core_factory=>get_instance( ).
-**        DATA(uri_mapper) = adt_tools_factory->get_uri_mapper( ).
-**        DATA(mapping_options) = adt_tools_factory->create_mapping_options( ).
-**
-**        TRY.
-**            DATA(obj_ref) = uri_mapper->map_include_to_objref(
-**              program     = main_prog
-**              include     = CONV #( ref-statement->source_info->name )
-**              line        = ref-statement->start_line
-**              line_offset = ref-statement->start_column ).
-**            local_class-uri = obj_ref->ref_data-uri.
-**            local_class-description = obj_ref->ref_data-description.
-**            local_class-package_name = obj_ref->ref_data-package_name.
-**            tree_result-objects = VALUE #( BASE tree_result-objects (
-**              object_ref = local_class
-**            ) ).
-**          CATCH cx_adt_uri_mapping.
-**        ENDTRY.
-**      ENDIF.
-**    ENDIF.
 
   ENDMETHOD.
 
@@ -449,7 +458,112 @@ CLASS zcl_abaptags_adt_res_tgobjtsrv IMPLEMENTATION.
 
 
   METHOD read_sub_level_objs_with_tags.
+    DATA(objects_with_tags) = VALUE ty_sub_lvl_objs_with_tag(
+      ( LINES OF find_sub_level_comps_with_tags( ) )
+      ( LINES OF find_sub_level_objs_with_tags( ) ) ).
+    IF objects_with_tags IS INITIAL.
+      RETURN.
+    ENDIF.
 
+    " determine tadir info for found objects
+    DATA(tadir_access) = NEW zcl_abaptags_tadir( VALUE #(
+      FOR <obj> IN objects_with_tags
+      ( name = <obj>-object_name type = <obj>-object_type ) ) )->determine_tadir_entries( ).
+    DATA: adt_object_ref TYPE zcl_abaptags_adt_util=>ty_adt_obj_ref_info.
+
+    LOOP AT objects_with_tags ASSIGNING FIELD-SYMBOL(<obj_with_tag>)
+        GROUP BY ( tag_id = <obj_with_tag>-tag_id ) ASSIGNING FIELD-SYMBOL(<obj_with_tag_group>).
+
+      DATA(tagged_count) = 0.
+
+      LOOP AT GROUP <obj_with_tag_group> ASSIGNING FIELD-SYMBOL(<obj_with_tag_group_entry>).
+        TRY.
+            DATA(tadir_info) = tadir_access->get_tadir_info( name = <obj_with_tag_group_entry>-object_name
+                                                             type = <obj_with_tag_group_entry>-object_type ).
+          CATCH cx_sy_itab_line_not_found.
+            CONTINUE.
+        ENDTRY.
+
+        DATA(object_name) = ``.
+        DATA(parent_object_name) = ``.
+        DATA(adt_type) = ``.
+
+        IF <obj_with_tag_group_entry>-component_name IS NOT INITIAL.
+          adt_object_ref = zcl_abaptags_adt_util=>get_local_adt_obj_ref(
+            local_obj_ref = VALUE #( object_name = <obj_with_tag_group_entry>-object_name
+                                     object_type = <obj_with_tag_group_entry>-object_type
+                                     component_name  = <obj_with_tag_group_entry>-component_name
+                                     component_type  = <obj_with_tag_group_entry>-component_type ) ).
+          adt_type = <obj_with_tag_group_entry>-component_type.
+          object_name = <obj_with_tag_group_entry>-component_name.
+          parent_object_name = <obj_with_tag_group_entry>-object_name.
+        ELSE.
+          adt_object_ref = zcl_abaptags_adt_util=>get_adt_obj_ref_for_tadir_type(
+            tadir_type = tadir_info-type
+            name       = <obj_with_tag_group_entry>-object_name ).
+          adt_type = adt_object_ref-type.
+          object_name = <obj_with_tag_group_entry>-object_name.
+        ENDIF.
+
+        tree_result-objects = VALUE #( BASE tree_result-objects
+          ( parent_tag_id = <obj_with_tag_group>-tag_id
+            expandable    = <obj_with_tag_group_entry>-has_grand_children
+            object_ref    = VALUE #(
+              name         = object_name
+              parent_name  = parent_object_name
+              type         = adt_type
+              tadir_type   = <obj_with_tag_group_entry>-object_type
+              uri          = adt_object_ref-uri
+              package_name = tadir_info-package_name
+              owner        = tadir_info-author ) ) ).
+        tagged_count = tagged_count + 1.
+      ENDLOOP.
+
+      IF sy-subrc = 0 AND <obj_with_tag_group_entry> IS ASSIGNED.
+        tree_result-tags = VALUE #( BASE tree_result-tags
+          ( tag_id              = <obj_with_tag_group_entry>-tag_id
+            name                = <obj_with_tag_group_entry>-name
+            name_upper          = <obj_with_tag_group_entry>-name_upper
+            description         = <obj_with_tag_group_entry>-description
+            parent_tag_id       = <obj_with_tag_group_entry>-parent_tag_id
+            tagged_object_count = tagged_count ) ).
+      ENDIF.
+
+    ENDLOOP.
+
+  ENDMETHOD.
+
+
+  METHOD find_sub_level_comps_with_tags.
+    SELECT childtagid AS tag_id,
+           childparenttagid AS parent_tag_id,
+           childobjectname AS object_name,
+           childobjecttype AS object_type,
+           childcomponentname AS component_name,
+           childcomponenttype AS component_type,
+           childtagname AS name,
+           childtagnameupper AS name_upper,
+           childtagdescription AS description,
+           childtagowner AS owner
+      FROM zabaptags_i_sublvlcmpwtag
+      WHERE childparenttagid IN @tag_id_range
+        AND childparentobjectname IN @parent_object_name_range
+        AND childparentobjecttype IN @parent_object_type_range
+      GROUP BY childtagid,
+               childparenttagid,
+               childobjectname,
+               childobjecttype,
+               childcomponentname,
+               childcomponenttype,
+               childtagname,
+               childtagnameupper,
+               childtagdescription,
+               childtagowner
+      INTO CORRESPONDING FIELDS OF TABLE @result.
+  ENDMETHOD.
+
+
+  METHOD find_sub_level_objs_with_tags.
     SELECT childtagid AS tag_id,
            childparenttagid AS parent_tag_id,
            childobjectname AS object_name,
@@ -472,58 +586,7 @@ CLASS zcl_abaptags_adt_res_tgobjtsrv IMPLEMENTATION.
                childtagdescription,
                childtagowner,
                hasgrandchildren
-      INTO TABLE @DATA(objects_with_tags).
-    IF sy-subrc <> 0.
-      RETURN.
-    ENDIF.
-
-    " determine tadir info for found objects
-    DATA(tadir_access) = NEW zcl_abaptags_tadir( VALUE #(
-      FOR <obj> IN objects_with_tags
-      ( name = <obj>-object_name type = <obj>-object_type ) ) )->determine_tadir_entries( ).
-
-    LOOP AT objects_with_tags ASSIGNING FIELD-SYMBOL(<obj_with_tag>)
-        GROUP BY ( tag_id = <obj_with_tag>-tag_id ) ASSIGNING FIELD-SYMBOL(<obj_with_tag_group>).
-
-      DATA(tagged_count) = 0.
-
-      LOOP AT GROUP <obj_with_tag_group> ASSIGNING FIELD-SYMBOL(<obj_with_tag_group_entry>).
-        TRY.
-            DATA(tadir_info) = tadir_access->get_tadir_info( name = <obj_with_tag_group_entry>-object_name
-                                                             type = <obj_with_tag_group_entry>-object_type ).
-          CATCH cx_sy_itab_line_not_found.
-            CONTINUE.
-        ENDTRY.
-
-        DATA(adt_object_ref) = zcl_abaptags_adt_util=>get_adt_obj_ref_for_tadir_type(
-          tadir_type = tadir_info-type
-          name       = <obj_with_tag_group_entry>-object_name ).
-
-        tree_result-objects = VALUE #( BASE tree_result-objects
-          ( parent_tag_id = <obj_with_tag_group>-tag_id
-            expandable    = <obj_with_tag_group_entry>-has_grand_children
-            object_ref    = VALUE #(
-              name         = <obj_with_tag_group_entry>-object_name
-              type         = adt_object_ref-type
-              tadir_type   = <obj_with_tag_group_entry>-object_type
-              uri          = adt_object_ref-uri
-              package_name = tadir_info-package_name
-              owner        = tadir_info-author ) ) ).
-        tagged_count = tagged_count + 1.
-      ENDLOOP.
-
-      IF sy-subrc = 0 AND <obj_with_tag_group_entry> IS ASSIGNED.
-        tree_result-tags = VALUE #( BASE tree_result-tags
-          ( tag_id              = <obj_with_tag_group_entry>-tag_id
-            name                = <obj_with_tag_group_entry>-name
-            name_upper          = <obj_with_tag_group_entry>-name_upper
-            description         = <obj_with_tag_group_entry>-description
-            parent_tag_id       = <obj_with_tag_group_entry>-parent_tag_id
-            tagged_object_count = tagged_count ) ).
-      ENDIF.
-
-    ENDLOOP.
-
+      INTO CORRESPONDING FIELDS OF TABLE @result.
   ENDMETHOD.
 
 
