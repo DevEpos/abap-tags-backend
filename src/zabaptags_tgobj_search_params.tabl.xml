@@ -98,6 +98,14 @@
      <MASK>  STRG</MASK>
      <DDTEXT>Type of the tag info that should be read</DDTEXT>
     </DD03P>
+    <DD03P>
+     <FIELDNAME>EXCLUDE_COMPONENTS</FIELDNAME>
+     <ROLLNAME>SAP_BOOL</ROLLNAME>
+     <ADMINFIELD>0</ADMINFIELD>
+     <VALEXI>X</VALEXI>
+     <SHLPORIGIN>F</SHLPORIGIN>
+     <COMPTYPE>E</COMPTYPE>
+    </DD03P>
    </DD03P_TABLE>
   </asx:values>
  </asx:abap>
