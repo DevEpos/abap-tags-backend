@@ -60,6 +60,8 @@ CLASS zcl_abaptags_adt_res_tgobj DEFINITION
         IMPORTING
           tadir_object TYPE string
           tadir_type   TYPE trobjtype
+          comp_name    TYPE zabaptags_obj_comp_name OPTIONAL
+          comp_type    TYPE swo_objtyp OPTIONAL
         CHANGING
           tags         TYPE zabaptags_adt_object_tag_t
         RAISING
@@ -204,7 +206,9 @@ CLASS zcl_abaptags_adt_res_tgobj IMPLEMENTATION.
     DATA: tadir_object  TYPE string,
           tadir_type    TYPE trobjtype,
           parent_object TYPE string,
-          parent_type   TYPE trobjtype.
+          parent_type   TYPE trobjtype,
+          comp_name     TYPE zabaptags_obj_comp_name,
+          comp_type     TYPE swo_objtyp.
 
     FIELD-SYMBOLS: <tagged_object> TYPE zabaptags_tagged_object,
                    <tag>           TYPE zabaptags_adt_object_tag.
@@ -216,8 +220,21 @@ CLASS zcl_abaptags_adt_res_tgobj IMPLEMENTATION.
                                                    IMPORTING object_name = tadir_object
                                                              tadir_type  = tadir_type ).
 
+      " Special handling for local classes
+      IF <tagged_object>-adt_obj_ref-type = zif_abaptags_c_global=>wb_object_types-local_class OR
+          <tagged_object>-adt_obj_ref-type = zif_abaptags_c_global=>wb_object_types-local_interface.
+        DATA(glob_class_name) = COND #(
+          WHEN strlen( tadir_object ) > 30 THEN tadir_object(30)
+          ELSE tadir_object ).
+        tadir_object = condense( translate( val = glob_class_name from = '=' to = space ) ).
+        comp_name = <tagged_object>-adt_obj_ref-name.
+        comp_type = <tagged_object>-adt_obj_ref-type.
+      ENDIF.
+
       collect_tgobj_for_insert( EXPORTING tadir_object = tadir_object
                                           tadir_type   = tadir_type
+                                          comp_name    = comp_name
+                                          comp_type    = comp_type
                                 CHANGING  tags         = <tagged_object>-tags ).
     ENDLOOP.
 
