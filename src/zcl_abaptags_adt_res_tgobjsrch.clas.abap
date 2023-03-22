@@ -12,6 +12,9 @@ CLASS zcl_abaptags_adt_res_tgobjsrch DEFINITION
         REDEFINITION.
   PROTECTED SECTION.
   PRIVATE SECTION.
+    CONSTANTS:
+      c_comp_where_filter TYPE string VALUE `component_name = @space AND component_type = @space`.
+
     DATA:
       tags_dac                 TYPE REF TO zcl_abaptags_tags_dac,
       tadir_info_reader        TYPE REF TO zcl_abaptags_tadir,
@@ -25,6 +28,7 @@ CLASS zcl_abaptags_adt_res_tgobjsrch DEFINITION
       parent_object_type_range TYPE RANGE OF trobjtype,
       tagged_objects_db        TYPE zif_abaptags_ty_global=>ty_db_tagged_objects,
       search_params            TYPE zabaptags_tgobj_search_params,
+      comp_tgobj_where_filter  TYPE string,
       tag_id_range             TYPE zif_abaptags_ty_global=>ty_tag_id_range.
 
     METHODS:
@@ -52,7 +56,8 @@ CLASS zcl_abaptags_adt_res_tgobjsrch DEFINITION
       post_process_results,
       fill_descriptions,
       retrieve_tag_info,
-      determine_tadir_info.
+      determine_tadir_info,
+      get_tagged_object_info.
 ENDCLASS.
 
 
@@ -192,6 +197,11 @@ CLASS zcl_abaptags_adt_res_tgobjsrch IMPLEMENTATION.
     IF search_params-query IS NOT INITIAL.
       determine_obj_name_range( search_params-query ).
     ENDIF.
+
+    " Check if rows with filled component should be excluded from the search result
+    IF search_params-exclude_components = abap_true.
+      comp_tgobj_where_filter = c_comp_where_filter.
+    ENDIF.
   ENDMETHOD.
 
 
@@ -268,10 +278,7 @@ CLASS zcl_abaptags_adt_res_tgobjsrch IMPLEMENTATION.
 
     CHECK search_params-with_tag_info = abap_true.
 
-    tgobj_infos = tags_dac->get_tagged_obj_info(
-      tag_id_range   = COND #(
-        WHEN search_params-tag_info_type = zif_abaptags_c_global=>tag_info_types-search_focus THEN tag_id_range )
-      tagged_objects = tagged_objects_db ).
+    get_tagged_object_info( ).
 
     IF tgobj_infos IS INITIAL OR
         search_params-tag_info_type <> zif_abaptags_c_global=>tag_info_types-children.
@@ -307,15 +314,54 @@ CLASS zcl_abaptags_adt_res_tgobjsrch IMPLEMENTATION.
     tag_id_range = VALUE zif_abaptags_ty_global=>ty_tag_id_range(
       FOR tag_id IN search_params-tag_id ( sign = 'I' option = 'EQ' low = tag_id ) ).
 
-    tagged_objects_db = tags_dac->find_tagged_objects(
-      only_matching_all_tag    = search_params-matches_all_tags
-      tag_count                = lines( tag_id_range )
-      max_results              = max_results
-      tag_id_range             = tag_id_range
-      object_name_range        = object_name_range
-      object_type_range        = object_type_range
-      parent_object_name_range = parent_object_name_range
-      parent_object_type_range = parent_object_type_range ).
+    DATA(tag_count) = lines( tag_id_range ).
+
+    IF search_params-matches_all_tags = abap_true
+         AND tag_count > 0.
+      SELECT object_name, object_type
+        FROM zabaptags_tgobjn
+        WHERE tag_id IN @tag_id_range
+          AND object_name IN @object_name_range
+          AND object_type IN @object_type_range
+          AND parent_object_name IN @parent_object_name_range
+          AND parent_object_type IN @parent_object_type_range
+          AND (comp_tgobj_where_filter)
+        GROUP BY object_name, object_type
+        HAVING COUNT(*) = @tag_count
+        ORDER BY object_type, object_name
+        INTO CORRESPONDING FIELDS OF TABLE @tagged_objects_db
+        UP TO @max_results ROWS.
+    ELSE.
+      SELECT DISTINCT object_name, object_type
+        FROM zabaptags_tgobjn
+        WHERE tag_id IN @tag_id_range
+          AND object_name IN @object_name_range
+          AND object_type IN @object_type_range
+          AND parent_object_name IN @parent_object_name_range
+          AND parent_object_type IN @parent_object_type_range
+          AND (comp_tgobj_where_filter)
+        ORDER BY object_type, object_name
+        INTO CORRESPONDING FIELDS OF TABLE @tagged_objects_db
+        UP TO @max_results ROWS.
+    ENDIF.
+  ENDMETHOD.
+
+
+  METHOD get_tagged_object_info.
+    SELECT tagged_object~object_name,
+         tagged_object~object_type,
+         tag~tag_id,
+         tag~name AS tag_name,
+         tag~owner AS tag_owner
+    FROM zabaptags_tags AS tag
+      INNER JOIN zabaptags_tgobjn AS tagged_object
+        ON tag~tag_id = tagged_object~tag_id
+    FOR ALL ENTRIES IN @tagged_objects_db
+    WHERE tagged_object~object_type = @tagged_objects_db-object_type
+      AND tagged_object~object_name = @tagged_objects_db-object_name
+      AND tagged_object~tag_id IN @tag_id_range
+      AND (comp_tgobj_where_filter)
+    INTO CORRESPONDING FIELDS OF TABLE @tgobj_infos.
   ENDMETHOD.
 
 ENDCLASS.

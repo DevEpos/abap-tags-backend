@@ -1,8 +1,5 @@
 <?sap.transform simple?>
-<tt:transform
-  xmlns:tt="http://www.sap.com/transformation-templates"
-  xmlns:ddic="http://www.sap.com/abapxml/types/dictionary"
-  xmlns:atm="http://www.devepos.com/adt/atm">
+<tt:transform xmlns:tt="http://www.sap.com/transformation-templates" xmlns:ddic="http://www.sap.com/abapxml/types/dictionary" xmlns:atm="http://www.devepos.com/adt/atm">
 
   <tt:root name="SEARCH_PARAMS" type="ddic:ZABAPTAGS_TGOBJ_SEARCH_PARAMS"/>
 
@@ -44,21 +41,25 @@
       </tt:cond>
 
       <tt:cond s-check="not-initial(SEARCH_PARAMS.MATCHES_ALL_TAGS)">
-        <tt:attribute name="atm:matchesAllTags" value-ref="SEARCH_PARAMS.MATCHES_ALL_TAGS" option="format(boolean)"/>
+        <tt:attribute name="atm:matchesAllTags" option="format(boolean)" value-ref="SEARCH_PARAMS.MATCHES_ALL_TAGS"/>
       </tt:cond>
 
       <tt:cond s-check="not-initial(SEARCH_PARAMS.WITH_TAG_INFO)">
-        <tt:attribute name="atm:withTagInfo" value-ref="SEARCH_PARAMS.WITH_TAG_INFO" option="format(boolean)"/>
+        <tt:attribute name="atm:withTagInfo" option="format(boolean)" value-ref="SEARCH_PARAMS.WITH_TAG_INFO"/>
       </tt:cond>
 
       <tt:cond s-check="not-initial(SEARCH_PARAMS.TAG_INFO_TYPE)">
         <tt:attribute name="atm:tagInfoType" value-ref="SEARCH_PARAMS.TAG_INFO_TYPE"/>
       </tt:cond>
 
+      <tt:cond s-check="not-initial(SEARCH_PARAMS.EXCLUDE_COMPONENTS)">
+        <tt:attribute name="atm:excludeComponents" option="format(boolean)" value-ref="SEARCH_PARAMS.EXCLUDE_COMPONENTS"/>
+      </tt:cond>
+
       <tt:cond s-check="not-initial(SEARCH_PARAMS.TAG_ID)">
         <tt:loop name="tag" ref="SEARCH_PARAMS.TAG_ID">
           <atm:tagId>
-            <tt:value ref="$tag" option="format(guid)" />
+            <tt:value option="format(guid)" ref="$tag"/>
           </atm:tagId>
         </tt:loop>
       </tt:cond>
