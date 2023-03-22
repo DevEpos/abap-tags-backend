@@ -78,11 +78,6 @@
      <DESCRIPT>Finds users of a shared tag</DESCRIPT>
     </SEOCOMPOTX>
     <SEOCOMPOTX>
-     <CMPNAME>FIND_TAGGED_OBJECTS</CMPNAME>
-     <LANGU>E</LANGU>
-     <DESCRIPT>Finds list of tagged objects</DESCRIPT>
-    </SEOCOMPOTX>
-    <SEOCOMPOTX>
      <CMPNAME>FIND_TAGS</CMPNAME>
      <LANGU>E</LANGU>
      <DESCRIPT>Finds tags for the given filters</DESCRIPT>

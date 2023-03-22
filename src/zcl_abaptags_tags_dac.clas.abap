@@ -98,19 +98,6 @@ CLASS zcl_abaptags_tags_dac DEFINITION
           tadir_obj     TYPE zif_abaptags_ty_global=>ty_tadir_key
         RETURNING
           VALUE(result) TYPE zif_abaptags_ty_global=>ty_tag_infos,
-      "! <p class="shorttext synchronized" lang="en">Finds list of tagged objects</p>
-      find_tagged_objects
-        IMPORTING
-          only_matching_all_tag    TYPE abap_bool OPTIONAL
-          tag_count                TYPE i OPTIONAL
-          max_results              TYPE i DEFAULT 50
-          tag_id_range             TYPE zif_abaptags_ty_global=>ty_tag_id_range OPTIONAL
-          object_name_range        TYPE zif_abaptags_ty_global=>ty_obj_name_range OPTIONAL
-          object_type_range        TYPE zif_abaptags_ty_global=>ty_obj_type_range OPTIONAL
-          parent_object_name_range TYPE zif_abaptags_ty_global=>ty_obj_name_range OPTIONAL
-          parent_object_type_range TYPE zif_abaptags_ty_global=>ty_obj_type_range OPTIONAL
-        RETURNING
-          VALUE(result)            TYPE zif_abaptags_ty_global=>ty_db_tagged_objects,
       "! <p class="shorttext synchronized" lang="en">Finds existing tagged objects</p>
       filter_existing_tagged_objects
         CHANGING
@@ -162,6 +149,7 @@ CLASS zcl_abaptags_tags_dac DEFINITION
       c_where_or       TYPE string VALUE ` OR `.
     CLASS-DATA:
       instance TYPE REF TO zcl_abaptags_tags_dac.
+
 ENDCLASS.
 
 
@@ -390,36 +378,6 @@ CLASS zcl_abaptags_tags_dac IMPLEMENTATION.
         AND tag~is_shared = @abap_true
         AND shared_tag~shared_user = @sy-uname
       INTO CORRESPONDING FIELDS OF TABLE @result.
-  ENDMETHOD.
-
-
-  METHOD find_tagged_objects.
-    IF only_matching_all_tag = abap_true
-         AND tag_count > 0.
-      SELECT object_name, object_type
-        FROM zabaptags_tgobjn
-        WHERE tag_id IN @tag_id_range
-          AND object_name IN @object_name_range
-          AND object_type IN @object_type_range
-          AND parent_object_name IN @parent_object_name_range
-          AND parent_object_type IN @parent_object_type_range
-        GROUP BY object_name, object_type
-        HAVING COUNT(*) = @tag_count
-        ORDER BY object_type, object_name
-        INTO CORRESPONDING FIELDS OF TABLE @result
-        UP TO @max_results ROWS.
-    ELSE.
-      SELECT DISTINCT object_name, object_type
-        FROM zabaptags_tgobjn
-        WHERE tag_id IN @tag_id_range
-          AND object_name IN @object_name_range
-          AND object_type IN @object_type_range
-          AND parent_object_name IN @parent_object_name_range
-          AND parent_object_type IN @parent_object_type_range
-        ORDER BY object_type, object_name
-        INTO CORRESPONDING FIELDS OF TABLE @result
-        UP TO @max_results ROWS.
-    ENDIF.
   ENDMETHOD.
 
 
