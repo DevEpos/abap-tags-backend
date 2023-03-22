@@ -81,6 +81,11 @@ CLASS zcl_abaptags_adt_util DEFINITION
       END OF c_adt_types.
 
     TYPES:
+      BEGIN OF ty_compiler_map,
+        main_prog TYPE progname,
+        ref       TYPE REF TO cl_abap_compiler,
+      END OF ty_compiler_map,
+
       BEGIN OF ty_adt_object_uri_map,
         name TYPE seu_objkey,
         type TYPE wbobjtype,
@@ -93,7 +98,8 @@ CLASS zcl_abaptags_adt_util DEFINITION
       END OF ty_adt_object_info_map.
 
     CLASS-DATA:
-      adt_obj_infos TYPE HASHED TABLE OF ty_adt_object_info_map WITH UNIQUE KEY name type.
+      adt_obj_infos TYPE HASHED TABLE OF ty_adt_object_info_map WITH UNIQUE KEY name type,
+      compiler_map  TYPE HASHED TABLE OF ty_compiler_map WITH UNIQUE KEY main_prog.
 
     CLASS-METHODS:
       resolve_parent_uri
@@ -101,7 +107,12 @@ CLASS zcl_abaptags_adt_util DEFINITION
           adt_obj_info TYPE ty_adt_obj_ref_info,
       adjust_object_reference
         CHANGING
-          adt_obj_info TYPE zcl_abaptags_adt_util=>ty_adt_obj_ref_info.
+          adt_obj_info TYPE zcl_abaptags_adt_util=>ty_adt_obj_ref_info,
+      get_compiler
+        IMPORTING
+          main_prog     TYPE program
+        RETURNING
+          VALUE(result) TYPE REF TO cl_abap_compiler.
 ENDCLASS.
 
 
@@ -353,12 +364,10 @@ CLASS zcl_abaptags_adt_util IMPLEMENTATION.
 
 
   METHOD get_local_adt_obj_ref.
-    DATA(main_prog) = cl_oo_classname_service=>get_classpool_name( CONV #( local_obj_ref-global_name ) ).
-    DATA(compiler) = NEW cl_abap_compiler(
-        p_name             = main_prog
-        p_no_package_check = abap_true ).
+    DATA(main_prog) = cl_oo_classname_service=>get_classpool_name( CONV #( local_obj_ref-object_name ) ).
+    DATA(compiler) = get_compiler( main_prog ).
 
-    DATA(fullname) = |\\PR:{ main_prog }\\TY:{ local_obj_ref-local_name }|.
+    DATA(fullname) = |\\PR:{ main_prog }\\TY:{ local_obj_ref-component_name }|.
     compiler->get_single_ref(
       EXPORTING
         p_full_name  = fullname
@@ -366,11 +375,11 @@ CLASS zcl_abaptags_adt_util IMPLEMENTATION.
         p_only_first = abap_true
         p_extended   = abap_true
       IMPORTING
-        p_result     = data(local_type_refs)
+        p_result     = DATA(local_type_refs)
       EXCEPTIONS
         OTHERS       = 1 ).
 
-    IF sy-subrc = 0 and local_type_refs IS NOT INITIAL.
+    IF sy-subrc = 0 AND local_type_refs IS NOT INITIAL.
       DATA(ref) = local_type_refs[ 1 ].
 
       IF ref-statement IS NOT INITIAL.
@@ -391,6 +400,19 @@ CLASS zcl_abaptags_adt_util IMPLEMENTATION.
         ENDTRY.
       ENDIF.
     ENDIF.
+  ENDMETHOD.
+
+
+  METHOD get_compiler.
+    ASSIGN compiler_map[ main_prog = main_prog ] TO FIELD-SYMBOL(<compiler>).
+    IF sy-subrc <> 0.
+      INSERT VALUE #( main_prog = main_prog ) INTO TABLE compiler_map ASSIGNING <compiler>.
+      <compiler>-ref = NEW cl_abap_compiler(
+        p_name             = main_prog
+        p_no_package_check = abap_true ).
+    ENDIF.
+
+    result = <compiler>-ref.
   ENDMETHOD.
 
 ENDCLASS.
