@@ -24,3 +24,6 @@ define view ZAbapTags_I_SubLvlObjWTag
   coalesce( GrandChildObj.Dummy, '' ) as HasGrandChildren
 
 }
+where
+      component_name = ''
+  and component_type = ''
