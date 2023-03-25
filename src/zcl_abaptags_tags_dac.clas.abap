@@ -474,6 +474,9 @@ CLASS zcl_abaptags_tags_dac IMPLEMENTATION.
       IF <obj_ref>-parent_name IS NOT INITIAL AND <obj_ref>-type IS NOT INITIAL.
         cond = |{ cond }{ c_where_and }COMPONENT_NAME = { cl_abap_dyn_prg=>quote( <obj_ref>-name ) }|.
         cond = |{ cond }{ c_where_and }COMPONENT_TYPE = { cl_abap_dyn_prg=>quote( <obj_ref>-type ) }|.
+      ELSE.
+        cond = |{ cond }{ c_where_and }COMPONENT_NAME = @space|.
+        cond = |{ cond }{ c_where_and }COMPONENT_TYPE = @space|.
       ENDIF.
 
       cond = |{ cond } )|.

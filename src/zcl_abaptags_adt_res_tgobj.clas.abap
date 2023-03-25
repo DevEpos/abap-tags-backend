@@ -113,8 +113,6 @@ CLASS zcl_abaptags_adt_res_tgobj IMPLEMENTATION.
 
 
   METHOD get.
-    DATA: texts TYPE TABLE OF seu_objtxt.
-
     DATA(object_uri) = zcl_abaptags_adt_request_util=>get_request_param_value(
       param_name = c_params-object_uri
       mandatory  = abap_true
@@ -205,13 +203,10 @@ CLASS zcl_abaptags_adt_res_tgobj IMPLEMENTATION.
   METHOD prepare_for_db_insert.
     DATA: tadir_object  TYPE string,
           tadir_type    TYPE trobjtype,
-          parent_object TYPE string,
-          parent_type   TYPE trobjtype,
           comp_name     TYPE zabaptags_obj_comp_name,
           comp_type     TYPE swo_objtyp.
 
-    FIELD-SYMBOLS: <tagged_object> TYPE zabaptags_tagged_object,
-                   <tag>           TYPE zabaptags_adt_object_tag.
+    FIELD-SYMBOLS: <tagged_object> TYPE zabaptags_tagged_object.
     validate_tags( ).
 
     LOOP AT tagged_objects ASSIGNING <tagged_object>.

@@ -44,6 +44,7 @@ INTERFACE zif_abaptags_c_global
       function_group TYPE trobjtype VALUE 'FUGR',
       program        TYPE trobjtype VALUE 'PROG',
       package        TYPE trobjtype VALUE 'DEVC',
+      class          TYPE trobjtype VALUE 'CLAS',
     END OF object_types,
 
     BEGIN OF wb_object_types,
