@@ -223,6 +223,18 @@ CLASS zcl_abaptags_adt_res_tgobjsrch IMPLEMENTATION.
 
   METHOD post_process_results.
 
+    " map components to ADT uri
+    DATA(cmp_adt_mapper) = NEW zcl_abaptags_comp_adt_mapper( ).
+    cmp_adt_mapper->add_components( VALUE #(
+      FOR <tgobj> IN tagged_objects_db WHERE ( component_name IS NOT INITIAL )
+      ( component_name = <tgobj>-component_name
+        component_type = <tgobj>-component_type
+        object_name    = <tgobj>-object_name
+        object_type    = <tgobj>-object_type ) ) ).
+    DATA: adt_object_ref TYPE zcl_abaptags_adt_util=>ty_adt_obj_ref_info.
+
+    cmp_adt_mapper->determine_components( ).
+
     LOOP AT tagged_objects_db ASSIGNING FIELD-SYMBOL(<tagged_object>).
       DATA(tadir_object_name) = <tagged_object>-object_name.
       DATA(tadir_object_type) = <tagged_object>-object_type.
@@ -236,15 +248,34 @@ CLASS zcl_abaptags_adt_res_tgobjsrch IMPLEMENTATION.
           CONTINUE.
       ENDTRY.
 
-      DATA(adt_object_ref) = zcl_abaptags_adt_util=>get_adt_obj_ref_for_tadir_type(
-        tadir_type = <tagged_object>-object_type
-        name       = <tagged_object>-object_name ).
+      DATA(object_name) = ``.
+      DATA(parent_object_name) = ``.
+      DATA(adt_type) = ``.
+
+      IF <tagged_object>-component_name IS NOT INITIAL.
+        adt_object_ref = cmp_adt_mapper->get_adt_object( VALUE #(
+          object_name    = <tagged_object>-object_name
+          object_type    = <tagged_object>-object_type
+          component_name = <tagged_object>-component_name
+          component_type = <tagged_object>-component_type ) ).
+        adt_type = <tagged_object>-component_type.
+        object_name = <tagged_object>-component_name.
+        parent_object_name = <tagged_object>-object_name.
+      ELSE.
+        adt_object_ref = zcl_abaptags_adt_util=>get_adt_obj_ref_for_tadir_type(
+          tadir_type = tadir_info-type
+          name       = <tagged_object>-object_name ).
+        adt_type = adt_object_ref-type.
+        object_name = <tagged_object>-object_name.
+      ENDIF.
+
       CHECK adt_object_ref IS NOT INITIAL.
 
       DATA(tagged_object) = VALUE zabaptags_tagged_object(
         adt_obj_ref = VALUE #(
-          name         = <tagged_object>-object_name
-          type         = adt_object_ref-type
+          name         = object_name
+          parent_name  = parent_object_name
+          type         = adt_type
           tadir_type   = <tagged_object>-object_type
           uri          = adt_object_ref-uri
           package_name = tadir_info-package_name
@@ -318,7 +349,7 @@ CLASS zcl_abaptags_adt_res_tgobjsrch IMPLEMENTATION.
 
     IF search_params-matches_all_tags = abap_true
          AND tag_count > 0.
-      SELECT object_name, object_type
+      SELECT object_name, object_type, component_name, component_type
         FROM zabaptags_tgobjn
         WHERE tag_id IN @tag_id_range
           AND object_name IN @object_name_range
@@ -326,13 +357,13 @@ CLASS zcl_abaptags_adt_res_tgobjsrch IMPLEMENTATION.
           AND parent_object_name IN @parent_object_name_range
           AND parent_object_type IN @parent_object_type_range
           AND (comp_tgobj_where_filter)
-        GROUP BY object_name, object_type
+        GROUP BY object_name, object_type, component_name, component_type
         HAVING COUNT(*) = @tag_count
         ORDER BY object_type, object_name
         INTO CORRESPONDING FIELDS OF TABLE @tagged_objects_db
         UP TO @max_results ROWS.
     ELSE.
-      SELECT DISTINCT object_name, object_type
+      SELECT DISTINCT object_name, object_type, component_name, component_type
         FROM zabaptags_tgobjn
         WHERE tag_id IN @tag_id_range
           AND object_name IN @object_name_range
