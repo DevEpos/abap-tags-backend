@@ -33,9 +33,7 @@ CLASS zcl_abaptags_tgobj_read_single DEFINITION
       object_type   TYPE wbobjtype,
       tadir_type    TYPE trobjtype,
       tgobj_infos   TYPE TABLE OF ty_tgobj_info,
-      texts         TYPE TABLE OF seu_objtxt,
-
-      tagged_object TYPE zabaptags_tagged_object.
+      texts         TYPE TABLE OF seu_objtxt.
 
     METHODS:
       find_tags_of_object
@@ -75,8 +73,8 @@ CLASS zcl_abaptags_tgobj_read_single IMPLEMENTATION.
                                                  IMPORTING object_name = object_name
                                                            tadir_type  = tadir_type
                                                            object_type = object_type ).
-    read_tags_of_object( ).
 
+    read_tags_of_object( ).
     read_parent_obj_infos( ).
     read_object_texts( ).
 

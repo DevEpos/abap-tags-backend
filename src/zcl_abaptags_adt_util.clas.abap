@@ -64,7 +64,7 @@ CLASS zcl_abaptags_adt_util DEFINITION
       "! <p class="shorttext synchronized" lang="en">Retrieves</p>
       get_local_adt_obj_ref
         IMPORTING
-          local_obj_ref TYPE zif_abaptags_ty_global=>ty_local_adt_obj_info
+          local_obj_ref TYPE zif_abaptags_ty_global=>ty_object_comp_info
         RETURNING
           VALUE(result) TYPE ty_adt_obj_ref_info.
   PROTECTED SECTION.
@@ -385,7 +385,6 @@ CLASS zcl_abaptags_adt_util IMPLEMENTATION.
       IF ref-statement IS NOT INITIAL.
         DATA(adt_tools_factory) = cl_adt_tools_core_factory=>get_instance( ).
         DATA(uri_mapper) = adt_tools_factory->get_uri_mapper( ).
-        DATA(mapping_options) = adt_tools_factory->create_mapping_options( ).
 
         TRY.
             DATA(obj_ref) = uri_mapper->map_include_to_objref(

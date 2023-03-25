@@ -126,14 +126,14 @@ INTERFACE zif_abaptags_ty_global
       tag_owner   TYPE responsibl,
     END OF ty_tgobj_info,
 
-    BEGIN OF ty_local_adt_obj_info,
+    BEGIN OF ty_object_comp_info,
       object_name    TYPE sobj_name,
       object_type    TYPE trobjtype,
       component_name TYPE sobj_name,
       component_type TYPE swo_objtyp,
-    END OF ty_local_adt_obj_info,
+    END OF ty_object_comp_info,
 
-    ty_local_adt_obj_infos TYPE STANDARD TABLE OF ty_local_adt_obj_info WITH EMPTY KEY,
+    ty_local_adt_obj_infos TYPE STANDARD TABLE OF ty_object_comp_info WITH EMPTY KEY,
 
     "! <p class="shorttext synchronized" lang="en">Information about child tag of tagged object</p>
     BEGIN OF ty_tgobj_child_info,

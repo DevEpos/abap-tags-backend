@@ -74,8 +74,7 @@ CLASS zcl_abaptags_adt_res_tagsshare IMPLEMENTATION.
 
 
   METHOD get.
-    DATA: tags   TYPE zabaptags_tag_data_t,
-          tag_id TYPE zabaptags_tag_id.
+    DATA: tag_id TYPE zabaptags_tag_id.
 
     tag_id = zcl_abaptags_adt_request_util=>get_uuid_uri_attribute(
       name      = c_uri_attributes-tag_id

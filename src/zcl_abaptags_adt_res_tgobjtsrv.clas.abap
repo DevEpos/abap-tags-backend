@@ -228,6 +228,15 @@ CLASS zcl_abaptags_adt_res_tgobjtsrv IMPLEMENTATION.
 
     DATA(tadir_info_reader) = NEW zcl_abaptags_tadir( CORRESPONDING #( matching_objects ) )->determine_tadir_entries( ).
 
+    DATA(comp_adt_mapper) = NEW zcl_abaptags_comp_adt_mapper( ).
+    comp_adt_mapper->add_components( VALUE #(
+      FOR <mo> IN matching_objects WHERE ( comp_name IS NOT INITIAL ) ( VALUE #(
+        component_name = <mo>-comp_name
+        component_type = <mo>-comp_type
+        object_name    = <mo>-name
+        object_type    = <mo>-type ) ) ) ).
+    comp_adt_mapper->determine_components( ).
+
     LOOP AT matching_objects ASSIGNING FIELD-SYMBOL(<matching_obj>).
       TRY.
           DATA(tadir_info) = tadir_info_reader->get_tadir_info(
@@ -243,11 +252,11 @@ CLASS zcl_abaptags_adt_res_tgobjtsrv IMPLEMENTATION.
       DATA(adt_type) = ``.
 
       IF <matching_obj>-comp_name IS NOT INITIAL.
-        adt_object_ref = zcl_abaptags_adt_util=>get_local_adt_obj_ref(
-          local_obj_ref = VALUE #( object_name    = <matching_obj>-name
-                                   object_type    = <matching_obj>-type
-                                   component_name = <matching_obj>-comp_name
-                                   component_type = <matching_obj>-comp_type ) ).
+        adt_object_ref = comp_adt_mapper->get_adt_object( VALUE #(
+          object_name    = <matching_obj>-name
+          object_type    = <matching_obj>-type
+          component_name = <matching_obj>-comp_name
+          component_type = <matching_obj>-comp_type ) ).
         adt_type = <matching_obj>-comp_type.
         object_name = <matching_obj>-comp_name.
         parent_object_name = <matching_obj>-name.
@@ -257,6 +266,11 @@ CLASS zcl_abaptags_adt_res_tgobjtsrv IMPLEMENTATION.
           name       = <matching_obj>-name ).
         adt_type = adt_object_ref-type.
         object_name = <matching_obj>-name.
+      ENDIF.
+
+      IF adt_object_ref-uri IS INITIAL.
+        " No URI means that the TADIR object or the component does not longer exist
+        CONTINUE.
       ENDIF.
 
       DATA(tagged_object) = VALUE zabaptags_tgobj_tree_object(
@@ -282,7 +296,7 @@ CLASS zcl_abaptags_adt_res_tgobjtsrv IMPLEMENTATION.
     CHECK tree_result-objects IS NOT INITIAL.
 
     texts = VALUE #(
-      FOR tagged_obj IN tree_result-objects
+      FOR tagged_obj IN tree_result-objects WHERE ( object_ref-parent_name IS INITIAL )
       ( object = tagged_obj-object_ref-tadir_type obj_name = tagged_obj-object_ref-name ) ).
 
     CALL FUNCTION 'RS_SHORTTEXT_GET'
@@ -471,6 +485,17 @@ CLASS zcl_abaptags_adt_res_tgobjtsrv IMPLEMENTATION.
       ( name = <obj>-object_name type = <obj>-object_type ) ) )->determine_tadir_entries( ).
     DATA: adt_object_ref TYPE zcl_abaptags_adt_util=>ty_adt_obj_ref_info.
 
+    " determine ADT info for components of repository objects
+    DATA(cmp_adt_mapper) = NEW zcl_abaptags_comp_adt_mapper( ).
+    cmp_adt_mapper->add_components( VALUE #(
+      FOR <owt> IN objects_with_tags WHERE ( component_name IS NOT INITIAL )
+      ( component_name = <owt>-component_name
+        component_type = <owt>-component_type
+        object_name    = <owt>-object_name
+        object_type    = <owt>-object_type ) ) ).
+
+    cmp_adt_mapper->determine_components( ).
+
     LOOP AT objects_with_tags ASSIGNING FIELD-SYMBOL(<obj_with_tag>)
         GROUP BY ( tag_id = <obj_with_tag>-tag_id ) ASSIGNING FIELD-SYMBOL(<obj_with_tag_group>).
 
@@ -489,11 +514,11 @@ CLASS zcl_abaptags_adt_res_tgobjtsrv IMPLEMENTATION.
         DATA(adt_type) = ``.
 
         IF <obj_with_tag_group_entry>-component_name IS NOT INITIAL.
-          adt_object_ref = zcl_abaptags_adt_util=>get_local_adt_obj_ref(
-            local_obj_ref = VALUE #( object_name = <obj_with_tag_group_entry>-object_name
-                                     object_type = <obj_with_tag_group_entry>-object_type
-                                     component_name  = <obj_with_tag_group_entry>-component_name
-                                     component_type  = <obj_with_tag_group_entry>-component_type ) ).
+          adt_object_ref = cmp_adt_mapper->get_adt_object( VALUE #(
+            object_name    = <obj_with_tag_group_entry>-object_name
+            object_type    = <obj_with_tag_group_entry>-object_type
+            component_name = <obj_with_tag_group_entry>-component_name
+            component_type = <obj_with_tag_group_entry>-component_type ) ).
           adt_type = <obj_with_tag_group_entry>-component_type.
           object_name = <obj_with_tag_group_entry>-component_name.
           parent_object_name = <obj_with_tag_group_entry>-object_name.
@@ -503,6 +528,12 @@ CLASS zcl_abaptags_adt_res_tgobjtsrv IMPLEMENTATION.
             name       = <obj_with_tag_group_entry>-object_name ).
           adt_type = adt_object_ref-type.
           object_name = <obj_with_tag_group_entry>-object_name.
+        ENDIF.
+
+        " skip deleted objects
+        IF adt_object_ref-uri IS INITIAL.
+          UNASSIGN <obj_with_tag_group_entry>.
+          CONTINUE.
         ENDIF.
 
         tree_result-objects = VALUE #( BASE tree_result-objects

@@ -34,10 +34,7 @@ CLASS zcl_abaptags_tgobj_read_locals DEFINITION
       object_name    TYPE string,
       object_type    TYPE wbobjtype,
       tadir_type     TYPE trobjtype,
-      tgobj_infos    TYPE TABLE OF ty_tgobj_info,
-      texts          TYPE TABLE OF seu_objtxt,
-
-      tagged_objects TYPE zabaptags_tagged_object_t.
+      tgobj_infos    TYPE TABLE OF ty_tgobj_info.
 
     METHODS:
       find_tags_of_of_local_objects
@@ -76,35 +73,11 @@ CLASS zcl_abaptags_tgobj_read_locals IMPLEMENTATION.
                                                  IMPORTING object_name = object_name
                                                            tadir_type  = tadir_type
                                                            object_type = object_type ).
+
     read_tags_of_object( ).
     read_parent_obj_infos( ).
 
     result = get_result( ).
-  ENDMETHOD.
-
-
-  METHOD find_tags_of_of_local_objects.
-    SELECT DISTINCT
-           tag~tag_id,
-           tgobj~parent_tag_id,
-           tag~owner,
-           tag~name,
-           parent~name AS parent_tag_name,
-           tgobj~component_name,
-           tgobj~component_type,
-           tgobj~parent_object_name,
-           tgobj~parent_object_type
-      FROM zabaptags_tgobjn AS tgobj
-        INNER JOIN zabaptags_tags AS tag
-          ON tgobj~tag_id = tag~tag_id
-        LEFT OUTER JOIN zabaptags_tags AS parent
-          ON tgobj~parent_tag_id = parent~tag_id
-      WHERE tgobj~component_name <> @space
-        AND tgobj~object_name = @object_name
-        AND tgobj~object_type = @tadir_type
-        AND ( tag~owner = @sy-uname OR tag~owner = @space )
-      ORDER BY tag~owner, tag~name
-      INTO CORRESPONDING FIELDS OF TABLE @result.
   ENDMETHOD.
 
 
@@ -167,25 +140,61 @@ CLASS zcl_abaptags_tgobj_read_locals IMPLEMENTATION.
   ENDMETHOD.
 
 
-  METHOD read_tags_of_object.
-    tgobj_infos = VALUE #(
-      ( LINES OF find_tags_of_of_local_objects( ) )
-      ( LINES OF find_shared_tags_of_loc_objs( ) ) ).
+  METHOD find_tags_of_of_local_objects.
+    SELECT DISTINCT
+           tag~tag_id,
+           tgobj~parent_tag_id,
+           tag~owner,
+           tag~name,
+           parent~name AS parent_tag_name,
+           tgobj~component_name,
+           tgobj~component_type,
+           tgobj~parent_object_name,
+           tgobj~parent_object_type
+      FROM zabaptags_tgobjn AS tgobj
+        INNER JOIN zabaptags_tags AS tag
+          ON tgobj~tag_id = tag~tag_id
+        LEFT OUTER JOIN zabaptags_tags AS parent
+          ON tgobj~parent_tag_id = parent~tag_id
+      WHERE tgobj~component_name <> @space
+        AND tgobj~object_name = @object_name
+        AND tgobj~object_type = @tadir_type
+        AND ( tag~owner = @sy-uname OR tag~owner = @space )
+      ORDER BY tag~owner, tag~name
+      INTO CORRESPONDING FIELDS OF TABLE @result.
+  ENDMETHOD.
+
+
+  METHOD get_adt_obj.
+    CHECK: object_name IS NOT INITIAL,
+           object_type IS NOT INITIAL.
+
+    result = zcl_abaptags_adt_util=>get_adt_obj_ref_for_tadir_type(
+      tadir_type = object_type
+      name       = object_name ).
   ENDMETHOD.
 
 
   METHOD get_result.
 
+    DATA(comp_adt_mapper) = NEW zcl_abaptags_comp_adt_mapper( ).
+    comp_adt_mapper->add_components( VALUE #(
+      FOR <tgobj> IN tgobj_infos ( object_name = object_name
+                                   object_type = object_type
+                                   component_name = <tgobj>-component_name
+                                   component_type = <tgobj>-component_type ) ) ).
+    comp_adt_mapper->determine_components( ).
+
     LOOP AT tgobj_infos ASSIGNING FIELD-SYMBOL(<local_obj_info>)
-        GROUP BY ( sub_obj_name = <local_obj_info>-component_name
-                   sub_obj_type = <local_obj_info>-component_type )
+        GROUP BY ( component_name = <local_obj_info>-component_name
+                   component_type = <local_obj_info>-component_type )
         ASSIGNING FIELD-SYMBOL(<local_obj_info_entry>).
 
-      DATA(local_adt_obj_ref) = zcl_abaptags_adt_util=>get_local_adt_obj_ref(
-        local_obj_ref = VALUE #( object_name = object_name
-                                 object_type = object_type-objtype_tr
-                                 component_name  = <local_obj_info_entry>-sub_obj_name
-                                 component_type  = <local_obj_info_entry>-sub_obj_type ) ).
+      DATA(local_adt_obj_ref) = comp_adt_mapper->get_adt_object( VALUE #(
+        object_name    = object_name
+        object_type    = object_type-objtype_tr
+        component_name = <local_obj_info_entry>-component_name
+        component_type = <local_obj_info_entry>-component_type ) ).
 
       IF local_adt_obj_ref IS INITIAL OR local_adt_obj_ref-uri IS INITIAL.
         CONTINUE.
@@ -193,10 +202,10 @@ CLASS zcl_abaptags_tgobj_read_locals IMPLEMENTATION.
 
       DATA(tagged_local_obj) = VALUE zabaptags_tagged_object(
         adt_obj_ref = VALUE #(
-          name        = <local_obj_info_entry>-sub_obj_name
+          name        = <local_obj_info_entry>-component_name
           " Type will be changed during mapping to a more generic type so
           " we keep the originally persisted one
-          type        = <local_obj_info_entry>-sub_obj_type
+          type        = <local_obj_info_entry>-component_type
           parent_name = object_name
           uri         = local_adt_obj_ref-uri
           parent_uri  = object_uri ) ).
@@ -226,12 +235,6 @@ CLASS zcl_abaptags_tgobj_read_locals IMPLEMENTATION.
   METHOD read_parent_obj_infos.
 
     LOOP AT tgobj_infos ASSIGNING FIELD-SYMBOL(<tgobj_info>).
-      IF <tgobj_info>-parent_object_name IS NOT INITIAL.
-        " collect info text read
-        texts = VALUE #( BASE texts ( object   = <tgobj_info>-parent_object_type
-                                      obj_name = <tgobj_info>-parent_object_name ) ).
-      ENDIF.
-
       IF <tgobj_info>-parent_tag_name IS NOT INITIAL.
         <tgobj_info>-full_hierarchy = |{ <tgobj_info>-name } < { <tgobj_info>-parent_tag_name }|.
       ELSE.
@@ -242,13 +245,10 @@ CLASS zcl_abaptags_tgobj_read_locals IMPLEMENTATION.
   ENDMETHOD.
 
 
-  METHOD get_adt_obj.
-    CHECK: object_name IS NOT INITIAL,
-           object_type IS NOT INITIAL.
-
-    result = zcl_abaptags_adt_util=>get_adt_obj_ref_for_tadir_type(
-      tadir_type = object_type
-      name       = object_name ).
+  METHOD read_tags_of_object.
+    tgobj_infos = VALUE #(
+      ( LINES OF find_tags_of_of_local_objects( ) )
+      ( LINES OF find_shared_tags_of_loc_objs( ) ) ).
   ENDMETHOD.
 
 ENDCLASS.
