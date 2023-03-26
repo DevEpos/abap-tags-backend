@@ -124,7 +124,6 @@ CLASS zcl_abaptags_comp_adt_mapper IMPLEMENTATION.
           program     = mapped_comp->main_prog
           include     = mapped_comp->include
           line        = mapped_comp->line
-***          line_offset = mapped_comp->offset ).
           line_offset = mapped_comp->offset
           end_line    = mapped_comp->end_line
           end_offset  = mapped_comp->end_offset ).
@@ -191,6 +190,8 @@ CLASS zcl_abaptags_comp_adt_mapper IMPLEMENTATION.
         indexes      = DATA(indexes) ).
 
     " First look for interfaces and class implementations
+    " --> Link to implementation is necessary to execute only the selected unit test
+    "     in ADT
     find_intf_n_cls_impl(
       source_code = multi_line_source
       indexes     = indexes
@@ -198,6 +199,7 @@ CLASS zcl_abaptags_comp_adt_mapper IMPLEMENTATION.
       main_prog   = main_prog
       incl_name   = incl_name ).
 
+    " Then find class declarations without implementation part
     find_cls_defs(
       source_code = multi_line_source
       indexes     = indexes
