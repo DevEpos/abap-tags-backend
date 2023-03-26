@@ -1,5 +1,13 @@
 "! <p class="shorttext synchronized" lang="en">ADT Mapper for components in repository objects</p>
-"! Currently it only supports components in global classes
+"! <strong>Note</strong>: Currently it only supports components in global classes<br/><br/>
+"!
+"! <strong>Additional remarks:</strong><br/>
+"! If the statement of an interface/class declaration or class implementation spans multiple lines
+"! and contains some line comments the current RegEx logic will not find this and therefore
+"! the component will not be mapped and various UIs in the ADT Frontend of ABAP Tags will not show
+"! the component although it was tagged and exists in the global class. <br/>
+"! This issues may be resolved with a adjusted RegEx logic and some post processing of the matches
+"! to consider all possible variations of declaration/implementation statements.
 CLASS zcl_abaptags_comp_adt_mapper DEFINITION
   PUBLIC
   FINAL
