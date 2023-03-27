@@ -262,7 +262,7 @@ CLASS zcl_abaptags_adt_res_tgobjtsrv IMPLEMENTATION.
         parent_object_name = <matching_obj>-name.
       ELSE.
         adt_object_ref = zcl_abaptags_adt_util=>get_adt_obj_ref_for_tadir_type(
-          tadir_type = tadir_info-type
+          tadir_type = <matching_obj>-type
           name       = <matching_obj>-name ).
         adt_type = adt_object_ref-type.
         object_name = <matching_obj>-name.

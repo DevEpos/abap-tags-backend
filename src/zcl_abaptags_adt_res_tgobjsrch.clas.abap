@@ -263,7 +263,7 @@ CLASS zcl_abaptags_adt_res_tgobjsrch IMPLEMENTATION.
         parent_object_name = <tagged_object>-object_name.
       ELSE.
         adt_object_ref = zcl_abaptags_adt_util=>get_adt_obj_ref_for_tadir_type(
-          tadir_type = tadir_info-type
+          tadir_type = <tagged_object>-object_type
           name       = <tagged_object>-object_name ).
         adt_type = adt_object_ref-type.
         object_name = <tagged_object>-object_name.
@@ -359,7 +359,7 @@ CLASS zcl_abaptags_adt_res_tgobjsrch IMPLEMENTATION.
           AND (comp_tgobj_where_filter)
         GROUP BY object_name, object_type, component_name, component_type
         HAVING COUNT(*) = @tag_count
-        ORDER BY component_type, component_name, object_type, object_name
+        ORDER BY object_type, object_name
         INTO CORRESPONDING FIELDS OF TABLE @tagged_objects_db
         UP TO @max_results ROWS.
     ELSE.
@@ -371,7 +371,7 @@ CLASS zcl_abaptags_adt_res_tgobjsrch IMPLEMENTATION.
           AND parent_object_name IN @parent_object_name_range
           AND parent_object_type IN @parent_object_type_range
           AND (comp_tgobj_where_filter)
-        ORDER BY component_type, component_name, object_type, object_name
+        ORDER BY object_type, object_name
         INTO CORRESPONDING FIELDS OF TABLE @tagged_objects_db
         UP TO @max_results ROWS.
     ENDIF.
