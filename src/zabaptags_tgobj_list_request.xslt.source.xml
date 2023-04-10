@@ -1,0 +1,42 @@
+<?sap.transform simple?>
+<tt:transform xmlns:tt="http://www.sap.com/transformation-templates" xmlns:ddic="http://www.sap.com/abapxml/types/dictionary" xmlns:atm="http://www.devepos.com/adt/atm">
+
+  <tt:root name="request" type="ddic:zabaptags_tgobj_list_request"/>
+  <tt:include name="zabaptags_tgobj_infos" template="tgobjInfos"/>
+
+  <tt:template>
+    <atm:taggedObjectListRequest tt:extensible="deep">
+      <!-- Handle list of TagIds -->
+      <tt:cond check="exist(request.tag_ids)">
+        <tt:cond check="not-initial(request.tag_ids)">
+          <tt:loop name="tag" ref="request.tag_ids">
+            <atm:tagId>
+              <tt:value option="format(guid)" ref="$tag"/>
+            </atm:tagId>
+          </tt:loop>
+        </tt:cond>
+      </tt:cond>
+
+      <!-- Handle list of Tagged ObjectIds -->
+      <tt:cond check="exist(request.tagged_object_ids)">
+        <tt:cond check="not-initial(request.tagged_object_ids)">
+          <tt:loop name="tgobj_id" ref="request.tagged_object_ids">
+            <atm:taggedObjectId>
+              <tt:value option="format(guid)" ref="$tgobj_id"/>
+            </atm:taggedObjectId>
+          </tt:loop>
+        </tt:cond>
+      </tt:cond>
+
+      <!-- Handle list of tagged object information -->
+      <tt:cond check="exist(request.tagged_object_infos)">
+        <tt:cond check="not-initial(request.tagged_object_infos)">
+          <tt:apply name="tgobjInfos">
+            <tt:with-root name="tgobj_infos" ref="request.tagged_object_infos"/>
+          </tt:apply>
+        </tt:cond>
+      </tt:cond>
+    </atm:taggedObjectListRequest>
+  </tt:template>
+
+</tt:transform>

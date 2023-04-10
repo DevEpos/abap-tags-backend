@@ -1,0 +1,21 @@
+<?sap.transform simple?>
+<tt:transform xmlns:tt="http://www.sap.com/transformation-templates" xmlns:ddic="http://www.sap.com/abapxml/types/dictionary" xmlns:atm="http://www.devepos.com/adt/atm">
+
+  <tt:root name="request" type="ddic:ZABAPTAGS_TGOBJ_DELCHK_REQUEST"/>
+
+  <tt:template>
+    <atm:taggedObjectDelCheckRequest>
+      <tt:cond check="exist(request.tagged_object_ids)">
+        <tt:cond check="not-initial(request.tagged_object_ids)">
+          <tt:loop ref="request.tagged_object_ids">
+            <atm:taggedObjectId>
+              <tt:value option="format(guid)" ref="$ref"/>
+            </atm:taggedObjectId>
+          </tt:loop>
+        </tt:cond>
+      </tt:cond>
+    </atm:taggedObjectDelCheckRequest>
+
+  </tt:template>
+
+</tt:transform>

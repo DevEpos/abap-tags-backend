@@ -2,6 +2,19 @@
 INTERFACE zif_abaptags_c_global
   PUBLIC .
   CONSTANTS:
+    BEGIN OF message_types,
+      error   TYPE string VALUE 'ERROR',
+      warning TYPE string VALUE 'WARNING',
+      info    TYPE string VALUE 'INFO',
+    END OF message_types,
+
+    "! The type of an ABAP Tag
+    BEGIN OF tag_type,
+      global TYPE string VALUE 'GLOBAL',
+      user   TYPE string VALUE 'USER',
+      shared TYPE string VALUE 'SHARED',
+    END OF tag_type,
+
     "! Possible scopes for reading tags or tagged objects
     BEGIN OF scopes,
       all    TYPE string VALUE 'all',

@@ -7,15 +7,18 @@ CLASS zcl_abaptags_adt_disc_app DEFINITION
 
   PUBLIC SECTION.
     CONSTANTS:
-      c_root_scheme                TYPE string VALUE 'http://www.devepos.com/adt/atm',
-      c_root_rel_scheme            TYPE string VALUE 'http://www.devepos.com/adt/relations/atm',
-      c_tags_uri                   TYPE string VALUE '/tags',
-      c_tags_deletion_check_uri    TYPE string VALUE '/tags/deletion/check',
-      c_tags_share_uri             TYPE string VALUE '/tags/share',
-      c_object_tagging_uri         TYPE string VALUE '/taggedobjects',
-      c_tagged_object_search_uri   TYPE string VALUE '/taggedobjects/search',
-      c_tagged_object_tree_srv_uri TYPE string VALUE '/taggedobjects/tree/contents',
-      c_static_uri                 TYPE string VALUE '/devepos/adt/atm'.
+      c_root_scheme                 TYPE string VALUE 'http://www.devepos.com/adt/atm',
+      c_root_rel_scheme             TYPE string VALUE 'http://www.devepos.com/adt/relations/atm',
+      c_tags_uri                    TYPE string VALUE '/tags',
+      c_tags_deletion_check_uri     TYPE string VALUE '/tags/deletion/check',
+      c_tags_share_uri              TYPE string VALUE '/tags/share',
+      c_object_tagging_uri          TYPE string VALUE '/taggedobjects',
+      c_del_tagged_objects_uri      TYPE string VALUE '/taggedobjects/delete',
+      c_tagged_object_search_uri    TYPE string VALUE '/taggedobjects/search',
+      c_tagged_object_info_list_uri TYPE string VALUE '/taggedobjects/infos',
+      c_tagged_object_del_check_uri TYPE string VALUE '/taggedobjects/deletion/check',
+      c_tagged_object_tree_srv_uri  TYPE string VALUE '/taggedobjects/tree/contents',
+      c_static_uri                  TYPE string VALUE '/devepos/adt/atm'.
 
     METHODS:
       if_adt_rest_rfc_application~get_static_uri_path
@@ -99,6 +102,19 @@ CLASS zcl_abaptags_adt_disc_app IMPLEMENTATION.
       template      = |{ c_object_tagging_uri }/{ c_previewinfo_uri_part }|
       handler_class = 'ZCL_ABAPTAGS_ADT_RES_TAGPREV' ).
 
+    registry->register_discoverable_resource(
+      url             = c_tagged_object_del_check_uri
+      handler_class   = 'ZCL_ABAPTAGS_ADT_RES_TGOBJDCHK'
+      description     = 'Tagged Object Deletion Check'
+      category_scheme = c_root_scheme
+      category_term   = 'taggedObjectDeletionCheck' ).
+
+    registry->register_discoverable_resource(
+      url             = c_del_tagged_objects_uri
+      handler_class   = 'ZCL_ABAPTAGS_ADT_RES_TGOBJDEL'
+      description     = 'Tagged Object Deletion'
+      category_scheme = c_root_scheme
+      category_term   = 'taggedObjectDeletion' ).
   ENDMETHOD.
 
 
@@ -142,6 +158,13 @@ CLASS zcl_abaptags_adt_disc_app IMPLEMENTATION.
       description     = 'Tagged Object Search'
       category_scheme = c_root_scheme
       category_term   = 'taggedobjectsearch' ).
+
+    registry->register_discoverable_resource(
+      url             = c_tagged_object_info_list_uri
+      handler_class   = 'ZCL_ABAPTAGS_ADT_RES_TGOBJLIST'
+      description     = 'Tagged Object Info Retriever'
+      category_scheme = c_root_scheme
+      category_term   = 'taggedObjectInfos' ).
   ENDMETHOD.
 
 

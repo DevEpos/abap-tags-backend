@@ -1,5 +1,5 @@
 *&---------------------------------------------------------------------*
-*& Migration Report for ABAP Tags to version v2.0.0
+*& Migration Report for ABAP Tags to version v1.2.0
 *&---------------------------------------------------------------------*
 *&  -> new database table ZABAPTAGS_TGOBJN as successor of ZABAPTAGS_TGOBJ
 *&  -> new mapping table ZABAPTAGS_TAGSRM for root node of tree to all child nodes
