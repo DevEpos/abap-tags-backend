@@ -1,0 +1,53 @@
+<?sap.transform simple?>
+<tt:transform xmlns:tt="http://www.sap.com/transformation-templates" xmlns:ddic="http://www.sap.com/abapxml/types/dictionary" xmlns:atm="http://www.devepos.com/adt/atm">
+
+  <tt:root name="check_results" type="ddic:zabaptags_tgobj_delchk_obj_t"/>
+
+  <tt:template>
+    <atm:taggedObjectDelCheckResult>
+      <tt:cond check="not-initial(check_results)">
+        <tt:loop ref="check_results">
+          <tt:apply name="checkedObject">
+            <tt:with-root name="checked_object"/>
+          </tt:apply>
+        </tt:loop>
+      </tt:cond>
+    </atm:taggedObjectDelCheckResult>
+
+  </tt:template>
+
+  <tt:template name="checkedObject">
+    <tt:context>
+      <tt:root name="checked_object" type="ddic:zabaptags_tgobj_delchk_object"/>
+    </tt:context>
+
+    <atm:checkedObject>
+      <tt:cond check="not-initial(checked_object.tagged_object_id)">
+        <tt:attribute name="atm:taggedObjectId" option="format(guid)" value-ref="checked_object.tagged_object_id"/>
+      </tt:cond>
+
+      <tt:cond check="not-initial(checked_object.is_deletable)">
+        <tt:attribute name="atm:deletable" option="format(boolean)" value-ref="checked_object.is_deletable"/>
+      </tt:cond>
+
+      <tt:cond check="not-initial(checked_object.message)">
+        <tt:attribute name="atm:message" value-ref="checked_object.message"/>
+      </tt:cond>
+
+      <tt:cond check="not-initial(checked_object.message_type)">
+        <tt:attribute name="atm:messageType" value-ref="checked_object.message_type"/>
+      </tt:cond>
+
+      <tt:cond check="not-initial(checked_object.dependent_object_ids)">
+        <tt:loop ref="checked_object.dependent_object_ids">
+          <tt:cond check="not-initial($ref)">
+            <atm:dependentObjectId>
+              <tt:value option="format(guid)" ref="$ref"/>
+            </atm:dependentObjectId>
+          </tt:cond>
+        </tt:loop>
+      </tt:cond>
+    </atm:checkedObject>
+  </tt:template>
+
+</tt:transform>

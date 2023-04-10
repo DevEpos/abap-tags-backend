@@ -1,0 +1,79 @@
+<?sap.transform simple?>
+<tt:transform xmlns:tt="http://www.sap.com/transformation-templates" xmlns:ddic="http://www.sap.com/abapxml/types/dictionary" xmlns:atm="http://www.devepos.com/adt/atm">
+
+  <tt:root name="tgobj_info" type="ddic:zabaptags_tgobj_info"/>
+
+  <tt:template>
+    <tt:apply name="tgobjInfo">
+      <tt:with-root name="tgobj_info" ref="tgobj_info"/>
+    </tt:apply>
+  </tt:template>
+
+  <tt:template name="tgobjInfo">
+    <tt:context>
+      <tt:root name="tgobj_info"/>
+    </tt:context>
+
+    <atm:taggedObjectInfo tt:extensible="deep">
+      <tt:apply name="tgobjInfoAttributes">
+        <tt:with-root name="tgobj_info" ref="tgobj_info"/>
+      </tt:apply>
+    </atm:taggedObjectInfo>
+
+  </tt:template>
+
+  <tt:template name="tgobjInfoAttributes">
+    <tt:context>
+      <tt:root name="tgobj_info"/>
+    </tt:context>
+
+    <tt:cond check="not-initial(tgobj_info.id)">
+      <tt:attribute name="atm:id" option="format(guid)" value-ref="tgobj_info.id"/>
+    </tt:cond>
+
+    <tt:cond check="not-initial(tgobj_info.tag_id)">
+      <tt:attribute name="atm:tagId" option="format(guid)" value-ref="tgobj_info.tag_id"/>
+    </tt:cond>
+
+    <tt:cond check="not-initial(tgobj_info.tag_type)">
+      <tt:attribute name="atm:tagType" value-ref="tgobj_info.tag_type"/>
+    </tt:cond>
+
+    <tt:cond check="not-initial(tgobj_info.tag_name)">
+      <tt:attribute name="atm:tagName" value-ref="tgobj_info.tag_name"/>
+    </tt:cond>
+
+    <tt:cond check="not-initial(tgobj_info.object_name)">
+      <tt:attribute name="atm:objectName" value-ref="tgobj_info.object_name"/>
+    </tt:cond>
+
+    <tt:cond check="not-initial(tgobj_info.object_type)">
+      <tt:attribute name="atm:objectType" value-ref="tgobj_info.object_type"/>
+    </tt:cond>
+
+    <tt:cond check="not-initial(tgobj_info.component_name)">
+      <tt:attribute name="atm:componentName" value-ref="tgobj_info.component_name"/>
+    </tt:cond>
+
+    <tt:cond check="not-initial(tgobj_info.component_type)">
+      <tt:attribute name="atm:componentType" value-ref="tgobj_info.component_type"/>
+    </tt:cond>
+
+    <tt:cond check="not-initial(tgobj_info.parent_tag_id)">
+      <tt:attribute name="atm:parentTagId" option="format(guid)" value-ref="tgobj_info.parent_tag_id"/>
+    </tt:cond>
+
+    <tt:cond check="not-initial(tgobj_info.parent_tag_name)">
+      <tt:attribute name="atm:parentTagName" value-ref="tgobj_info.parent_tag_name"/>
+    </tt:cond>
+
+    <tt:cond check="not-initial(tgobj_info.parent_object_name)">
+      <tt:attribute name="atm:parentObjectName" value-ref="tgobj_info.parent_object_name"/>
+    </tt:cond>
+
+    <tt:cond check="not-initial(tgobj_info.parent_object_type)">
+      <tt:attribute name="atm:parentObjectType" value-ref="tgobj_info.parent_object_type"/>
+    </tt:cond>
+  </tt:template>
+
+</tt:transform>

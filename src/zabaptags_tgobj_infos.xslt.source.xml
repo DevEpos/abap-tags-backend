@@ -1,0 +1,29 @@
+<?sap.transform simple?>
+<tt:transform xmlns:tt="http://www.sap.com/transformation-templates" xmlns:ddic="http://www.sap.com/abapxml/types/dictionary" xmlns:atm="http://www.devepos.com/adt/atm">
+
+  <tt:root name="tgobj_infos" type="ddic:zabaptags_tgobj_info_t"/>
+  <tt:include name="zabaptags_tgobj_info" template="tgobjInfo"/>
+
+  <tt:template>
+    <atm:taggedObjectInfos tt:extensible="deep">
+      <tt:apply name="tgobjInfos">
+        <tt:with-root name="tgobj_infos" ref="tgobj_infos" />
+      </tt:apply>
+    </atm:taggedObjectInfos>
+  </tt:template>
+
+  <tt:template name="tgobjInfos">
+    <tt:context>
+      <tt:root name="tgobj_infos" type="ddic:zabaptags_tgobj_info_t"/>
+    </tt:context>
+
+    <tt:cond check="not-initial(tgobj_infos)">
+      <tt:loop ref="tgobj_infos">
+        <tt:apply name="tgobjInfo">
+          <tt:with-root name="tgobj_info" ref="$ref"/>
+        </tt:apply>
+      </tt:loop>
+    </tt:cond>
+  </tt:template>
+
+</tt:transform>
