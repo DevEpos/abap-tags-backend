@@ -15,9 +15,6 @@ CLASS zcl_abaptags_adt_res_tgobj DEFINITION
   PROTECTED SECTION.
   PRIVATE SECTION.
     CONSTANTS:
-      BEGIN OF c_actions,
-        batch_delete TYPE string VALUE 'batchDelete',
-      END OF c_actions,
       BEGIN OF c_params,
         action     TYPE string VALUE 'action',
         object_uri TYPE string VALUE 'objectUri',
@@ -48,9 +45,6 @@ CLASS zcl_abaptags_adt_res_tgobj DEFINITION
         RAISING
           cx_adt_rest,
       create_non_persisted_tags
-        RAISING
-          cx_adt_rest,
-      delete_tags_from_objects
         RAISING
           cx_adt_rest,
       validate_tags
@@ -101,12 +95,6 @@ CLASS zcl_abaptags_adt_res_tgobj IMPLEMENTATION.
     IF action_name IS INITIAL.
       " create/update tags
       create_tagged_objects( ).
-    ELSE.
-      CASE action_name.
-
-        WHEN c_actions-batch_delete.
-          delete_tags_from_objects( ).
-      ENDCASE.
     ENDIF.
 
   ENDMETHOD.
@@ -201,10 +189,10 @@ CLASS zcl_abaptags_adt_res_tgobj IMPLEMENTATION.
 
 
   METHOD prepare_for_db_insert.
-    DATA: tadir_object  TYPE string,
-          tadir_type    TYPE trobjtype,
-          comp_name     TYPE zabaptags_obj_comp_name,
-          comp_type     TYPE swo_objtyp.
+    DATA: tadir_object TYPE string,
+          tadir_type   TYPE trobjtype,
+          comp_name    TYPE zabaptags_obj_comp_name,
+          comp_type    TYPE swo_objtyp.
 
     FIELD-SYMBOLS: <tagged_object> TYPE zabaptags_tagged_object.
     validate_tags( ).
@@ -250,65 +238,6 @@ CLASS zcl_abaptags_adt_res_tgobj IMPLEMENTATION.
       ENDTRY.
     ENDLOOP.
 
-  ENDMETHOD.
-
-
-  METHOD delete_tags_from_objects.
-    DATA: tadir_object      TYPE string,
-          tadir_type        TYPE trobjtype,
-          tagged_objects_db TYPE zif_abaptags_ty_global=>ty_db_tagged_objects,
-          parent_obj_name   TYPE string,
-          parent_tadir_type TYPE trobjtype.
-
-    FIELD-SYMBOLS: <tagged_object> TYPE zabaptags_tagged_object,
-                   <tag>           TYPE zabaptags_adt_object_tag.
-
-
-    LOOP AT tagged_objects ASSIGNING <tagged_object>.
-      DATA(tgobj_to_delete) = VALUE zabaptags_tgobjn( ).
-
-      IF <tagged_object>-adt_obj_ref-uri IS NOT INITIAL.
-        zcl_abaptags_adt_util=>map_uri_to_wb_object( EXPORTING uri         = <tagged_object>-adt_obj_ref-uri
-                                                     IMPORTING object_name = tadir_object
-                                                               tadir_type  = tadir_type ).
-
-        " Special handling for local classes
-        IF <tagged_object>-adt_obj_ref-type = zif_abaptags_c_global=>wb_object_types-local_class OR
-            <tagged_object>-adt_obj_ref-type = zif_abaptags_c_global=>wb_object_types-local_interface.
-          DATA(glob_class_name) = COND #(
-            WHEN strlen( tadir_object ) > 30 THEN tadir_object(30)
-            ELSE tadir_object ).
-          tgobj_to_delete-object_name = condense( translate( val = glob_class_name from = '=' to = space ) ).
-          tgobj_to_delete-component_name = <tagged_object>-adt_obj_ref-name.
-          tgobj_to_delete-component_type = <tagged_object>-adt_obj_ref-type.
-        ELSE.
-          tgobj_to_delete-object_name = tadir_object.
-        ENDIF.
-        tgobj_to_delete-object_type = tadir_type.
-      ENDIF.
-
-      LOOP AT <tagged_object>-tags ASSIGNING <tag>.
-        CLEAR: tgobj_to_delete-parent_tag_id,
-               parent_obj_name,
-               parent_tadir_type.
-
-        IF <tag>-parent_uri IS NOT INITIAL.
-          zcl_abaptags_adt_util=>map_uri_to_wb_object( EXPORTING uri         = <tag>-parent_uri
-                                                       IMPORTING object_name = parent_obj_name
-                                                                 tadir_type  = parent_tadir_type ).
-        ENDIF.
-
-        tgobj_to_delete-tag_id = <tag>-tag_id.
-        tgobj_to_delete-parent_object_name = parent_obj_name.
-        tgobj_to_delete-parent_object_type = parent_tadir_type.
-        tgobj_to_delete-parent_tag_id = <tag>-parent_tag_id.
-
-        tagged_objects_db = VALUE #( BASE tagged_objects_db ( tgobj_to_delete ) ).
-      ENDLOOP.
-
-    ENDLOOP.
-
-    NEW zcl_abaptags_tgobj_delete( tagged_objects_db )->run( ).
   ENDMETHOD.
 
 
