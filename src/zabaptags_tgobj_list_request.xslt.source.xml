@@ -6,6 +6,10 @@
 
   <tt:template>
     <atm:taggedObjectListRequest tt:extensible="deep">
+      <tt:cond check="not-initial(request.load_child_objects)">
+        <tt:attribute name="atm:loadChildObjects" option="format(boolean)" value-ref="request.load_child_objects"/>
+      </tt:cond>
+
       <!-- Handle list of TagIds -->
       <tt:cond check="exist(request.tag_ids)">
         <tt:cond check="not-initial(request.tag_ids)">
