@@ -59,7 +59,8 @@ CLASS zcl_abaptags_adt_res_tgobjlist DEFINITION
       find_obj_by_parent_obj,
       find_obj_by_obj_n_comp,
       find_obj_by_full_key,
-      find_obj_by_tag_id.
+      find_obj_by_tag_id,
+      load_assigned_child_objects.
 ENDCLASS.
 
 
@@ -71,6 +72,9 @@ CLASS zcl_abaptags_adt_res_tgobjlist IMPLEMENTATION.
                             IMPORTING data            = list_request ).
 
     get_tagged_objects( ).
+    IF list_request-load_child_objects = abap_true.
+      load_assigned_child_objects( ).
+    ENDIF.
     post_process_found_objects( ).
 
     IF tagged_object_infos IS NOT INITIAL.
@@ -313,12 +317,52 @@ CLASS zcl_abaptags_adt_res_tgobjlist IMPLEMENTATION.
           AND tgobj~componentname = @space
           AND tgobj~componenttype = @space
           AND tgobj~tagid         = @select_keys-tag_and_obj-tag_id
-*          AND tgobj~parenttagid   = @select_keys-tag_and_obj-parent_tag_id
       APPENDING CORRESPONDING FIELDS OF TABLE @found_objects.
   ENDMETHOD.
 
 
+  METHOD load_assigned_child_objects.
+    DATA(parent_objects) = found_objects.
+
+    WHILE parent_objects IS NOT INITIAL.
+      SELECT tgobj~id,
+             tgobj~tagid AS tag_id,
+             tag~name AS tag_name,
+             tag~owner AS owner,
+             tgobj~objectname AS object_name,
+             tgobj~objecttype AS object_type,
+             tgobj~componentname AS component_name,
+             tgobj~componenttype AS component_type,
+             tgobj~parenttagid AS parent_tag_id,
+             parent_tag~name AS parent_tag_name,
+             tgobj~parentobjectname AS parent_object_name,
+             tgobj~parentobjecttype AS parent_object_type
+        FROM zabaptags_i_tgobjn AS tgobj
+          INNER JOIN zabaptags_i_tag AS tag
+            ON tgobj~tagid = tag~tagid
+          LEFT OUTER JOIN zabaptags_i_tag AS parent_tag
+            ON tgobj~parenttagid = parent_tag~tagid
+        FOR ALL ENTRIES IN @parent_objects
+        WHERE tgobj~parentobjectname = @parent_objects-object_name
+          AND tgobj~parentobjecttype = @parent_objects-object_type
+          AND tgobj~parenttagid = @parent_objects-tag_id
+        INTO TABLE @DATA(temp).
+
+      IF sy-subrc = 0.
+        found_objects = VALUE #( BASE found_objects ( LINES OF temp ) ).
+        parent_objects = temp.
+      ELSE.
+        EXIT.
+      ENDIF.
+    ENDWHILE.
+  ENDMETHOD.
+
+
   METHOD post_process_found_objects.
+
+    SORT found_objects BY id.
+    DELETE ADJACENT DUPLICATES FROM found_objects COMPARING id.
+
     LOOP AT found_objects REFERENCE INTO DATA(found_obj).
 
       DATA(new_tgobj_info) = VALUE zabaptags_tgobj_info(
@@ -345,5 +389,7 @@ CLASS zcl_abaptags_adt_res_tgobjlist IMPLEMENTATION.
 
     SORT tagged_object_infos BY tag_type object_type object_name component_type component_name.
   ENDMETHOD.
+
+
 
 ENDCLASS.
