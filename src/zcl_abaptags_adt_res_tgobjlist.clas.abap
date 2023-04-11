@@ -109,13 +109,21 @@ CLASS zcl_abaptags_adt_res_tgobjlist IMPLEMENTATION.
   METHOD get_adjusted_types.
     DATA(wb_object_type) = cl_wb_object_type=>create_from_exttype( p_external_id = tagged_object-object_type ).
     DATA(main_global_type) = wb_object_type->get_main_global_type( ).
-    object_type = |{ main_global_type-objtype_tr }/{ main_global_type-subtype_wb }|.
+    IF main_global_type-subtype_wb IS NOT INITIAL.
+      object_type = |{ main_global_type-objtype_tr }/{ main_global_type-subtype_wb }|.
+    ELSE.
+      object_type = main_global_type-objtype_tr.
+    ENDIF.
 
     IF tagged_object-parent_object_type IS NOT INITIAL AND
         tagged_object-parent_object_name IS NOT INITIAL.
       wb_object_type = cl_wb_object_type=>create_from_exttype( p_external_id = tagged_object-parent_object_type ).
       main_global_type = wb_object_type->get_main_global_type( ).
-      parent_object_type = |{ main_global_type-objtype_tr }/{ main_global_type-subtype_wb }|.
+      IF main_global_type-subtype_wb IS NOT INITIAL.
+        parent_object_type = |{ main_global_type-objtype_tr }/{ main_global_type-subtype_wb }|.
+      ELSE.
+        parent_object_type = main_global_type-objtype_tr.
+      ENDIF.
     ENDIF.
   ENDMETHOD.
 
