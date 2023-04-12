@@ -387,7 +387,7 @@ CLASS zcl_abaptags_adt_res_tgobjlist IMPLEMENTATION.
       tagged_object_infos = VALUE #( BASE tagged_object_infos ( new_tgobj_info ) ).
     ENDLOOP.
 
-    SORT tagged_object_infos BY tag_type object_type object_name component_type component_name.
+    SORT tagged_object_infos BY tag_type object_type tag_name object_name component_type component_name parent_tag_name parent_object_type parent_object_name.
   ENDMETHOD.
 
 
