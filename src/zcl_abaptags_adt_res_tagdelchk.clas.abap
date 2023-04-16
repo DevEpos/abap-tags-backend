@@ -78,7 +78,7 @@ CLASS zcl_abaptags_adt_res_tagdelchk IMPLEMENTATION.
         ( tag_id       = <tag_obj_count>-tag_id
           message      = |Still { <tag_obj_count>-count } | && COND #(
             WHEN <tag_obj_count>-count > 1 THEN `objects` ELSE `object` ) && ` assigned`
-          message_type = 'ERROR' ) ).
+          message_type = zif_abaptags_c_global=>message_types-error ) ).
     ENDLOOP.
 
     IF lines( counts ) <> lines( tags_to_delete ).
@@ -90,12 +90,33 @@ CLASS zcl_abaptags_adt_res_tagdelchk IMPLEMENTATION.
         INTO TABLE @DATA(root_counts).
 
       LOOP AT root_counts ASSIGNING FIELD-SYMBOL(<root_count>).
+        CHECK NOT line_exists( check_result-tags[ tag_id = <root_count>-tag_id ] ).
+
         check_result-tags = VALUE #( BASE check_result-tags
           ( tag_id       = <root_count>-tag_id
             message      = |Still { <root_count>-count } | && COND #(
               WHEN <root_count>-count > 1 THEN `objects` ELSE `object` ) && ` in lower tree levels assigned`
-            message_type = 'ERROR' ) ).
+            message_type = zif_abaptags_c_global=>message_types-error ) ).
       ENDLOOP.
+    ENDIF.
+
+    IF lines( check_result-tags ) <> lines( tags_to_delete ).
+      SELECT root_tag_id,
+             COUNT(*) AS count
+        FROM zabaptags_tagsrm AS root_child
+        WHERE root_tag_id IN @tags_range
+        GROUP BY root_tag_id
+        INTO TABLE @DATA(child_tag_counts).
+
+      LOOP AT child_tag_counts INTO DATA(child_tag_count).
+        CHECK NOT line_exists( check_result-tags[ tag_id = child_tag_count-root_tag_id ] ).
+        check_result-tags = VALUE #( BASE check_result-tags
+          ( tag_id       = child_tag_count-root_tag_id
+            is_deletable = abap_true
+            message      = |Still { child_tag_count-count } child Tags existing|
+            message_type = zif_abaptags_c_global=>message_types-warning ) ).
+      ENDLOOP.
+
     ENDIF.
   ENDMETHOD.
 
