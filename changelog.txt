@@ -9,6 +9,12 @@ Legend
 + : added
 - : removed
 
+2023-04-16 v2.2.0
+-------------------
+
++ Mass removal of tags from objects
+! Improved removal of tags from repository objects
+
 2023-03-28 v2.1.0
 -------------------
 
