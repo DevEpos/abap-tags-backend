@@ -95,6 +95,11 @@ CLASS zcl_abaptags_adt_res_tgobj IMPLEMENTATION.
     IF action_name IS INITIAL.
       " create/update tags
       create_tagged_objects( ).
+    ELSE.
+      RAISE EXCEPTION TYPE zcx_abaptags_adt_error
+        EXPORTING
+          textid = zcx_abaptags_adt_error=>unknown_tgobj_action
+          msgv1  = |{ action_name }|.
     ENDIF.
 
   ENDMETHOD.
