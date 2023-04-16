@@ -39,19 +39,26 @@ CLASS zcl_abaptags_adt_res_tgobjlist DEFINITION
             tag_and_obj   TYPE ty_tagged_objects,
           END OF select_keys.
 
-    METHODS: get_request_handler
-      RETURNING
-        VALUE(result) TYPE REF TO if_adt_rest_content_handler,
+    METHODS:
+      get_request_handler
+        RETURNING
+          VALUE(result) TYPE REF TO if_adt_rest_content_handler,
       get_response_handler
         RETURNING
           VALUE(result) TYPE REF TO if_adt_rest_content_handler,
       get_tagged_objects,
       get_adjusted_types
         IMPORTING
-          tagged_object      TYPE ty_tagged_object
+          tagged_object      TYPE REF TO ty_tagged_object
         EXPORTING
           object_type        TYPE swo_objtyp
           parent_object_type TYPE swo_objtyp,
+      get_adt_type_for_object
+        IMPORTING
+          name          TYPE sobj_name
+          type          TYPE trobjtype
+        RETURNING
+          VALUE(result) TYPE swo_objtyp,
       get_tgobj_infos_by_sem_keys,
       post_process_found_objects,
       fill_semantic_key_tables,
@@ -60,7 +67,12 @@ CLASS zcl_abaptags_adt_res_tgobjlist DEFINITION
       find_obj_by_obj_n_comp,
       find_obj_by_full_key,
       find_obj_by_tag_id,
-      load_assigned_child_objects.
+      load_assigned_child_objects,
+      add_to_keytab
+        IMPORTING
+          tgobj_info_ext TYPE zabaptags_tgobj_info
+        CHANGING
+          keytab         TYPE ty_tagged_objects.
 ENDCLASS.
 
 
@@ -111,23 +123,33 @@ CLASS zcl_abaptags_adt_res_tgobjlist IMPLEMENTATION.
 
 
   METHOD get_adjusted_types.
-    DATA(wb_object_type) = cl_wb_object_type=>create_from_exttype( p_external_id = tagged_object-object_type ).
-    DATA(main_global_type) = wb_object_type->get_main_global_type( ).
-    IF main_global_type-subtype_wb IS NOT INITIAL.
-      object_type = |{ main_global_type-objtype_tr }/{ main_global_type-subtype_wb }|.
-    ELSE.
-      object_type = main_global_type-objtype_tr.
+    object_type = get_adt_type_for_object( name = tagged_object->object_name
+                                           type = tagged_object->object_type ).
+
+    IF tagged_object->parent_object_type IS NOT INITIAL AND
+        tagged_object->parent_object_name IS NOT INITIAL.
+      parent_object_type = get_adt_type_for_object( name = tagged_object->parent_object_name
+                                                    type = tagged_object->parent_object_type ).
+    ENDIF.
+  ENDMETHOD.
+
+
+  METHOD get_adt_type_for_object.
+    DATA(adt_obj_info) = zcl_abaptags_adt_util=>get_adt_obj_ref_for_tadir_type(
+      tadir_type = type
+      name       = name ).
+
+    IF adt_obj_info-type IS NOT INITIAL.
+      result = adt_obj_info-type.
+      RETURN.
     ENDIF.
 
-    IF tagged_object-parent_object_type IS NOT INITIAL AND
-        tagged_object-parent_object_name IS NOT INITIAL.
-      wb_object_type = cl_wb_object_type=>create_from_exttype( p_external_id = tagged_object-parent_object_type ).
-      main_global_type = wb_object_type->get_main_global_type( ).
-      IF main_global_type-subtype_wb IS NOT INITIAL.
-        parent_object_type = |{ main_global_type-objtype_tr }/{ main_global_type-subtype_wb }|.
-      ELSE.
-        parent_object_type = main_global_type-objtype_tr.
-      ENDIF.
+    DATA(wb_object_type) = cl_wb_object_type=>create_from_exttype( p_external_id = type ).
+    DATA(main_global_type) = wb_object_type->get_r3tr_global_type( ).
+    IF main_global_type-subtype_wb IS NOT INITIAL.
+      result = |{ main_global_type-objtype_tr }/{ main_global_type-subtype_wb }|.
+    ELSE.
+      result = main_global_type-objtype_tr.
     ENDIF.
   ENDMETHOD.
 
@@ -149,22 +171,40 @@ CLASS zcl_abaptags_adt_res_tgobjlist IMPLEMENTATION.
           <tgobj>-parent_tag_id IS NOT INITIAL AND
           <tgobj>-component_name IS NOT INITIAL AND
           <tgobj>-component_type IS NOT INITIAL.
-        select_keys-full_semantic = VALUE #( BASE select_keys-full_semantic ( CORRESPONDING #( <tgobj> ) ) ).
+        add_to_keytab( EXPORTING tgobj_info_ext = <tgobj>
+                       CHANGING  keytab         = select_keys-full_semantic ).
       ELSEIF <tgobj>-parent_object_name IS NOT INITIAL AND
           <tgobj>-parent_object_type IS NOT INITIAL AND
           <tgobj>-parent_tag_id IS NOT INITIAL.
-        select_keys-parent_obj = VALUE #( BASE select_keys-parent_obj ( CORRESPONDING #( <tgobj> ) ) ).
+        add_to_keytab( EXPORTING tgobj_info_ext = <tgobj>
+                       CHANGING  keytab         = select_keys-parent_obj ).
       ELSEIF <tgobj>-object_type IS NOT INITIAL AND
           <tgobj>-object_name IS NOT INITIAL AND
           <tgobj>-component_name IS NOT INITIAL AND
           <tgobj>-component_type IS NOT INITIAL.
-        select_keys-comp_obj = VALUE #( BASE select_keys-comp_obj ( CORRESPONDING #( <tgobj> ) ) ).
+        add_to_keytab( EXPORTING tgobj_info_ext = <tgobj>
+                       CHANGING  keytab         = select_keys-comp_obj ).
       ELSEIF <tgobj>-object_type IS NOT INITIAL AND
           <tgobj>-object_name IS NOT INITIAL.
-        select_keys-tag_and_obj = VALUE #( BASE select_keys-tag_and_obj ( CORRESPONDING #( <tgobj> ) ) ).
+        add_to_keytab( EXPORTING tgobj_info_ext = <tgobj>
+                       CHANGING  keytab         = select_keys-tag_and_obj ).
       ENDIF.
     ENDLOOP.
 
+  ENDMETHOD.
+
+
+  METHOD add_to_keytab.
+    DATA(tgobj_key_tab_entry) = CORRESPONDING ty_tagged_object( tgobj_info_ext ).
+    IF tgobj_info_ext-object_type = zif_abaptags_c_global=>wb_object_types-function.
+      tgobj_key_tab_entry-object_type = zif_abaptags_c_global=>object_types-function.
+    ENDIF.
+
+    IF tgobj_info_ext-parent_object_type = zif_abaptags_c_global=>wb_object_types-function.
+      tgobj_key_tab_entry-parent_object_type = zif_abaptags_c_global=>object_types-function.
+    ENDIF.
+
+    keytab = VALUE #( BASE keytab ( tgobj_key_tab_entry ) ).
   ENDMETHOD.
 
 
@@ -380,14 +420,16 @@ CLASS zcl_abaptags_adt_res_tgobjlist IMPLEMENTATION.
         parent_tag_name    = found_obj->parent_tag_name
         parent_object_name = found_obj->parent_object_name ).
 
-      get_adjusted_types( EXPORTING tagged_object      = found_obj->*
+      get_adjusted_types( EXPORTING tagged_object      = found_obj
                           IMPORTING object_type        = new_tgobj_info-object_type
                                     parent_object_type = new_tgobj_info-parent_object_type ).
 
       tagged_object_infos = VALUE #( BASE tagged_object_infos ( new_tgobj_info ) ).
     ENDLOOP.
 
-    SORT tagged_object_infos BY tag_type tag_name object_type object_name component_type component_name parent_tag_name parent_object_type parent_object_name.
+    SORT tagged_object_infos BY tag_type object_type tag_name object_name
+                                component_type component_name
+                                parent_tag_name parent_object_type parent_object_name.
   ENDMETHOD.
 
 
