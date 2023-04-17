@@ -81,6 +81,8 @@ CLASS zcl_abaptags_tadir IMPLEMENTATION.
 
 
   METHOD find_func_module_info.
+    DATA: group_namespace TYPE namespace.
+
     CHECK keys IS NOT INITIAL.
 
     func_modules = zcl_abaptags_tfdir_dac=>get_instance( )->find_func_modules( keys ).
@@ -88,14 +90,18 @@ CLASS zcl_abaptags_tadir IMPLEMENTATION.
     LOOP AT func_modules ASSIGNING FIELD-SYMBOL(<func_module>).
       CALL FUNCTION 'FUNCTION_INCLUDE_SPLIT'
         EXPORTING
-          program = <func_module>-program
+          program   = <func_module>-program
         IMPORTING
-          group   = <func_module>-group
+          group     = <func_module>-group
+          namespace = group_namespace
         EXCEPTIONS
-          OTHERS  = 1.
+          OTHERS    = 1.
       IF sy-subrc <> 0.
         DELETE func_modules.
       ELSE.
+        IF group_namespace IS NOT INITIAL.
+          <func_module>-group = group_namespace && <func_module>-group.
+        ENDIF.
         INSERT VALUE #(
           name = <func_module>-group
           type = zif_abaptags_c_global=>object_types-function_group ) INTO TABLE tadir_keys.
