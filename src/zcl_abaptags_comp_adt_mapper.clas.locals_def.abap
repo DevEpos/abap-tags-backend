@@ -21,7 +21,7 @@ CLASS lcl_source_code_util DEFINITION.
           line_feed    TYPE string
         EXPORTING
           source_text  TYPE string
-          indexes      TYPE zif_adcoset_source_code=>ty_line_indexes,
+          indexes      TYPE ty_line_indexes,
 
       "! Determines the line indexes in the source
       determine_line_indexes
@@ -30,7 +30,7 @@ CLASS lcl_source_code_util DEFINITION.
           source_table  TYPE string_table OPTIONAL
           line_feed     TYPE string
         RETURNING
-          VALUE(result) TYPE zif_adcoset_source_code=>ty_line_indexes,
+          VALUE(result) TYPE ty_line_indexes,
       "! Retrieves Line index by a given multi-line source offset
       get_line_index_by_offset
         IMPORTING
