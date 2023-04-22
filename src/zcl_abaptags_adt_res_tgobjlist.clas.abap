@@ -300,7 +300,6 @@ CLASS zcl_abaptags_adt_res_tgobjlist IMPLEMENTATION.
           AND tgobj~componentname = @select_keys-comp_obj-component_name
           AND tgobj~componenttype = @select_keys-comp_obj-component_type
           AND tgobj~tagid         = @select_keys-comp_obj-tag_id
-          AND tgobj~parenttagid   = @select_keys-comp_obj-parent_tag_id
       APPENDING CORRESPONDING FIELDS OF TABLE @found_objects.
   ENDMETHOD.
 
