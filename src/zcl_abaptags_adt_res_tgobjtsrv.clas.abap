@@ -197,9 +197,11 @@ CLASS zcl_abaptags_adt_res_tgobjtsrv IMPLEMENTATION.
              coalesce( sub_tgobj~dummy, @abap_false ) AS has_children
         FROM zabaptags_i_tgobjn AS tgobj
           LEFT OUTER JOIN zabaptags_i_tgobjn AS sub_tgobj
-            ON  tgobj~objectname = sub_tgobj~parentobjectname
-            AND tgobj~objecttype = sub_tgobj~parentobjecttype
-            AND tgobj~tagid      = sub_tgobj~parenttagid
+            ON  tgobj~objectname    = sub_tgobj~parentobjectname
+            AND tgobj~objecttype    = sub_tgobj~parentobjecttype
+            AND tgobj~tagid         = sub_tgobj~parenttagid
+            " Hint: Components can not have children at this time
+            AND tgobj~componentname = @space
         WHERE tgobj~tagid IN @tag_id_range
           AND tgobj~parentobjectname = @space
         GROUP BY tgobj~tagid,
