@@ -1,10 +1,10 @@
 ![](https://img.shields.io/badge/ABAP-v7.40sp08+-green)
-[![abap package version](https://img.shields.io/endpoint?url=https://shield.abap.space/version-shield-json/github/stockbal/abap-tags-backend/src/zif_abaptags_version.intf.abap/version&label=version)](https://github/stockbal/abap-tags-backend/src/zif_abaptags_version.intf.abap)
+[![abap package version](https://img.shields.io/endpoint?url=https://shield.abap.space/version-shield-json/github/DevEpos/abap-tags-backend/src/zif_abaptags_version.intf.abap/version&label=version)](https://github/DevEpos/abap-tags-backend/src/zif_abaptags_version.intf.abap)
 
 # abap-tags-backend
 
 This Repository contains the ADT Backend that is needed to use the eclipse plugin
-[ABAP Tags](https://www.github.com/stockbal/abap-tags-ui)
+[ABAP Tags](https://www.github.com/DevEpos/abap-tags-ui)
 
 ## Installation
 
