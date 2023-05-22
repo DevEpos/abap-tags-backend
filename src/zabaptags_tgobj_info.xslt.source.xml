@@ -47,6 +47,10 @@
       <tt:attribute name="atm:objectName" value-ref="tgobj_info.object_name"/>
     </tt:cond>
 
+    <tt:cond check="not-initial(tgobj_info.alt_obj_name)">
+      <tt:attribute name="atm:altObjectName" value-ref="tgobj_info.alt_obj_name"/>
+    </tt:cond>
+
     <tt:cond check="not-initial(tgobj_info.object_type)">
       <tt:attribute name="atm:objectType" value-ref="tgobj_info.object_type"/>
     </tt:cond>
@@ -69,6 +73,10 @@
 
     <tt:cond check="not-initial(tgobj_info.parent_object_name)">
       <tt:attribute name="atm:parentObjectName" value-ref="tgobj_info.parent_object_name"/>
+    </tt:cond>
+
+    <tt:cond check="not-initial(tgobj_info.alt_parent_obj_name)">
+      <tt:attribute name="atm:altParentObjectName" value-ref="tgobj_info.alt_parent_obj_name"/>
     </tt:cond>
 
     <tt:cond check="not-initial(tgobj_info.parent_object_type)">

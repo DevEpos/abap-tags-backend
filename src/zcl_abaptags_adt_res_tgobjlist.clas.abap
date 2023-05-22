@@ -89,6 +89,7 @@ CLASS zcl_abaptags_adt_res_tgobjlist IMPLEMENTATION.
     ENDIF.
     post_process_found_objects( ).
 
+
     IF tagged_object_infos IS NOT INITIAL.
       response->set_body_data(
         content_handler = get_response_handler( )
@@ -399,6 +400,8 @@ CLASS zcl_abaptags_adt_res_tgobjlist IMPLEMENTATION.
 
   METHOD post_process_found_objects.
 
+    DATA ddl_name_range TYPE RANGE OF ddlname.
+
     SORT found_objects BY id.
     DELETE ADJACENT DUPLICATES FROM found_objects COMPARING id.
 
@@ -419,6 +422,16 @@ CLASS zcl_abaptags_adt_res_tgobjlist IMPLEMENTATION.
         parent_tag_name    = found_obj->parent_tag_name
         parent_object_name = found_obj->parent_object_name ).
 
+      IF new_tgobj_info-object_type = zif_abaptags_c_global=>object_types-data_definition.
+        ddl_name_range = VALUE #(
+          BASE ddl_name_range ( sign = 'I' option = 'EQ' low = new_tgobj_info-object_name ) ).
+      ENDIF.
+
+      IF new_tgobj_info-parent_object_type = zif_abaptags_c_global=>object_types-data_definition.
+        ddl_name_range = VALUE #(
+          BASE ddl_name_range ( sign = 'I' option = 'EQ' low = new_tgobj_info-parent_object_name ) ).
+      ENDIF.
+
       get_adjusted_types( EXPORTING tagged_object      = found_obj
                           IMPORTING object_type        = new_tgobj_info-object_type
                                     parent_object_type = new_tgobj_info-parent_object_type ).
@@ -430,7 +443,6 @@ CLASS zcl_abaptags_adt_res_tgobjlist IMPLEMENTATION.
                                 component_type component_name
                                 parent_tag_name parent_object_type parent_object_name.
   ENDMETHOD.
-
 
 
 ENDCLASS.

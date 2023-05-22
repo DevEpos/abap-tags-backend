@@ -53,17 +53,20 @@ INTERFACE zif_abaptags_c_global
     END OF tag_query_focus,
 
     BEGIN OF object_types,
-      function       TYPE trobjtype VALUE 'FUNC',
-      function_group TYPE trobjtype VALUE 'FUGR',
-      program        TYPE trobjtype VALUE 'PROG',
-      package        TYPE trobjtype VALUE 'DEVC',
-      class          TYPE trobjtype VALUE 'CLAS',
+      function          TYPE trobjtype VALUE 'FUNC',
+      function_group    TYPE trobjtype VALUE 'FUGR',
+      program           TYPE trobjtype VALUE 'PROG',
+      package           TYPE trobjtype VALUE 'DEVC',
+      class             TYPE trobjtype VALUE 'CLAS',
+      data_definition   TYPE trobjtype VALUE 'DDLS',
+      structured_object TYPE trobjtype VALUE 'STOB',
     END OF object_types,
 
     BEGIN OF wb_object_types,
       local_class     TYPE swo_objtyp VALUE 'CLAS/OCL',
       local_interface TYPE swo_objtyp VALUE 'CLAS/ON',
       function        TYPE swo_objtyp VALUE 'FUGR/FF',
+      data_definition TYPE swo_objtyp VALUE 'DDLS/DF',
     END OF wb_object_types.
 
 ENDINTERFACE.

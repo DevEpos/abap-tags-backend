@@ -55,6 +55,7 @@ CLASS zcl_abaptags_adt_res_tgobjsrch DEFINITION
           cx_adt_rest,
       post_process_results,
       fill_descriptions,
+      fill_ddl_display_names,
       retrieve_tag_info,
       determine_tadir_info,
       get_tagged_object_info.
@@ -92,8 +93,8 @@ CLASS zcl_abaptags_adt_res_tgobjsrch IMPLEMENTATION.
     determine_tadir_info( ).
     retrieve_tag_info( ).
     post_process_results( ).
-
     fill_descriptions( ).
+    fill_ddl_display_names( ).
 
     DATA(result) = CORRESPONDING zabaptags_tagged_object_t( tagged_objects ).
 
@@ -393,6 +394,31 @@ CLASS zcl_abaptags_adt_res_tgobjsrch IMPLEMENTATION.
       AND tagged_object~tag_id IN @tag_id_range
       AND (comp_tgobj_where_filter)
     INTO CORRESPONDING FIELDS OF TABLE @tgobj_infos.
+  ENDMETHOD.
+
+
+  METHOD fill_ddl_display_names.
+    DATA ddl_name_range TYPE RANGE OF ddlname.
+
+    LOOP AT tagged_objects REFERENCE INTO DATA(tagged_obj)
+        WHERE adt_obj_ref-tadir_type = zif_abaptags_c_global=>object_types-data_definition.
+      ddl_name_range = VALUE #( BASE ddl_name_range ( sign = 'I' option = 'EQ' low = tagged_obj->adt_obj_ref-name ) ).
+    ENDLOOP.
+
+    IF sy-subrc <> 0.
+      RETURN.
+    ENDIF.
+
+    DATA(ddl2stob) = NEW zcl_abaptags_ddl2stob_helper( ).
+    IF ddl2stob->map_ddl_names( ddl_name_range ) = abap_false.
+      RETURN.
+    ENDIF.
+
+    LOOP AT tagged_objects REFERENCE INTO tagged_obj
+        WHERE adt_obj_ref-tadir_type = zif_abaptags_c_global=>object_types-data_definition.
+      tagged_obj->adt_obj_ref-alt_name = ddl2stob->get_raw_stob_name( CONV #( tagged_obj->adt_obj_ref-name ) ).
+    ENDLOOP.
+
   ENDMETHOD.
 
 ENDCLASS.

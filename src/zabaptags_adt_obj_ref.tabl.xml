@@ -21,6 +21,15 @@
      <DDTEXT>Name of the referenced entity - optional</DDTEXT>
     </DD03P>
     <DD03P>
+     <FIELDNAME>ALT_NAME</FIELDNAME>
+     <ADMINFIELD>0</ADMINFIELD>
+     <INTTYPE>g</INTTYPE>
+     <INTLEN>000008</INTLEN>
+     <DATATYPE>STRG</DATATYPE>
+     <MASK>  STRG</MASK>
+     <DDTEXT>Alternative name of referenced entity - optional</DDTEXT>
+    </DD03P>
+    <DD03P>
      <FIELDNAME>DESCRIPTION</FIELDNAME>
      <ADMINFIELD>0</ADMINFIELD>
      <INTTYPE>g</INTTYPE>
