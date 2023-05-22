@@ -97,7 +97,8 @@ CLASS zcl_abaptags_adt_res_tgobjtsrv DEFINITION
       get_deep_root_tag_counts
         RETURNING
           VALUE(result) TYPE ty_tags_with_obj_counts,
-      fetch_full_tree_count.
+      fetch_full_tree_count,
+      fill_ddl_display_names.
 ENDCLASS.
 
 
@@ -117,6 +118,7 @@ CLASS zcl_abaptags_adt_res_tgobjtsrv IMPLEMENTATION.
     get_matching_tags( ).
     get_matching_objects( ).
     fill_descriptions( ).
+    fill_ddl_display_names( ).
 
     response->set_body_data(
       content_handler = get_response_content_handler( )
@@ -680,6 +682,31 @@ CLASS zcl_abaptags_adt_res_tgobjtsrv IMPLEMENTATION.
         INTO @DATA(temp_count).
       tree_result-tagged_object_count = tree_result-tagged_object_count + temp_count.
     ENDIF.
+  ENDMETHOD.
+
+
+  METHOD fill_ddl_display_names.
+    DATA ddl_names TYPE RANGE OF ddlname.
+
+    LOOP AT tree_result-objects REFERENCE INTO DATA(obj)
+        WHERE object_ref-tadir_type = zif_abaptags_c_global=>object_types-data_definition.
+      ddl_names = VALUE #( BASE ddl_names ( sign = 'I' option = 'EQ' low = obj->object_ref-name ) ).
+    ENDLOOP.
+
+    IF sy-subrc <> 0.
+      RETURN.
+    ENDIF.
+
+    DATA(ddl2stob) = NEW zcl_abaptags_ddl2stob_helper( ).
+    IF ddl2stob->map_ddl_names( ddl_names ) = abap_false.
+      RETURN.
+    ENDIF.
+
+    LOOP AT tree_result-objects REFERENCE INTO obj
+        WHERE object_ref-tadir_type = zif_abaptags_c_global=>object_types-data_definition.
+      obj->object_ref-alt_name = ddl2stob->get_raw_stob_name( CONV #( obj->object_ref-name ) ).
+    ENDLOOP.
+
   ENDMETHOD.
 
 ENDCLASS.

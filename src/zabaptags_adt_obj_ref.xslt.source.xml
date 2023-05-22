@@ -47,6 +47,10 @@
       <tt:attribute name="adtbase:name" value-ref="adt_obj_ref.name"/>
     </tt:cond>
 
+    <tt:cond s-check="not-initial(adt_obj_ref.alt_name)">
+      <tt:attribute name="adtbase:alternativeName" value-ref="adt_obj_ref.alt_name"/>
+    </tt:cond>
+
     <tt:cond check="not-initial(adt_obj_ref.owner)">
       <tt:attribute name="adtbase:owner" value-ref="adt_obj_ref.owner"/>
     </tt:cond>
