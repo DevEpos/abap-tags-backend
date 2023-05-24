@@ -6,7 +6,9 @@ CLASS zcl_abaptags_adt_res_tgobjlist DEFINITION
   CREATE PUBLIC.
 
   PUBLIC SECTION.
-    METHODS post REDEFINITION.
+    METHODS:
+      constructor,
+      post REDEFINITION.
   PROTECTED SECTION.
   PRIVATE SECTION.
     TYPES:
@@ -37,7 +39,10 @@ CLASS zcl_abaptags_adt_res_tgobjlist DEFINITION
             parent_obj    TYPE ty_tagged_objects,
             comp_obj      TYPE ty_tagged_objects,
             tag_and_obj   TYPE ty_tagged_objects,
-          END OF select_keys.
+          END OF select_keys,
+
+          obj_infos_for_name_mapping TYPE TABLE OF REF TO zabaptags_tgobj_info,
+          cds_name_mapper            TYPE REF TO zcl_abaptags_cds_name_mapper.
 
     METHODS:
       get_request_handler
@@ -72,12 +77,19 @@ CLASS zcl_abaptags_adt_res_tgobjlist DEFINITION
         IMPORTING
           tgobj_info_ext TYPE zabaptags_tgobj_info
         CHANGING
-          keytab         TYPE ty_tagged_objects.
+          keytab         TYPE ty_tagged_objects,
+      fill_cds_display_names.
 ENDCLASS.
 
 
 
 CLASS zcl_abaptags_adt_res_tgobjlist IMPLEMENTATION.
+
+  METHOD constructor.
+    super->constructor( ).
+    cds_name_mapper = NEW #( ).
+  ENDMETHOD.
+
 
   METHOD post.
     request->get_body_data( EXPORTING content_handler = get_request_handler( )
@@ -88,7 +100,7 @@ CLASS zcl_abaptags_adt_res_tgobjlist IMPLEMENTATION.
       load_assigned_child_objects( ).
     ENDIF.
     post_process_found_objects( ).
-
+    fill_cds_display_names( ).
 
     IF tagged_object_infos IS NOT INITIAL.
       response->set_body_data(
@@ -436,7 +448,17 @@ CLASS zcl_abaptags_adt_res_tgobjlist IMPLEMENTATION.
                           IMPORTING object_type        = new_tgobj_info-object_type
                                     parent_object_type = new_tgobj_info-parent_object_type ).
 
-      tagged_object_infos = VALUE #( BASE tagged_object_infos ( new_tgobj_info ) ).
+      APPEND new_tgobj_info TO tagged_object_infos REFERENCE INTO DATA(added_tgobj_info).
+
+      DATA(obj_is_cds) = cds_name_mapper->collect_entry( name = CONV #( added_tgobj_info->object_name )
+                                                         type = added_tgobj_info->object_type(4) ).
+      DATA(parent_obj_is_cds) = cds_name_mapper->collect_entry( name = CONV #( added_tgobj_info->parent_object_name )
+                                                                type = added_tgobj_info->parent_object_type(4) ).
+
+      IF obj_is_cds = abap_true OR parent_obj_is_cds = abap_true.
+        obj_infos_for_name_mapping = VALUE #( BASE obj_infos_for_name_mapping ( added_tgobj_info ) ).
+      ENDIF.
+
     ENDLOOP.
 
     SORT tagged_object_infos BY tag_type object_type tag_name object_name
@@ -444,5 +466,19 @@ CLASS zcl_abaptags_adt_res_tgobjlist IMPLEMENTATION.
                                 parent_tag_name parent_object_type parent_object_name.
   ENDMETHOD.
 
+
+  METHOD fill_cds_display_names.
+    CHECK cds_name_mapper->map_entries( ).
+
+    LOOP AT obj_infos_for_name_mapping INTO DATA(obj_info).
+      obj_info->alt_obj_name = cds_name_mapper->get_display_name( name = CONV #( obj_info->object_name )
+                                                                  type = CONV #( obj_info->object_type ) ).
+      IF obj_info->parent_object_name IS NOT INITIAL.
+        obj_info->alt_parent_obj_name = cds_name_mapper->get_display_name( name = CONV #( obj_info->parent_object_name )
+                                                                           type = CONV #( obj_info->parent_object_type ) ).
+      ENDIF.
+    ENDLOOP.
+
+  ENDMETHOD.
 
 ENDCLASS.
