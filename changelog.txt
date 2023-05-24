@@ -1,5 +1,5 @@
 
-ABAP Code Search Tools changelog
+ABAP Tags changelog
 =================
 
 Legend
@@ -8,6 +8,12 @@ Legend
 ! : changed
 + : added
 - : removed
+
+2023-05-24 v2.3.0
+-------------------
+
++ DDLS: raw name of entity (STOB) is returned to ADT
++ BDEF: raw name of DDLS (STOB) is returned to ADT
 
 2023-04-16 v2.2.0
 -------------------
@@ -19,7 +25,6 @@ Legend
 -------------------
 
 + Tagging of local classes/interfaces of global classes
-
 
 2023-03-18 v2.0.0
 -------------------
