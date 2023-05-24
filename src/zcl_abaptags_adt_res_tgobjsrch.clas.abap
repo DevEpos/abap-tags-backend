@@ -29,6 +29,8 @@ CLASS zcl_abaptags_adt_res_tgobjsrch DEFINITION
       tagged_objects_db        TYPE zif_abaptags_ty_global=>ty_db_tagged_objects,
       search_params            TYPE zabaptags_tgobj_search_params,
       comp_tgobj_where_filter  TYPE string,
+      obj_refs_for_name_mapping  TYPE TABLE OF REF TO zabaptags_adt_obj_ref,
+      cds_name_mapper          TYPE REF TO zcl_abaptags_cds_name_mapper,
       tag_id_range             TYPE zif_abaptags_ty_global=>ty_tag_id_range.
 
     METHODS:
@@ -69,6 +71,7 @@ CLASS zcl_abaptags_adt_res_tgobjsrch IMPLEMENTATION.
   METHOD constructor.
     super->constructor( ).
     tags_dac = zcl_abaptags_tags_dac=>get_instance( ).
+    cds_name_mapper = NEW #( ).
   ENDMETHOD.
 
 
@@ -223,6 +226,8 @@ CLASS zcl_abaptags_adt_res_tgobjsrch IMPLEMENTATION.
 
 
   METHOD post_process_results.
+    DATA: added_tgobj    TYPE REF TO zabaptags_tagged_object,
+          adt_object_ref TYPE zcl_abaptags_adt_util=>ty_adt_obj_ref_info.
 
     " map components to ADT uri
     DATA(cmp_adt_mapper) = NEW zcl_abaptags_comp_adt_mapper( ).
@@ -232,7 +237,6 @@ CLASS zcl_abaptags_adt_res_tgobjsrch IMPLEMENTATION.
         component_type = <tgobj>-component_type
         object_name    = <tgobj>-object_name
         object_type    = <tgobj>-object_type ) ) ).
-    DATA: adt_object_ref TYPE zcl_abaptags_adt_util=>ty_adt_obj_ref_info.
 
     cmp_adt_mapper->determine_components( ).
 
@@ -290,7 +294,11 @@ CLASS zcl_abaptags_adt_res_tgobjsrch IMPLEMENTATION.
             owner    = <tag_info>-tag_owner ) ).
 
         IF search_params-result_group_level = zif_abaptags_c_global=>search_result_group_level-by_tag_and_object.
-          APPEND tagged_object TO tagged_objects.
+          APPEND tagged_object TO tagged_objects REFERENCE INTO added_tgobj.
+          IF cds_name_mapper->collect_entry( name = added_tgobj->adt_obj_ref-name
+                                             type = added_tgobj->adt_obj_ref-tadir_type ).
+            obj_refs_for_name_mapping = VALUE #( BASE obj_refs_for_name_mapping ( REF #( added_tgobj->adt_obj_ref ) ) ).
+          ENDIF.
           CLEAR tagged_object-tags.
         ENDIF.
 
@@ -298,7 +306,11 @@ CLASS zcl_abaptags_adt_res_tgobjsrch IMPLEMENTATION.
 
       IF search_params-result_group_level IS INITIAL OR
           search_params-result_group_level = zif_abaptags_c_global=>search_result_group_level-by_object.
-        tagged_objects = VALUE #( BASE tagged_objects ( tagged_object ) ).
+        APPEND tagged_object TO tagged_objects REFERENCE INTO added_tgobj.
+        IF cds_name_mapper->collect_entry( name = added_tgobj->adt_obj_ref-name
+                                           type = added_tgobj->adt_obj_ref-tadir_type ).
+          obj_refs_for_name_mapping = VALUE #( BASE obj_refs_for_name_mapping ( REF #( added_tgobj->adt_obj_ref ) ) ).
+        ENDIF.
       ENDIF.
     ENDLOOP.
 
@@ -398,25 +410,11 @@ CLASS zcl_abaptags_adt_res_tgobjsrch IMPLEMENTATION.
 
 
   METHOD fill_ddl_display_names.
-    DATA ddl_name_range TYPE RANGE OF ddlname.
+    CHECK cds_name_mapper->map_entries( ).
 
-    LOOP AT tagged_objects REFERENCE INTO DATA(tagged_obj)
-        WHERE adt_obj_ref-tadir_type = zif_abaptags_c_global=>object_types-data_definition.
-      ddl_name_range = VALUE #( BASE ddl_name_range ( sign = 'I' option = 'EQ' low = tagged_obj->adt_obj_ref-name ) ).
-    ENDLOOP.
-
-    IF sy-subrc <> 0.
-      RETURN.
-    ENDIF.
-
-    DATA(ddl2stob) = NEW zcl_abaptags_ddl2stob_helper( ).
-    IF ddl2stob->map_ddl_names( ddl_name_range ) = abap_false.
-      RETURN.
-    ENDIF.
-
-    LOOP AT tagged_objects REFERENCE INTO tagged_obj
-        WHERE adt_obj_ref-tadir_type = zif_abaptags_c_global=>object_types-data_definition.
-      tagged_obj->adt_obj_ref-alt_name = ddl2stob->get_raw_stob_name( CONV #( tagged_obj->adt_obj_ref-name ) ).
+    LOOP AT obj_refs_for_name_mapping INTO DATA(obj_ref).
+      obj_ref->alt_name = cds_name_mapper->get_display_name( name = obj_ref->name
+                                                             type = obj_ref->tadir_type ).
     ENDLOOP.
 
   ENDMETHOD.

@@ -7,6 +7,7 @@ CLASS zcl_abaptags_adt_res_tgobjtsrv DEFINITION
 
   PUBLIC SECTION.
     METHODS:
+      constructor,
       post REDEFINITION.
   PROTECTED SECTION.
   PRIVATE SECTION.
@@ -57,7 +58,9 @@ CLASS zcl_abaptags_adt_res_tgobjtsrv DEFINITION
       read_full_tree_count     TYPE abap_bool,
       is_shared_tags_read      TYPE abap_bool,
       shared_tags_range        TYPE zif_abaptags_ty_global=>ty_tag_id_range,
-      tag_id_range             TYPE zif_abaptags_ty_global=>ty_tag_id_range.
+      tag_id_range             TYPE zif_abaptags_ty_global=>ty_tag_id_range,
+      tgobjs_for_name_mapping  TYPE TABLE OF REF TO zabaptags_adt_obj_ref,
+      cds_name_mapper          TYPE REF TO zcl_abaptags_cds_name_mapper.
 
     METHODS:
       get_parameters
@@ -104,6 +107,12 @@ ENDCLASS.
 
 
 CLASS zcl_abaptags_adt_res_tgobjtsrv IMPLEMENTATION.
+
+  METHOD constructor.
+    super->constructor( ).
+    cds_name_mapper = NEW #( ).
+  ENDMETHOD.
+
 
   METHOD post.
     request->get_body_data( EXPORTING content_handler = get_request_content_handler( )
@@ -307,11 +316,17 @@ CLASS zcl_abaptags_adt_res_tgobjtsrv IMPLEMENTATION.
       TABLES
         obj_tab = texts.
 
-    LOOP AT tree_result-objects ASSIGNING FIELD-SYMBOL(<object>).
-      ASSIGN texts[ obj_name = <object>-object_ref-name object = <object>-object_ref-tadir_type ] TO FIELD-SYMBOL(<text>).
-      IF sy-subrc = 0.
-        <object>-object_ref-description = <text>-stext.
+    LOOP AT tree_result-objects REFERENCE INTO DATA(object).
+      DATA(text) = REF #( texts[ obj_name = object->object_ref-name object = object->object_ref-tadir_type ] OPTIONAL ).
+      IF text IS BOUND.
+        object->object_ref-description = text->stext.
       ENDIF.
+
+      IF cds_name_mapper->collect_entry( name = object->object_ref-name
+                                         type = object->object_ref-tadir_type ).
+        tgobjs_for_name_mapping = VALUE #( BASE tgobjs_for_name_mapping ( REF #( object->object_ref ) ) ).
+      ENDIF.
+
     ENDLOOP.
   ENDMETHOD.
 
@@ -686,25 +701,11 @@ CLASS zcl_abaptags_adt_res_tgobjtsrv IMPLEMENTATION.
 
 
   METHOD fill_ddl_display_names.
-    DATA ddl_names TYPE RANGE OF ddlname.
+    CHECK cds_name_mapper->map_entries( ).
 
-    LOOP AT tree_result-objects REFERENCE INTO DATA(obj)
-        WHERE object_ref-tadir_type = zif_abaptags_c_global=>object_types-data_definition.
-      ddl_names = VALUE #( BASE ddl_names ( sign = 'I' option = 'EQ' low = obj->object_ref-name ) ).
-    ENDLOOP.
-
-    IF sy-subrc <> 0.
-      RETURN.
-    ENDIF.
-
-    DATA(ddl2stob) = NEW zcl_abaptags_ddl2stob_helper( ).
-    IF ddl2stob->map_ddl_names( ddl_names ) = abap_false.
-      RETURN.
-    ENDIF.
-
-    LOOP AT tree_result-objects REFERENCE INTO obj
-        WHERE object_ref-tadir_type = zif_abaptags_c_global=>object_types-data_definition.
-      obj->object_ref-alt_name = ddl2stob->get_raw_stob_name( CONV #( obj->object_ref-name ) ).
+    LOOP AT tgobjs_for_name_mapping INTO DATA(obj_ref).
+      obj_ref->alt_name = cds_name_mapper->get_display_name( name = obj_ref->name
+                                                             type = obj_ref->tadir_type ).
     ENDLOOP.
 
   ENDMETHOD.
