@@ -13,11 +13,13 @@ CLASS zcl_abaptags_adt_res_tagprev DEFINITION
   PROTECTED SECTION.
   PRIVATE SECTION.
     DATA:
-      tags_dac          TYPE REF TO zcl_abaptags_tags_dac,
-      object_refs       TYPE SORTED TABLE OF zabaptags_adt_obj_ref WITH UNIQUE KEY name tadir_type,
-      preview_info      TYPE zabaptags_tag_preview_info,
-      tags_raw          TYPE zabaptags_tag_data_t,
-      tagged_obj_counts TYPE zif_abaptags_ty_global=>ty_tag_counts.
+      tags_dac             TYPE REF TO zcl_abaptags_tags_dac,
+      object_refs          TYPE SORTED TABLE OF zabaptags_adt_obj_ref WITH UNIQUE KEY name tadir_type,
+      preview_info         TYPE zabaptags_tag_preview_info,
+      tags_raw             TYPE zabaptags_tag_data_t,
+      tagged_obj_counts    TYPE zif_abaptags_ty_global=>ty_tag_counts,
+      obj_refs_for_mapping TYPE TABLE OF REF TO zabaptags_adt_obj_ref,
+      cds_name_mapper      TYPE REF TO zcl_abaptags_cds_name_mapper.
 
     METHODS:
       get_content_handler
@@ -28,7 +30,8 @@ CLASS zcl_abaptags_adt_res_tagprev DEFINITION
       read_tags_flat,
       fill_tagged_object_info,
       determine_tagged_object_count,
-      create_response_data.
+      create_response_data,
+      fill_cds_display_names.
 ENDCLASS.
 
 
@@ -39,6 +42,7 @@ CLASS zcl_abaptags_adt_res_tagprev IMPLEMENTATION.
   METHOD constructor.
     super->constructor( ).
     tags_dac = zcl_abaptags_tags_dac=>get_instance( ).
+    cds_name_mapper = NEW #( ).
   ENDMETHOD.
 
 
@@ -55,6 +59,7 @@ CLASS zcl_abaptags_adt_res_tagprev IMPLEMENTATION.
     read_tags_flat( ).
     determine_tagged_object_count( ).
     fill_tagged_object_info( ).
+    fill_cds_display_names( ).
     create_response_data( ).
 
     response->set_body_data(
@@ -81,7 +86,7 @@ CLASS zcl_abaptags_adt_res_tagprev IMPLEMENTATION.
                                                                  object_type = DATA(object_type)
                                                                  tadir_type  = obj_ref_int-tadir_type ).
 
-          IF <obj_ref>-type = zif_abaptags_c_global=>wb_object_types-local_class or
+          IF <obj_ref>-type = zif_abaptags_c_global=>wb_object_types-local_class OR
               <obj_ref>-type = zif_abaptags_c_global=>wb_object_types-local_interface.
             DATA(glob_class_name) = COND #(
               WHEN strlen( obj_ref_int-name ) > 30 THEN obj_ref_int-name(30) ELSE obj_ref_int-name ).
@@ -102,7 +107,12 @@ CLASS zcl_abaptags_adt_res_tagprev IMPLEMENTATION.
                                                                         wb_type = object_type )-uri.
             ENDIF.
           ENDIF.
-          INSERT obj_ref_int INTO TABLE object_refs.
+
+          INSERT obj_ref_int INTO TABLE object_refs REFERENCE INTO DATA(added_obj_ref).
+          IF cds_name_mapper->collect_entry( name = obj_ref_int-name
+                                             type = obj_ref_int-tadir_type ).
+            obj_refs_for_mapping = VALUE #( BASE obj_refs_for_mapping ( added_obj_ref  ) ).
+          ENDIF.
         CATCH cx_adt_uri_mapping.
       ENDTRY.
       DELETE preview_info-object_refs.
@@ -142,6 +152,18 @@ CLASS zcl_abaptags_adt_res_tagprev IMPLEMENTATION.
   METHOD create_response_data.
     preview_info-tags = zcl_abaptags_tag_util=>build_hierarchical_tags( tags_raw ).
     preview_info-object_refs = CORRESPONDING #( object_refs ).
+  ENDMETHOD.
+
+
+  METHOD fill_cds_display_names.
+    CHECK cds_name_mapper->map_entries( ).
+
+    LOOP AT obj_refs_for_mapping INTO DATA(obj_ref).
+      obj_ref->alt_name = cds_name_mapper->get_display_name(
+        name = obj_ref->name
+        type = obj_ref->tadir_type ).
+    ENDLOOP.
+
   ENDMETHOD.
 
 ENDCLASS.

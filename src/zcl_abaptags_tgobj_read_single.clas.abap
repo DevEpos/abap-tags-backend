@@ -22,18 +22,21 @@ CLASS zcl_abaptags_tgobj_read_single DEFINITION
     TYPES parent_object_name TYPE sobj_name.
     TYPES parent_object_type TYPE trobjtype.
     TYPES parent_object_uri TYPE string.
+    TYPES parent_alt_obj_name TYPE string.
     TYPES END OF ty_tgobj_info.
 
     TYPES:
       ty_tgobj_infos TYPE TABLE OF ty_tgobj_info WITH EMPTY KEY.
 
     DATA:
-      object_uri    TYPE string,
-      object_name   TYPE string,
-      object_type   TYPE wbobjtype,
-      tadir_type    TYPE trobjtype,
-      tgobj_infos   TYPE TABLE OF ty_tgobj_info,
-      texts         TYPE TABLE OF seu_objtxt.
+      object_uri      TYPE string,
+      object_name     TYPE string,
+      alt_object_name TYPE string,
+      object_type     TYPE wbobjtype,
+      tadir_type      TYPE trobjtype,
+      tgobj_infos     TYPE TABLE OF ty_tgobj_info,
+      texts           TYPE TABLE OF seu_objtxt,
+      cds_name_mapper TYPE REF TO zcl_abaptags_cds_name_mapper.
 
     METHODS:
       find_tags_of_object
@@ -65,6 +68,7 @@ CLASS zcl_abaptags_tgobj_read_single IMPLEMENTATION.
 
   METHOD constructor.
     me->object_uri = object_uri.
+    cds_name_mapper = NEW #( ).
   ENDMETHOD.
 
 
@@ -163,9 +167,35 @@ CLASS zcl_abaptags_tgobj_read_single IMPLEMENTATION.
 
 
   METHOD read_tags_of_object.
+    DATA tgobj_for_mapping TYPE TABLE OF REF TO ty_tgobj_info.
+
     tgobj_infos = VALUE #(
       ( LINES OF find_tags_of_object( ) )
       ( LINES OF find_shared_tags_of_object( ) ) ).
+
+    cds_name_mapper->collect_entry( name = object_name
+                                    type = object_type-objtype_tr ).
+
+    LOOP AT tgobj_infos REFERENCE INTO DATA(tgobj_info).
+      IF cds_name_mapper->collect_entry( name = CONV #( tgobj_info->parent_object_name )
+                                         type = tgobj_info->parent_object_type ).
+        tgobj_for_mapping = VALUE #( BASE tgobj_for_mapping ( tgobj_info ) ).
+      ENDIF.
+    ENDLOOP.
+
+    IF cds_name_mapper->map_entries( ) = abap_false.
+      RETURN.
+    ENDIF.
+
+    alt_object_name = cds_name_mapper->get_display_name( name = object_name
+                                                         type = object_type-objtype_tr ).
+
+    LOOP AT tgobj_for_mapping INTO tgobj_info.
+      tgobj_info->parent_alt_obj_name = cds_name_mapper->get_display_name(
+        name = CONV #( tgobj_info->parent_object_name )
+        type = tgobj_info->parent_object_type ).
+    ENDLOOP.
+
   ENDMETHOD.
 
 
@@ -173,6 +203,7 @@ CLASS zcl_abaptags_tgobj_read_single IMPLEMENTATION.
     result = VALUE #(
       adt_obj_ref = VALUE #(
         name        = object_name
+        alt_name    = alt_object_name
         description = VALUE #( texts[ object = tadir_type obj_name = object_name  ]-stext OPTIONAL )
         tadir_type  = object_type
         type        = COND #(
@@ -183,13 +214,14 @@ CLASS zcl_abaptags_tgobj_read_single IMPLEMENTATION.
         LET parent = get_adt_obj(
           object_name = tag-parent_object_name
           object_type = tag-parent_object_type ) IN
-        ( tag_id        = tag-tag_id
-          tag_name      = tag-full_hierarchy
-          owner         = tag-owner
-          parent_name   = tag-parent_object_name
-          parent_type   = parent-type
-          parent_tag_id = tag-parent_tag_id
-          parent_uri    = parent-uri ) ) ).
+        ( tag_id          = tag-tag_id
+          tag_name        = tag-full_hierarchy
+          owner           = tag-owner
+          parent_name     = tag-parent_object_name
+          parent_alt_name = tag-parent_alt_obj_name
+          parent_type     = parent-type
+          parent_tag_id   = tag-parent_tag_id
+          parent_uri      = parent-uri ) ) ).
   ENDMETHOD.
 
 

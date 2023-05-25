@@ -49,7 +49,7 @@ CLASS zcl_abaptags_cds_name_mapper IMPLEMENTATION.
     IF type = zif_abaptags_c_global=>object_types-data_definition.
       ddlname_range = VALUE #( BASE ddlname_range ( sign = 'I' option = 'EQ' low = name ) ).
     ELSEIF type = zif_abaptags_c_global=>object_types-behavior_definition.
-      bdefname_range = VALUE #( BASE ddlname_range ( sign = 'I' option = 'EQ' low = name ) ).
+      bdefname_range = VALUE #( BASE bdefname_range ( sign = 'I' option = 'EQ' low = name ) ).
     ELSE.
       RETURN.
     ENDIF.

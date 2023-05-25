@@ -66,6 +66,15 @@
      <MASK>  STRG</MASK>
      <DDTEXT>Name of parent object</DDTEXT>
     </DD03P>
+    <DD03P>
+     <FIELDNAME>PARENT_ALT_NAME</FIELDNAME>
+     <ADMINFIELD>0</ADMINFIELD>
+     <INTTYPE>g</INTTYPE>
+     <INTLEN>000008</INTLEN>
+     <DATATYPE>STRG</DATATYPE>
+     <MASK>  STRG</MASK>
+     <DDTEXT>Alternative name of parent object</DDTEXT>
+    </DD03P>
    </DD03P_TABLE>
   </asx:values>
  </asx:abap>
