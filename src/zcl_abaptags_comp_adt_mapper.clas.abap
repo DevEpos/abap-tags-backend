@@ -29,6 +29,7 @@ CLASS zcl_abaptags_comp_adt_mapper DEFINITION
     METHODS determine_components.
 
   PRIVATE SECTION.
+    TYPES ty_main_comp_name TYPE c LENGTH 30.
     TYPES  BEGIN OF ty_comp_id.
              INCLUDE TYPE zif_abaptags_ty_global=>ty_object_comp_info.
     TYPES:   main_prog  TYPE program,
@@ -41,54 +42,79 @@ CLASS zcl_abaptags_comp_adt_mapper DEFINITION
     TYPES  END OF ty_comp_id.
 
     TYPES:
-      BEGIN OF ty_global_objects,
-        clsname   TYPE seoclsname,
+      BEGIN OF ty_global_object,
+        name      TYPE ty_main_comp_name,
+        type      TYPE trobjtype,
         processed TYPE abap_bool,
-      END OF ty_global_objects.
+      END OF ty_global_object.
 
-    DATA glob_classes      TYPE SORTED TABLE OF ty_global_objects WITH UNIQUE KEY clsname.
-    DATA components        TYPE SORTED TABLE OF ty_comp_id
+    DATA main_objects TYPE SORTED TABLE OF ty_global_object WITH UNIQUE KEY name type.
+    DATA components TYPE SORTED TABLE OF ty_comp_id
            WITH UNIQUE KEY object_name object_type component_name component_type.
     DATA mapped_components LIKE components.
     DATA adt_tools_factory TYPE REF TO if_adt_tools_core_factory.
-    DATA found_class_impl  TYPE SORTED TABLE OF seoclsname WITH UNIQUE KEY table_line.
-    DATA uri_mapper        TYPE REF TO if_adt_uri_mapper.
+    DATA found_class_impl TYPE SORTED TABLE OF seoclsname WITH UNIQUE KEY table_line.
+    DATA uri_mapper TYPE REF TO if_adt_uri_mapper.
 
     METHODS process_class
       IMPORTING
-        clsname TYPE seoclsname.
+        main_obj TYPE ty_global_object.
+
+    METHODS process_function_include
+      IMPORTING
+        main_obj          TYPE ty_global_object
+        alt_main_obj_type TYPE trobjtype OPTIONAL.
+
+    METHODS process_program
+      IMPORTING
+        main_obj TYPE ty_global_object.
 
     METHODS search_include
       IMPORTING
-        clsname   TYPE seoclsname
-        main_prog TYPE program
-        incl_name TYPE program.
+        main_obj          TYPE ty_global_object
+        alt_main_obj_type TYPE trobjtype OPTIONAL
+        main_prog         TYPE program
+        incl_name         TYPE program.
 
     METHODS find_intf_n_cls_impl
       IMPORTING
-        source_code TYPE string
-        indexes     TYPE ty_line_indexes
-        clsname     TYPE seoclsname
-        main_prog   TYPE program
-        incl_name   TYPE program.
+        main_obj          TYPE ty_global_object
+        alt_main_obj_type TYPE trobjtype OPTIONAL
+        source_code       TYPE string
+        indexes           TYPE ty_line_indexes
+        main_prog         TYPE program
+        incl_name         TYPE program.
 
     METHODS find_cls_defs
       IMPORTING
-        source_code TYPE string
-        indexes     TYPE ty_line_indexes
-        clsname     TYPE seoclsname
-        main_prog   TYPE program
-        incl_name   TYPE program.
+        main_obj          TYPE ty_global_object
+        alt_main_obj_type TYPE trobjtype OPTIONAL
+        source_code       TYPE string
+        indexes           TYPE ty_line_indexes
+        main_prog         TYPE program
+        incl_name         TYPE program.
 
     METHODS collect_found_component
       IMPORTING
-        indexes         TYPE ty_line_indexes
-        clsname         TYPE seoclsname
+        main_obj        TYPE ty_global_object
         main_prog       TYPE program
+        indexes         TYPE ty_line_indexes
         incl_name       TYPE program
         comp_name_match TYPE submatch_result
         comp_name       TYPE string
-        comp_type       LIKE zif_abaptags_c_global=>wb_object_types-local_class.
+        comp_type       TYPE swo_objtyp.
+
+    METHODS get_local_class_type
+      IMPORTING
+        object_type   TYPE trobjtype
+      RETURNING
+        VALUE(result) TYPE swo_objtyp.
+
+    METHODS get_local_interface_type
+      IMPORTING
+        object_type   TYPE trobjtype
+      RETURNING
+        VALUE(result) TYPE string.
 ENDCLASS.
 
 
@@ -97,7 +123,7 @@ CLASS zcl_abaptags_comp_adt_mapper IMPLEMENTATION.
     " Are duplicates possible???
 
     LOOP AT comps REFERENCE INTO DATA(comp).
-      INSERT CONV #( comp->object_name ) INTO TABLE glob_classes.
+      INSERT VALUE #( name = comp->object_name type = comp->object_type ) INTO TABLE main_objects.
       INSERT CORRESPONDING #( comp->* ) INTO TABLE components.
     ENDLOOP.
 
@@ -126,12 +152,13 @@ CLASS zcl_abaptags_comp_adt_mapper IMPLEMENTATION.
     ENDIF.
 
     TRY.
-        DATA(obj_ref) = uri_mapper->map_include_to_objref( program     = mapped_comp->main_prog
-                                                           include     = mapped_comp->include
-                                                           line        = mapped_comp->line
-                                                           line_offset = mapped_comp->offset
-                                                           end_line    = mapped_comp->end_line
-                                                           end_offset  = mapped_comp->end_offset ).
+        DATA(obj_ref) = uri_mapper->map_include_to_objref(
+            program     = mapped_comp->main_prog
+            include     = COND #( WHEN mapped_comp->include <> mapped_comp->main_prog THEN mapped_comp->include )
+            line        = mapped_comp->line
+            line_offset = mapped_comp->offset
+            end_line    = mapped_comp->end_line
+            end_offset  = mapped_comp->end_offset ).
 
         mapped_comp->uri = obj_ref->ref_data-uri.
 
@@ -144,9 +171,15 @@ CLASS zcl_abaptags_comp_adt_mapper IMPLEMENTATION.
   ENDMETHOD.
 
   METHOD determine_components.
-    LOOP AT glob_classes REFERENCE INTO DATA(glob_class) WHERE processed = abap_false.
-      process_class( glob_class->clsname ).
-      glob_class->processed = abap_true.
+    LOOP AT main_objects REFERENCE INTO DATA(main_obj) WHERE processed = abap_false.
+      IF main_obj->type = zif_abaptags_c_global=>object_types-class.
+        process_class( main_obj->* ).
+      ELSEIF main_obj->type = zif_abaptags_c_global=>object_types-program.
+        process_program( main_obj->* ).
+**      ELSEIF main_obj->type = zif_abaptags_c_global=>object_types-function_group.
+**        process_function_group( fugr_include = main_obj->main_object object_type = main_obj->type ).
+      ENDIF.
+      main_obj->processed = abap_true.
     ENDLOOP.
   ENDMETHOD.
 
@@ -155,17 +188,54 @@ CLASS zcl_abaptags_comp_adt_mapper IMPLEMENTATION.
   ENDMETHOD.
 
   METHOD process_class.
-    DATA(main_prog) = cl_oo_classname_service=>get_classpool_name( clsname ).
+    DATA(main_prog) = cl_oo_classname_service=>get_classpool_name( main_obj-name ).
 
-    search_include( clsname   = clsname
+    search_include( main_obj  = main_obj
                     main_prog = main_prog
-                    incl_name = cl_oo_classname_service=>get_ccdef_name( clsname ) ).
-    search_include( clsname   = clsname
+                    incl_name = cl_oo_classname_service=>get_ccdef_name( main_obj-name ) ).
+    search_include( main_obj  = main_obj
                     main_prog = main_prog
-                    incl_name = cl_oo_classname_service=>get_ccimp_name( clsname ) ).
-    search_include( clsname   = clsname
+                    incl_name = cl_oo_classname_service=>get_ccimp_name( main_obj-name ) ).
+    search_include( main_obj  = main_obj
                     main_prog = main_prog
-                    incl_name = cl_oo_classname_service=>get_ccau_name( clsname ) ).
+                    incl_name = cl_oo_classname_service=>get_ccau_name( main_obj-name ) ).
+  ENDMETHOD.
+
+  METHOD process_program.
+    DATA is_fugr_include TYPE abap_bool.
+
+    DATA(progname_fuba) = CONV progname( main_obj-name ).
+
+    CALL FUNCTION 'RS_PROGNAME_SPLIT'
+      EXPORTING  progname_with_namespace = progname_fuba
+      IMPORTING  fugr_is_include_name    = is_fugr_include
+      EXCEPTIONS delimiter_error         = 0.
+
+    IF is_fugr_include = abap_true.
+      process_function_include( main_obj = main_obj alt_main_obj_type = zif_abaptags_c_global=>object_types-function_group ).
+    ELSE.
+      search_include( main_obj  = main_obj
+                      main_prog = CONV #( main_obj-name )
+                      incl_name = CONV #( main_obj-name ) ).
+    ENDIF.
+  ENDMETHOD.
+
+  METHOD process_function_include.
+    DATA fugr_group TYPE rs38l_area.
+
+    DATA(include) = CONV progname( main_obj-name ).
+    CALL FUNCTION 'FUNCTION_INCLUDE_SPLIT'
+      IMPORTING  group   = fugr_group
+      CHANGING   include = include
+      EXCEPTIONS OTHERS  = 1.
+    IF sy-subrc <> 0.
+      RETURN.
+    ENDIF.
+
+    search_include( main_obj          = main_obj
+                    alt_main_obj_type = alt_main_obj_type
+                    main_prog         = CONV #( fugr_group )
+                    incl_name         = CONV #( main_obj-name ) ).
   ENDMETHOD.
 
   METHOD search_include.
@@ -184,18 +254,20 @@ CLASS zcl_abaptags_comp_adt_mapper IMPLEMENTATION.
     " First look for interfaces and class implementations
     " --> Link to implementation is necessary to execute only the selected unit test
     "     in ADT
-    find_intf_n_cls_impl( source_code = multi_line_source
-                          indexes     = indexes
-                          clsname     = clsname
-                          main_prog   = main_prog
-                          incl_name   = incl_name ).
+    find_intf_n_cls_impl( main_obj          = main_obj
+                          alt_main_obj_type = alt_main_obj_type
+                          main_prog         = main_prog
+                          source_code       = multi_line_source
+                          indexes           = indexes
+                          incl_name         = incl_name ).
 
     " Then find class declarations without implementation part
-    find_cls_defs( source_code = multi_line_source
-                   indexes     = indexes
-                   clsname     = clsname
-                   main_prog   = main_prog
-                   incl_name   = incl_name ).
+    find_cls_defs( main_obj          = main_obj
+                   alt_main_obj_type = alt_main_obj_type
+                   main_prog         = main_prog
+                   source_code       = multi_line_source
+                   indexes           = indexes
+                   incl_name         = incl_name ).
   ENDMETHOD.
 
   METHOD find_cls_defs.
@@ -207,11 +279,10 @@ CLASS zcl_abaptags_comp_adt_mapper IMPLEMENTATION.
     ENDIF.
 
     LOOP AT matches INTO DATA(match).
-      " TODO: variable is assigned but never used (ABAP cleaner)
       DATA(last_submatch) = match-submatches[ 2 ].
       IF find( val   = source_code
-               off   = match-submatches[ 2 ]-offset
-               len   = match-submatches[ 2 ]-length
+               off   = last_submatch-offset
+               len   = last_submatch-length
                case  = abap_false
                regex = '(load|deferred)' ) <> -1.
         CONTINUE.
@@ -220,13 +291,15 @@ CLASS zcl_abaptags_comp_adt_mapper IMPLEMENTATION.
       DATA(name_submatch) = match-submatches[ 1 ].
       DATA(found_comp_name) = to_upper( source_code+name_submatch-offset(name_submatch-length) ).
 
-      collect_found_component( indexes         = indexes
-                               clsname         = clsname
-                               main_prog       = main_prog
-                               incl_name       = incl_name
-                               comp_name_match = name_submatch
-                               comp_name       = found_comp_name
-                               comp_type       = zif_abaptags_c_global=>wb_object_types-local_class ).
+      collect_found_component(
+          main_obj        = main_obj
+          main_prog       = main_prog
+          indexes         = indexes
+          incl_name       = incl_name
+          comp_name_match = name_submatch
+          comp_name       = found_comp_name
+          comp_type       = get_local_class_type(
+              COND #( WHEN alt_main_obj_type IS NOT INITIAL THEN alt_main_obj_type ELSE main_obj-type ) ) ).
     ENDLOOP.
   ENDMETHOD.
 
@@ -238,13 +311,11 @@ CLASS zcl_abaptags_comp_adt_mapper IMPLEMENTATION.
       RETURN.
     ENDIF.
 
-    LOOP AT matches INTO DATA(match).
-      IF match-submatches[ 3 ]-offset <> -1.
-        DATA(last_submatch) = match-submatches[ 3 ].
-        " TODO: variable is assigned but never used (ABAP cleaner)
-        DATA(content) = source_code+last_submatch-offset(last_submatch-length).
-      ENDIF.
+    DATA(obj_type_for_local_type) = COND #( WHEN alt_main_obj_type IS NOT INITIAL
+                                            THEN alt_main_obj_type
+                                            ELSE main_obj-type ).
 
+    LOOP AT matches INTO DATA(match).
       DATA(type_submatch) = match-submatches[ 1 ].
       DATA(type_string) = to_upper( source_code+type_submatch-offset(type_submatch-length) ).
       DATA(name_submatch) = match-submatches[ 2 ].
@@ -252,12 +323,12 @@ CLASS zcl_abaptags_comp_adt_mapper IMPLEMENTATION.
 
       DATA(comp_type) = COND #(
         WHEN type_string = 'CLASS'
-        THEN zif_abaptags_c_global=>wb_object_types-local_class
-        ELSE zif_abaptags_c_global=>wb_object_types-local_interface ).
+        THEN get_local_class_type( obj_type_for_local_type )
+        ELSE get_local_interface_type( obj_type_for_local_type ) ).
 
-      collect_found_component( indexes         = indexes
-                               clsname         = clsname
+      collect_found_component( main_obj        = main_obj
                                main_prog       = main_prog
+                               indexes         = indexes
                                incl_name       = incl_name
                                comp_name_match = name_submatch
                                comp_name       = found_comp_name
@@ -267,8 +338,8 @@ CLASS zcl_abaptags_comp_adt_mapper IMPLEMENTATION.
 
   METHOD collect_found_component.
     DATA(unmapped_comp) = REF #(
-      components[ object_name    = clsname
-                  object_type    = zif_abaptags_c_global=>object_types-class
+      components[ object_name    = main_obj-name
+                  object_type    = main_obj-type
                   component_name = comp_name
                   component_type = comp_type ] OPTIONAL ).
 
@@ -288,5 +359,25 @@ CLASS zcl_abaptags_comp_adt_mapper IMPLEMENTATION.
     mapped_comp-end_line   = line_index-number.
     mapped_comp-end_offset = mapped_comp-offset + comp_name_match-length.
     INSERT mapped_comp INTO TABLE mapped_components.
+  ENDMETHOD.
+
+  METHOD get_local_class_type.
+    result = SWITCH #( object_type
+                       WHEN zif_abaptags_c_global=>object_types-class THEN
+                         zif_abaptags_c_global=>wb_object_types-class_local_class
+                       WHEN zif_abaptags_c_global=>object_types-program THEN
+                         zif_abaptags_c_global=>wb_object_types-prog_local_class
+                       WHEN zif_abaptags_c_global=>object_types-function_group THEN
+                         zif_abaptags_c_global=>wb_object_types-fugr_local_class ).
+  ENDMETHOD.
+
+  METHOD get_local_interface_type.
+    result = SWITCH #( object_type
+                       WHEN zif_abaptags_c_global=>object_types-class THEN
+                         zif_abaptags_c_global=>wb_object_types-class_local_interface
+                       WHEN zif_abaptags_c_global=>object_types-program THEN
+                         zif_abaptags_c_global=>wb_object_types-prog_local_interface
+                       WHEN zif_abaptags_c_global=>object_types-function_group THEN
+                         zif_abaptags_c_global=>wb_object_types-fugr_local_interface ).
   ENDMETHOD.
 ENDCLASS.

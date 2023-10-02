@@ -26,10 +26,10 @@ CLASS zcl_abaptags_adt_res_tgobj DEFINITION
         id       TYPE zabaptags_tag_id,
       END OF ty_tag_map.
 
-    DATA action_name       TYPE string.
-    DATA tags_dac          TYPE REF TO zcl_abaptags_tags_dac.
-    DATA new_tag_map       TYPE HASHED TABLE OF ty_tag_map WITH UNIQUE KEY tag_name owner.
-    DATA tagged_objects    TYPE zabaptags_tagged_object_t.
+    DATA action_name TYPE string.
+    DATA tags_dac TYPE REF TO zcl_abaptags_tags_dac.
+    DATA new_tag_map TYPE HASHED TABLE OF ty_tag_map WITH UNIQUE KEY tag_name owner.
+    DATA tagged_objects TYPE zabaptags_tagged_object_t.
     DATA tagged_objects_db TYPE zif_abaptags_ty_global=>ty_db_tagged_objects.
 
     METHODS get_content_handler
@@ -193,9 +193,8 @@ CLASS zcl_abaptags_adt_res_tgobj IMPLEMENTATION.
                                                    IMPORTING object_name = tadir_object
                                                              tadir_type  = tadir_type ).
 
-      " Special handling for local classes
-      IF    <tagged_object>-adt_obj_ref-type = zif_abaptags_c_global=>wb_object_types-local_class
-         OR <tagged_object>-adt_obj_ref-type = zif_abaptags_c_global=>wb_object_types-local_interface.
+      " Special handling for local classes/interface
+      IF zcl_abaptags_obj_type_util=>is_local_class_or_intf_type( <tagged_object>-adt_obj_ref-type ).
         DATA(glob_class_name) = COND #(
           WHEN strlen( tadir_object ) > 30
           THEN tadir_object(30)

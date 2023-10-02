@@ -171,7 +171,7 @@ CLASS zcl_abaptags_tgobj_read_locals IMPLEMENTATION.
     DATA(comp_adt_mapper) = NEW zcl_abaptags_comp_adt_mapper( ).
     comp_adt_mapper->add_components( VALUE #( FOR <tgobj> IN tgobj_infos
                                               ( object_name    = object_name
-                                                object_type    = object_type
+                                                object_type    = tadir_type
                                                 component_name = <tgobj>-component_name
                                                 component_type = <tgobj>-component_type ) ) ).
     comp_adt_mapper->determine_components( ).
@@ -183,7 +183,7 @@ CLASS zcl_abaptags_tgobj_read_locals IMPLEMENTATION.
 
       DATA(local_adt_obj_ref) = comp_adt_mapper->get_adt_object(
                                     VALUE #( object_name    = object_name
-                                             object_type    = object_type-objtype_tr
+                                             object_type    = tadir_type
                                              component_name = <local_obj_info_entry>-component_name
                                              component_type = <local_obj_info_entry>-component_type ) ).
 

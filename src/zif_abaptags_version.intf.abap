@@ -2,5 +2,5 @@
 INTERFACE zif_abaptags_version
   PUBLIC.
 
-  CONSTANTS version TYPE string VALUE '2.3.0'.
+  CONSTANTS version TYPE string VALUE '2.4.0'.
 ENDINTERFACE.
