@@ -16,8 +16,6 @@ CLASS lcl_source_code_util IMPLEMENTATION.
     ENDIF.
 
     LOOP AT l_source_table ASSIGNING FIELD-SYMBOL(<code_line>).
-      " TODO: variable is assigned but never used (ABAP cleaner)
-      DATA(line_number) = sy-tabix.
       DATA(line_length) = strlen( <code_line> ).
       result = VALUE #( BASE result
                         ( number = sy-tabix
