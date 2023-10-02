@@ -202,6 +202,8 @@ CLASS zcl_abaptags_adt_res_tgobjlist IMPLEMENTATION.
     DATA(tgobj_key_tab_entry) = CORRESPONDING ty_tagged_object( tgobj_info_ext ).
     IF tgobj_info_ext-object_type = zif_abaptags_c_global=>wb_object_types-function.
       tgobj_key_tab_entry-object_type = zif_abaptags_c_global=>object_types-function.
+    ELSEIF tgobj_info_ext-object_type = zif_abaptags_c_global=>wb_object_types-function_group_include.
+      tgobj_key_tab_entry-object_type = zif_abaptags_c_global=>object_types-program.
     ENDIF.
 
     IF tgobj_info_ext-parent_object_type = zif_abaptags_c_global=>wb_object_types-function.
