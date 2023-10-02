@@ -1,4 +1,4 @@
-"! <p class="shorttext synchronized" lang="en">Resource for deletion check of tagged objects</p>
+"! <p class="shorttext synchronized">Resource for deletion check of tagged objects</p>
 CLASS zcl_abaptags_adt_res_tgobjdchk DEFINITION
   PUBLIC
   INHERITING FROM cl_adt_rest_resource
@@ -7,7 +7,9 @@ CLASS zcl_abaptags_adt_res_tgobjdchk DEFINITION
 
   PUBLIC SECTION.
     METHODS post REDEFINITION.
+
   PROTECTED SECTION.
+
   PRIVATE SECTION.
     TYPES:
       BEGIN OF ty_tgobj2child_entry,
@@ -18,34 +20,34 @@ CLASS zcl_abaptags_adt_res_tgobjdchk DEFINITION
       ty_tgobj2child_map TYPE SORTED TABLE OF ty_tgobj2child_entry WITH NON-UNIQUE KEY id child_id.
 
     TYPES BEGIN OF ty_ext_check_result.
-    INCLUDE TYPE zabaptags_tgobj_delchk_object.
-    TYPES not_deletable_dep_count TYPE i.
+            INCLUDE TYPE zabaptags_tgobj_delchk_object.
+    TYPES   not_deletable_dep_count TYPE i.
     TYPES END OF ty_ext_check_result.
 
-    DATA:
-      request_info    TYPE zabaptags_tgobj_delchk_request,
-      check_results   TYPE SORTED TABLE OF ty_ext_check_result WITH UNIQUE KEY tagged_object_id,
-      undeletable_ids TYPE RANGE OF sysuuid_x16.
+    DATA request_info TYPE zabaptags_tgobj_delchk_request.
+    DATA check_results TYPE SORTED TABLE OF ty_ext_check_result WITH UNIQUE KEY tagged_object_id.
+    DATA undeletable_ids TYPE RANGE OF sysuuid_x16.
 
-    METHODS:
-      get_request_handler
-        RETURNING
-          VALUE(result) TYPE REF TO if_adt_rest_content_handler,
-      get_response_handler
-        RETURNING
-          VALUE(result) TYPE REF TO if_adt_rest_content_handler,
-      prefill_result,
-      check_delete_possibility
-        IMPORTING
-          object_ids TYPE zabaptags_raw16_t,
-      check_parent_delete_status,
-      fill_error_messages.
+    METHODS get_request_handler
+      RETURNING
+        VALUE(result) TYPE REF TO if_adt_rest_content_handler.
+
+    METHODS get_response_handler
+      RETURNING
+        VALUE(result) TYPE REF TO if_adt_rest_content_handler.
+
+    METHODS prefill_result.
+
+    METHODS check_delete_possibility
+      IMPORTING
+        object_ids TYPE zabaptags_raw16_t.
+
+    METHODS check_parent_delete_status.
+    METHODS fill_error_messages.
 ENDCLASS.
 
 
-
 CLASS zcl_abaptags_adt_res_tgobjdchk IMPLEMENTATION.
-
   METHOD post.
     request->get_body_data( EXPORTING content_handler = get_request_handler( )
                             IMPORTING data            = request_info ).
@@ -58,20 +60,17 @@ CLASS zcl_abaptags_adt_res_tgobjdchk IMPLEMENTATION.
                              data            = CORRESPONDING zabaptags_tgobj_delchk_obj_t( check_results ) ).
   ENDMETHOD.
 
-
   METHOD get_request_handler.
     result = cl_adt_rest_cnt_hdl_factory=>get_instance( )->get_handler_for_xml_using_st(
-      st_name   = 'ZABAPTAGS_TGOBJ_DELCHK_REQ'
-      root_name = 'REQUEST' ).
+                 st_name   = 'ZABAPTAGS_TGOBJ_DELCHK_REQ'
+                 root_name = 'REQUEST' ).
   ENDMETHOD.
-
 
   METHOD get_response_handler.
     result = cl_adt_rest_cnt_hdl_factory=>get_instance( )->get_handler_for_xml_using_st(
-      st_name   = 'ZABAPTAGS_TGOBJ_DELCHK_RES'
-      root_name = 'CHECK_RESULTS' ).
+                 st_name   = 'ZABAPTAGS_TGOBJ_DELCHK_RES'
+                 root_name = 'CHECK_RESULTS' ).
   ENDMETHOD.
-
 
   METHOD prefill_result.
     LOOP AT request_info-tagged_object_ids INTO DATA(id).
@@ -79,10 +78,8 @@ CLASS zcl_abaptags_adt_res_tgobjdchk IMPLEMENTATION.
     ENDLOOP.
   ENDMETHOD.
 
-
   METHOD check_delete_possibility.
-    DATA: found_objects           TYPE ty_tgobj2child_map,
-          new_object_ids_to_check LIKE object_ids.
+    DATA found_objects TYPE ty_tgobj2child_map.
 
     CHECK object_ids IS NOT INITIAL.
 
@@ -105,7 +102,7 @@ CLASS zcl_abaptags_adt_res_tgobjdchk IMPLEMENTATION.
     ENDIF.
 
     LOOP AT found_objects REFERENCE INTO DATA(found_obj)
-        GROUP BY found_obj->id.
+         GROUP BY found_obj->id.
 
       DATA(checked_obj) = REF #( check_results[ tagged_object_id = found_obj->id ] ).
       DATA(dep_children_not_del_count) = 0.
@@ -114,10 +111,10 @@ CLASS zcl_abaptags_adt_res_tgobjdchk IMPLEMENTATION.
         IF found_obj_entry->child_id IS NOT INITIAL.
           " check if it marked for deletion
           IF NOT line_exists( check_results[ tagged_object_id = found_obj_entry->child_id ] ).
-            ADD 1 TO dep_children_not_del_count.
+            dep_children_not_del_count = dep_children_not_del_count + 1.
           ELSE.
-            checked_obj->dependent_object_ids = VALUE #(
-              BASE checked_obj->dependent_object_ids ( found_obj_entry->child_id ) ).
+            checked_obj->dependent_object_ids = VALUE #( BASE checked_obj->dependent_object_ids
+                                                         ( found_obj_entry->child_id ) ).
           ENDIF.
 
         ENDIF.
@@ -128,45 +125,41 @@ CLASS zcl_abaptags_adt_res_tgobjdchk IMPLEMENTATION.
       ELSEIF dep_children_not_del_count > 0.
         " check if dependent Ids are deleted as well
         checked_obj->not_deletable_dep_count = dep_children_not_del_count.
-        undeletable_ids = VALUE #(
-          BASE undeletable_ids ( sign = 'I' option = 'EQ' low = checked_obj->tagged_object_id ) ).
+        undeletable_ids = VALUE #( BASE undeletable_ids
+                                   ( sign = 'I' option = 'EQ' low = checked_obj->tagged_object_id ) ).
       ENDIF.
 
     ENDLOOP.
-
   ENDMETHOD.
-
 
   METHOD check_parent_delete_status.
     WHILE undeletable_ids IS NOT INITIAL.
       DATA(temp_undeletable_ids) = undeletable_ids.
       CLEAR undeletable_ids.
 
-      LOOP AT check_results REFERENCE INTO DATA(check_result) WHERE is_deletable = abap_true
-                                                                AND dependent_object_ids IS NOT INITIAL.
+      LOOP AT check_results REFERENCE INTO DATA(check_result) WHERE     is_deletable          = abap_true
+                                                                    AND dependent_object_ids IS NOT INITIAL.
 
+        " TODO: variable is assigned but never used (ABAP cleaner)
         LOOP AT check_result->dependent_object_ids INTO DATA(child_id) WHERE table_line IN temp_undeletable_ids.
-          ADD 1 TO check_result->not_deletable_dep_count.
+          check_result->not_deletable_dep_count = check_result->not_deletable_dep_count + 1.
         ENDLOOP.
 
         IF sy-subrc = 0.
-          undeletable_ids = VALUE #(
-            BASE undeletable_ids ( sign = 'I' option = 'EQ' low = check_result->tagged_object_id ) ).
+          undeletable_ids = VALUE #( BASE undeletable_ids
+                                     ( sign = 'I' option = 'EQ' low = check_result->tagged_object_id ) ).
         ENDIF.
 
       ENDLOOP.
     ENDWHILE.
-
   ENDMETHOD.
-
 
   METHOD fill_error_messages.
     LOOP AT check_results REFERENCE INTO DATA(checked_obj) WHERE not_deletable_dep_count > 0.
-      checked_obj->message = |Used by { checked_obj->not_deletable_dep_count } child object| &&
-          COND #( WHEN checked_obj->not_deletable_dep_count > 1 THEN 's' ELSE '' ).
+      checked_obj->message      = |Used by { checked_obj->not_deletable_dep_count } child object| &&
+                                   COND #( WHEN checked_obj->not_deletable_dep_count > 1 THEN 's' ELSE '' ).
       checked_obj->message_type = zif_abaptags_c_global=>message_types-error.
       checked_obj->is_deletable = abap_false.
     ENDLOOP.
   ENDMETHOD.
-
 ENDCLASS.

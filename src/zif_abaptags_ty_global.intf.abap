@@ -1,6 +1,6 @@
-"! <p class="shorttext synchronized" lang="en">Global Types for ABAP Tags</p>
+"! <p class="shorttext synchronized">Global Types for ABAP Tags</p>
 INTERFACE zif_abaptags_ty_global
-  PUBLIC .
+  PUBLIC.
 
   TYPES:
     "! <p class="shorttext synchronized" lang="en">Range of Tag Ids</p>

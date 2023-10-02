@@ -1,18 +1,17 @@
-"! <p class="shorttext synchronized" lang="en">ADT Resource for ABAP Tags</p>
+"! <p class="shorttext synchronized">ADT Resource for ABAP Tags</p>
 CLASS zcl_abaptags_adt_res_tags DEFINITION
   PUBLIC
   INHERITING FROM cl_adt_rest_resource
   FINAL
-  CREATE PUBLIC .
+  CREATE PUBLIC.
 
   PUBLIC SECTION.
-    METHODS:
-      constructor,
-      post
-        REDEFINITION,
-      get
-        REDEFINITION.
+    METHODS constructor.
+    METHODS post REDEFINITION.
+    METHODS get  REDEFINITION.
+
   PROTECTED SECTION.
+
   PRIVATE SECTION.
     CONSTANTS:
       BEGIN OF c_actions,
@@ -39,60 +38,61 @@ CLASS zcl_abaptags_adt_res_tags DEFINITION
         tag_id TYPE zabaptags_tag_id,
       END OF ty_tag_id.
 
-    DATA:
-      action_name              TYPE string,
-      tags                     TYPE zabaptags_tag_data_t,
-      tags_dac                 TYPE REF TO zcl_abaptags_tags_dac,
-      owner                    TYPE sy-uname,
-      owner_range              TYPE RANGE OF sy-uname,
-      lock_owner               TYPE sy-uname,
-      do_not_resolve_hierarchy TYPE abap_bool,
-      query                    TYPE string,
-      scope                    TYPE string,
-      with_object_count        TYPE abap_bool.
+    DATA action_name TYPE string.
+    DATA tags TYPE zabaptags_tag_data_t.
+    DATA tags_dac TYPE REF TO zcl_abaptags_tags_dac.
+    DATA owner TYPE sy-uname.
+    DATA owner_range TYPE RANGE OF sy-uname.
+    DATA lock_owner TYPE sy-uname.
+    DATA do_not_resolve_hierarchy TYPE abap_bool.
+    DATA query TYPE string.
+    DATA scope TYPE string.
+    DATA with_object_count TYPE abap_bool.
 
-    METHODS:
-      get_tags_content_handler
-        RETURNING
-          VALUE(result) TYPE REF TO if_adt_rest_content_handler,
-      get_parameters
-        IMPORTING
-          request TYPE REF TO if_adt_rest_request
-        RAISING
-          cx_adt_rest,
-      delete_tags,
-      create_or_update_tags
-        RAISING
-          cx_adt_rest,
-      set_result
-        IMPORTING
-          tags     TYPE zabaptags_tag_data_t
-          response TYPE REF TO if_adt_rest_response
-        RAISING
-          cx_adt_rest,
-      make_tags_global
-        RAISING
-          cx_adt_rest,
-      validate_tag
-        IMPORTING
-          tag TYPE zabaptags_tag_data
-        RAISING
-          cx_adt_rest,
-      map_tags_to_root
-        IMPORTING
-          tags_for_root_mapping TYPE zif_abaptags_ty_global=>ty_tag_with_parent_maps.
+    METHODS get_tags_content_handler
+      RETURNING
+        VALUE(result) TYPE REF TO if_adt_rest_content_handler.
+
+    METHODS get_parameters
+      IMPORTING
+        !request TYPE REF TO if_adt_rest_request
+      RAISING
+        cx_adt_rest.
+
+    METHODS delete_tags.
+
+    METHODS create_or_update_tags
+      RAISING
+        cx_adt_rest.
+
+    METHODS set_result
+      IMPORTING
+        tags      TYPE zabaptags_tag_data_t
+        !response TYPE REF TO if_adt_rest_response
+      RAISING
+        cx_adt_rest.
+
+    METHODS make_tags_global
+      RAISING
+        cx_adt_rest.
+
+    METHODS validate_tag
+      IMPORTING
+        tag TYPE zabaptags_tag_data
+      RAISING
+        cx_adt_rest.
+
+    METHODS map_tags_to_root
+      IMPORTING
+        tags_for_root_mapping TYPE zif_abaptags_ty_global=>ty_tag_with_parent_maps.
 ENDCLASS.
 
 
-
 CLASS zcl_abaptags_adt_res_tags IMPLEMENTATION.
-
-
   METHOD constructor.
     super->constructor( ).
     tags_dac = zcl_abaptags_tags_dac=>get_instance( ).
   ENDMETHOD.
-
 
   METHOD post.
     DATA(binary_data) = request->get_inner_rest_request( )->get_entity( )->get_binary_data( ).
@@ -109,9 +109,8 @@ CLASS zcl_abaptags_adt_res_tags IMPLEMENTATION.
       CASE action_name.
 
         WHEN c_actions-lock.
-          zcl_abaptags_tag_util=>lock_tags(
-            lock_owner  = lock_owner
-            global_tags = xsdbool( scope = zif_abaptags_c_global=>scopes-global ) ).
+          zcl_abaptags_tag_util=>lock_tags( lock_owner  = lock_owner
+                                            global_tags = xsdbool( scope = zif_abaptags_c_global=>scopes-global ) ).
 
         WHEN c_actions-unlock.
           zcl_abaptags_tag_util=>unlock_tags( lock_owner ).
@@ -124,39 +123,36 @@ CLASS zcl_abaptags_adt_res_tags IMPLEMENTATION.
 
         WHEN OTHERS.
           RAISE EXCEPTION TYPE zcx_abaptags_adt_error
-            EXPORTING
-              textid = zcx_abaptags_adt_error=>unknown_tags_action
-              msgv1  = |{ action_name }|.
+            EXPORTING textid = zcx_abaptags_adt_error=>unknown_tags_action
+                      msgv1  = |{ action_name }|.
       ENDCASE.
     ENDIF.
-
   ENDMETHOD.
 
-
   METHOD get.
-    DATA: tag_name_range TYPE RANGE OF zabaptags_tag_name,
-          tag_id_range   TYPE RANGE OF zabaptags_tag_id.
+    DATA tag_name_range TYPE RANGE OF zabaptags_tag_name.
 
     get_parameters( request ).
 
     IF query IS NOT INITIAL.
       tag_name_range = COND #(
-        WHEN query CA '+*' THEN VALUE #( ( sign = 'I' option = 'CP' low = query ) )
-        ELSE                    VALUE #( ( sign = 'I' option = 'EQ' low = query ) ) ).
+        WHEN query CA '+*'
+        THEN VALUE #( ( sign = 'I' option = 'CP' low = query ) )
+        ELSE VALUE #( ( sign = 'I' option = 'EQ' low = query ) ) ).
     ENDIF.
 
-    DATA(tags) = tags_dac->find_tags(
-      owner_range      = owner_range
-      name_upper_range = tag_name_range ).
+    DATA(tags) = tags_dac->find_tags( owner_range      = owner_range
+                                      name_upper_range = tag_name_range ).
 
     IF scope = zif_abaptags_c_global=>scopes-all.
       tags = VALUE #( BASE tags
-        ( LINES OF zcl_abaptags_tag_util=>get_shared_tags( abap_true ) ) ).
+                      ( LINES OF zcl_abaptags_tag_util=>get_shared_tags( abap_true ) ) ).
     ENDIF.
 
     IF with_object_count = abap_true.
-      DATA(tag_counts) = tags_dac->get_tagged_obj_count( tag_ids = VALUE #(
-                                                         FOR tag IN tags ( sign = 'I' option = 'EQ' low = tag-tag_id ) ) ).
+      DATA(tag_counts) = tags_dac->get_tagged_obj_count(
+                             tag_ids = VALUE #( FOR tag IN tags
+                                                ( sign = 'I' option = 'EQ' low = tag-tag_id ) ) ).
 
       IF tag_counts IS NOT INITIAL.
 
@@ -169,42 +165,34 @@ CLASS zcl_abaptags_adt_res_tags IMPLEMENTATION.
       ENDIF.
     ENDIF.
 
-    set_result(
-      tags     = tags
-      response = response ).
+    set_result( tags     = tags
+                response = response ).
   ENDMETHOD.
-
 
   METHOD get_tags_content_handler.
     result = cl_adt_rest_cnt_hdl_factory=>get_instance( )->get_handler_for_xml_using_st(
-      st_name      = 'ZABAPTAGS_TAGS'
-      root_name    = 'TAGS'
-      content_type = if_rest_media_type=>gc_appl_xml ).
+                 st_name      = 'ZABAPTAGS_TAGS'
+                 root_name    = 'TAGS'
+                 content_type = if_rest_media_type=>gc_appl_xml ).
   ENDMETHOD.
 
-
   METHOD get_parameters.
-    query = zcl_abaptags_adt_request_util=>get_request_param_value(
-      param_name = c_params-query
-      upper_case = abap_true
-      request    = request ).
+    query = zcl_abaptags_adt_request_util=>get_request_param_value( param_name = c_params-query
+                                                                    upper_case = abap_true
+                                                                    request    = request ).
 
-    do_not_resolve_hierarchy = zcl_abaptags_adt_request_util=>get_boolean_req_param(
-      param_name = c_params-no_hierarchy
-      request    = request ).
+    do_not_resolve_hierarchy = zcl_abaptags_adt_request_util=>get_boolean_req_param( param_name = c_params-no_hierarchy
+                                                                                     request    = request ).
 
-    with_object_count = zcl_abaptags_adt_request_util=>get_boolean_req_param(
-      param_name = c_params-with_object_count
-      request    = request ).
+    with_object_count = zcl_abaptags_adt_request_util=>get_boolean_req_param( param_name = c_params-with_object_count
+                                                                              request    = request ).
 
-    action_name = zcl_abaptags_adt_request_util=>get_request_param_value(
-      param_name = c_params-action
-      request    = request ).
+    action_name = zcl_abaptags_adt_request_util=>get_request_param_value( param_name = c_params-action
+                                                                          request    = request ).
 
-    scope = zcl_abaptags_adt_request_util=>get_request_param_value(
-      param_name    = c_params-scope
-      default_value = zif_abaptags_c_global=>scopes-all
-      request       = request ).
+    scope = zcl_abaptags_adt_request_util=>get_request_param_value( param_name    = c_params-scope
+                                                                    default_value = zif_abaptags_c_global=>scopes-all
+                                                                    request       = request ).
 
     CASE scope.
 
@@ -218,15 +206,15 @@ CLASS zcl_abaptags_adt_res_tags IMPLEMENTATION.
         lock_owner = sy-uname.
 
       WHEN zif_abaptags_c_global=>scopes-all.
-        owner_range = VALUE #( ( sign = 'I' option = 'EQ' low = sy-uname )
-                               ( sign = 'I' option = 'EQ' low = space ) ).
+        owner_range = VALUE #( sign   = 'I'
+                               option = 'EQ'
+                               ( low = sy-uname )
+                               ( low = space ) ).
     ENDCASE.
-
   ENDMETHOD.
 
-
   METHOD delete_tags.
-    DATA: tag_id_range TYPE RANGE OF zabaptags_tag_id.
+    DATA tag_id_range TYPE RANGE OF zabaptags_tag_id.
 
     CHECK tags IS NOT INITIAL.
 
@@ -252,10 +240,9 @@ CLASS zcl_abaptags_adt_res_tags IMPLEMENTATION.
     zcl_abaptags_tags_dac=>get_instance( )->delete_tag_by_id( tag_id_range ).
   ENDMETHOD.
 
-
   METHOD create_or_update_tags.
-    DATA: tags_to_update        TYPE zif_abaptags_ty_global=>ty_db_tags,
-          tags_for_root_mapping TYPE zif_abaptags_ty_global=>ty_tag_with_parent_maps.
+    DATA tags_to_update TYPE zif_abaptags_ty_global=>ty_db_tags.
+    DATA tags_for_root_mapping TYPE zif_abaptags_ty_global=>ty_tag_with_parent_maps.
 
     LOOP AT tags ASSIGNING FIELD-SYMBOL(<tag>).
       <tag>-name_upper = to_upper( <tag>-name ).
@@ -265,14 +252,13 @@ CLASS zcl_abaptags_adt_res_tags IMPLEMENTATION.
             <tag>-tag_id = cl_uuid_factory=>create_system_uuid( )->create_uuid_x16( ).
           CATCH cx_uuid_error INTO DATA(uuid_error).
             RAISE EXCEPTION TYPE zcx_abaptags_adt_error
-              EXPORTING
-                previous = uuid_error.
+              EXPORTING previous = uuid_error.
         ENDTRY.
 
         IF <tag>-parent_tag_id IS NOT INITIAL.
           tags_for_root_mapping = VALUE #( BASE tags_for_root_mapping
-            ( tag_id        = <tag>-tag_id
-              parent_tag_id = <tag>-parent_tag_id ) ).
+                                           ( tag_id        = <tag>-tag_id
+                                             parent_tag_id = <tag>-parent_tag_id ) ).
         ENDIF.
 
         <tag>-created_by = sy-uname.
@@ -290,9 +276,8 @@ CLASS zcl_abaptags_adt_res_tags IMPLEMENTATION.
     tags_dac->modify_tags( tags_to_update ).
   ENDMETHOD.
 
-
   METHOD set_result.
-    FIELD-SYMBOLS: <result> TYPE data.
+    FIELD-SYMBOLS <result> TYPE data.
 
     IF do_not_resolve_hierarchy = abap_true.
       ASSIGN tags TO <result>.
@@ -305,9 +290,8 @@ CLASS zcl_abaptags_adt_res_tags IMPLEMENTATION.
                              data            = <result> ).
   ENDMETHOD.
 
-
   METHOD make_tags_global.
-    DATA: name_upper_range TYPE zif_abaptags_ty_global=>ty_tag_name_range.
+    DATA name_upper_range TYPE zif_abaptags_ty_global=>ty_tag_name_range.
 
     LOOP AT tags ASSIGNING FIELD-SYMBOL(<tag>).
       <tag>-name_upper = to_upper( <tag>-name ).
@@ -322,58 +306,52 @@ CLASS zcl_abaptags_adt_res_tags IMPLEMENTATION.
 
     IF existing_global_tag IS NOT INITIAL.
       RAISE EXCEPTION TYPE zcx_abaptags_adt_error
-        EXPORTING
-          textid = zcx_abaptags_adt_error=>global_tag_already_exists
-          msgv1  = |{ existing_global_tag-name }|.
+        EXPORTING textid = zcx_abaptags_adt_error=>global_tag_already_exists
+                  msgv1  = |{ existing_global_tag-name }|.
     ENDIF.
 
     zcl_abaptags_tag_util=>determine_all_child_tags( EXPORTING tag_id_only = abap_true
                                                      CHANGING  tags        = tags ).
 
-    DATA(tag_ids) = VALUE zif_abaptags_ty_global=>ty_tag_id_range(
-      FOR tag IN tags ( sign = 'I' option = 'EQ' low = tag-tag_id ) ).
+    DATA(tag_ids) = VALUE zif_abaptags_ty_global=>ty_tag_id_range( FOR tag IN tags
+                                                                   ( sign = 'I' option = 'EQ' low = tag-tag_id ) ).
 
     tags_dac->convert_tags_to_global( tag_ids ).
-    tags_dac->delete_shared_tags_by_id(
-      tag_ids            = tag_ids
-      unshare_completely = abap_true ).
+    tags_dac->delete_shared_tags_by_id( tag_ids            = tag_ids
+                                        unshare_completely = abap_true ).
   ENDMETHOD.
 
-
   METHOD validate_tag.
-    DATA: tag_id_range  TYPE RANGE OF zabaptags_tag_id.
+    DATA tag_id_range TYPE RANGE OF zabaptags_tag_id.
 
     IF tag-tag_id IS NOT INITIAL.
       tag_id_range = VALUE #( ( sign = 'I' option = 'EQ' low = tag-tag_id ) ).
     ENDIF.
     IF tag-parent_tag_id IS NOT INITIAL.
       tag_id_range = VALUE #( BASE tag_id_range
-        ( sign = 'I' option = 'EQ' low = tag-parent_tag_id ) ).
+                              ( sign = 'I' option = 'EQ' low = tag-parent_tag_id ) ).
     ENDIF.
 
     IF tag_id_range IS NOT INITIAL.
-      DATA(tags) = tags_dac->find_tags(
-        columns      = VALUE #( ( `TAG_ID` ) ( `NAME` ) )
-        tag_id_range = tag_id_range ).
+      DATA(tags) = tags_dac->find_tags( columns      = VALUE #( ( `TAG_ID` ) ( `NAME` ) )
+                                        tag_id_range = tag_id_range ).
 
       " check tag existence if tag will be modified
-      IF tag-tag_id IS NOT INITIAL AND
-         NOT line_exists( tags[ tag_id = tag-tag_id ] ).
+      IF         tag-tag_id IS NOT INITIAL
+         AND NOT line_exists( tags[ tag_id = tag-tag_id ] ).
         RAISE EXCEPTION TYPE zcx_abaptags_adt_error
-          EXPORTING
-            textid = zcx_abaptags_adt_error=>tag_no_longer_exists
-            msgv1  = |{ tag-name }|
-            msgv2  = |{ tag-owner }|.
+          EXPORTING textid = zcx_abaptags_adt_error=>tag_no_longer_exists
+                    msgv1  = |{ tag-name }|
+                    msgv2  = |{ tag-owner }|.
       ENDIF.
 
       " check parent tag existence if tag is in a hierarchy
-      IF tag-parent_tag_id IS NOT INITIAL AND
-         NOT line_exists( tags[ tag_id = tag-parent_tag_id ] ).
+      IF         tag-parent_tag_id IS NOT INITIAL
+         AND NOT line_exists( tags[ tag_id = tag-parent_tag_id ] ).
         RAISE EXCEPTION TYPE zcx_abaptags_adt_error
-          EXPORTING
-            textid = zcx_abaptags_adt_error=>parent_tag_no_longer_exists
-            msgv1  = |{ tag-name }|
-            msgv2  = |{ tag-owner }|.
+          EXPORTING textid = zcx_abaptags_adt_error=>parent_tag_no_longer_exists
+                    msgv1  = |{ tag-name }|
+                    msgv2  = |{ tag-owner }|.
       ENDIF.
     ENDIF.
 
@@ -384,32 +362,29 @@ CLASS zcl_abaptags_adt_res_tags IMPLEMENTATION.
     ENDIF.
 
     DATA(tag_exists) = tags_dac->exists_tag(
-      tag_id_range        = tag_id_range
-      parent_tag_id_range = VALUE #( ( sign = 'I' option = 'EQ' low = tag-parent_tag_id ) )
-      owner_range         = VALUE #( ( sign = 'I' option = 'EQ' low = tag-owner ) )
-      name_upper_range    = VALUE #( ( sign = 'I' option = 'EQ' low = tag-name_upper ) ) ).
+                           tag_id_range        = tag_id_range
+                           parent_tag_id_range = VALUE #( ( sign = 'I' option = 'EQ' low = tag-parent_tag_id ) )
+                           owner_range         = VALUE #( ( sign = 'I' option = 'EQ' low = tag-owner ) )
+                           name_upper_range    = VALUE #( ( sign = 'I' option = 'EQ' low = tag-name_upper ) ) ).
 
     IF tag_exists = abap_true.
       IF tag-parent_tag_id IS NOT INITIAL.
         RAISE EXCEPTION TYPE zcx_abaptags_adt_error
-          EXPORTING
-            textid = zcx_abaptags_adt_error=>tag_parent_tag_already_exists
-            msgv1  = |{ tag-name }|
-            msgv2  = |{ tag-owner }|
-            msgv3  = |{ tags[ tag_id = tag-parent_tag_id ]-name }|.
+          EXPORTING textid = zcx_abaptags_adt_error=>tag_parent_tag_already_exists
+                    msgv1  = |{ tag-name }|
+                    msgv2  = |{ tag-owner }|
+                    msgv3  = |{ tags[ tag_id = tag-parent_tag_id ]-name }|.
       ELSE.
         RAISE EXCEPTION TYPE zcx_abaptags_adt_error
-          EXPORTING
-            textid = zcx_abaptags_adt_error=>tag_no_longer_exists
-            msgv1  = |{ tag-name }|
-            msgv2  = |{ tag-owner }|.
+          EXPORTING textid = zcx_abaptags_adt_error=>tag_no_longer_exists
+                    msgv1  = |{ tag-name }|
+                    msgv2  = |{ tag-owner }|.
       ENDIF.
     ENDIF.
   ENDMETHOD.
 
-
   METHOD map_tags_to_root.
-    DATA: new_map_entries TYPE zif_abaptags_ty_global=>ty_db_tags_root_maps.
+    DATA new_map_entries TYPE zif_abaptags_ty_global=>ty_db_tags_root_maps.
 
     CHECK tags_for_root_mapping IS NOT INITIAL.
 
@@ -422,12 +397,12 @@ CLASS zcl_abaptags_adt_res_tags IMPLEMENTATION.
 
     LOOP AT tags_for_root_mapping ASSIGNING FIELD-SYMBOL(<tag_for_mapping>).
       new_map_entries = VALUE #( BASE new_map_entries
-       ( tag_id = <tag_for_mapping>-tag_id root_tag_id = <tag_for_mapping>-parent_tag_id ) ).
+                                 ( tag_id = <tag_for_mapping>-tag_id root_tag_id = <tag_for_mapping>-parent_tag_id ) ).
 
       " collect map entries in upper hierarchy levels
       LOOP AT upper_root_maps ASSIGNING FIELD-SYMBOL(<upper_root_map>) WHERE tag_id = <tag_for_mapping>-parent_tag_id.
         new_map_entries = VALUE #( BASE new_map_entries
-         ( root_tag_id = <upper_root_map>-root_tag_id tag_id = <tag_for_mapping>-tag_id ) ).
+                                   ( root_tag_id = <upper_root_map>-root_tag_id tag_id = <tag_for_mapping>-tag_id ) ).
       ENDLOOP.
 
     ENDLOOP.
@@ -435,7 +410,5 @@ CLASS zcl_abaptags_adt_res_tags IMPLEMENTATION.
     IF new_map_entries IS NOT INITIAL.
       INSERT zabaptags_tagsrm FROM TABLE new_map_entries ACCEPTING DUPLICATE KEYS.
     ENDIF.
-
   ENDMETHOD.
-
 ENDCLASS.

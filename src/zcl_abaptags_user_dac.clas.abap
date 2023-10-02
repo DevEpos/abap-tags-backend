@@ -1,34 +1,28 @@
-"! <p class="shorttext synchronized" lang="en">Access to users of SAP system</p>
+"! <p class="shorttext synchronized">Access to users of SAP system</p>
 CLASS zcl_abaptags_user_dac DEFINITION
   PUBLIC
   FINAL
-  CREATE PUBLIC .
+  CREATE PUBLIC.
 
   PUBLIC SECTION.
-    CLASS-METHODS:
-      "! <p class="shorttext synchronized" lang="en">Retrieve instance of Users DAC</p>
-      get_instance
-        RETURNING
-          VALUE(result) TYPE REF TO zcl_abaptags_user_dac.
+    "! <p class="shorttext synchronized">Retrieve instance of Users DAC</p>
+    CLASS-METHODS get_instance
+      RETURNING
+        VALUE(result) TYPE REF TO zcl_abaptags_user_dac.
 
-    METHODS:
-      "! <p class="shorttext synchronized" lang="en">Finds users for user id range</p>
-      find_users
-        IMPORTING
-          id_range      TYPE zif_abaptags_ty_global=>ty_owner_range
-        RETURNING
-          VALUE(result) TYPE zabaptags_user_t.
-  PROTECTED SECTION.
+    "! <p class="shorttext synchronized">Finds users for user id range</p>
+    METHODS find_users
+      IMPORTING
+        id_range      TYPE zif_abaptags_ty_global=>ty_owner_range
+      RETURNING
+        VALUE(result) TYPE zabaptags_user_t.
+
   PRIVATE SECTION.
-    CLASS-DATA:
-      instance TYPE REF TO zcl_abaptags_user_dac.
+    CLASS-DATA instance TYPE REF TO zcl_abaptags_user_dac.
 ENDCLASS.
 
 
-
 CLASS zcl_abaptags_user_dac IMPLEMENTATION.
-
-
   METHOD get_instance.
     IF instance IS INITIAL.
       instance = NEW #( ).
@@ -36,7 +30,6 @@ CLASS zcl_abaptags_user_dac IMPLEMENTATION.
 
     result = instance.
   ENDMETHOD.
-
 
   METHOD find_users.
     CHECK id_range IS NOT INITIAL.
@@ -65,6 +58,4 @@ CLASS zcl_abaptags_user_dac IMPLEMENTATION.
       ENDLOOP.
     ENDIF.
   ENDMETHOD.
-
-
 ENDCLASS.
