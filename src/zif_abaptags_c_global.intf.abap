@@ -64,10 +64,14 @@ INTERFACE zif_abaptags_c_global
     END OF object_types,
 
     BEGIN OF wb_object_types,
-      local_class     TYPE swo_objtyp VALUE 'CLAS/OCL',
-      local_interface TYPE swo_objtyp VALUE 'CLAS/ON',
-      function        TYPE swo_objtyp VALUE 'FUGR/FF',
-      data_definition TYPE swo_objtyp VALUE 'DDLS/DF',
+      class_local_class     TYPE swo_objtyp VALUE 'CLAS/OCL',
+      class_local_interface TYPE swo_objtyp VALUE 'CLAS/ON',
+      prog_local_class      TYPE swo_objtyp VALUE 'PROG/PL',
+      prog_local_interface  TYPE swo_objtyp VALUE 'PROG/PN',
+      fugr_local_class      TYPE swo_objtyp VALUE 'FUGR/PL',
+      fugr_local_interface  TYPE swo_objtyp VALUE 'FUGR/PN',
+      function              TYPE swo_objtyp VALUE 'FUGR/FF',
+      data_definition       TYPE swo_objtyp VALUE 'DDLS/DF',
     END OF wb_object_types.
 
 ENDINTERFACE.

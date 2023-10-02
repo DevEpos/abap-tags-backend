@@ -77,8 +77,7 @@ CLASS zcl_abaptags_adt_res_tagprev IMPLEMENTATION.
                                                                  object_type = DATA(object_type)
                                                                  tadir_type  = obj_ref_int-tadir_type ).
 
-          IF    <obj_ref>-type = zif_abaptags_c_global=>wb_object_types-local_class
-             OR <obj_ref>-type = zif_abaptags_c_global=>wb_object_types-local_interface.
+          IF zcl_abaptags_obj_type_util=>is_local_class_or_intf_type( <obj_ref>-type ).
             DATA(glob_class_name) = COND #(
               WHEN strlen( obj_ref_int-name ) > 30 THEN obj_ref_int-name(30) ELSE obj_ref_int-name ).
             obj_ref_int-parent_name = condense( translate( val = glob_class_name from = '=' to = space ) ).
