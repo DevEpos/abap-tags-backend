@@ -1,89 +1,84 @@
-"! <p class="shorttext synchronized" lang="en">Resource for tagged object search</p>
+"! <p class="shorttext synchronized">Resource for tagged object search</p>
 CLASS zcl_abaptags_adt_res_tgobjsrch DEFINITION
   PUBLIC
   INHERITING FROM cl_adt_rest_resource
   FINAL
-  CREATE PUBLIC .
+  CREATE PUBLIC.
 
   PUBLIC SECTION.
-    METHODS:
-      constructor,
-      post
-        REDEFINITION.
+    METHODS constructor.
+    METHODS post REDEFINITION.
+
   PROTECTED SECTION.
+
   PRIVATE SECTION.
-    CONSTANTS:
-      c_comp_where_filter TYPE string VALUE `component_name = @space AND component_type = @space`.
+    CONSTANTS c_comp_where_filter TYPE string VALUE `component_name = @space AND component_type = @space`.
 
-    DATA:
-      tags_dac                 TYPE REF TO zcl_abaptags_tags_dac,
-      tadir_info_reader        TYPE REF TO zcl_abaptags_tadir,
-      tgobj_infos              TYPE zif_abaptags_ty_global=>ty_tgobj_infos,
-      tagged_objects           TYPE STANDARD TABLE OF zabaptags_tagged_object,
-      owner_range              TYPE RANGE OF sy-uname,
-      max_results              TYPE i,
-      object_name_range        TYPE RANGE OF sobj_name,
-      object_type_range        TYPE RANGE OF trobjtype,
-      parent_object_name_range TYPE RANGE OF sobj_name,
-      parent_object_type_range TYPE RANGE OF trobjtype,
-      tagged_objects_db        TYPE zif_abaptags_ty_global=>ty_db_tagged_objects,
-      search_params            TYPE zabaptags_tgobj_search_params,
-      comp_tgobj_where_filter  TYPE string,
-      obj_refs_for_name_mapping  TYPE TABLE OF REF TO zabaptags_adt_obj_ref,
-      cds_name_mapper          TYPE REF TO zcl_abaptags_cds_name_mapper,
-      tag_id_range             TYPE zif_abaptags_ty_global=>ty_tag_id_range.
+    DATA tags_dac TYPE REF TO zcl_abaptags_tags_dac.
+    DATA tadir_info_reader TYPE REF TO zcl_abaptags_tadir.
+    DATA tgobj_infos TYPE zif_abaptags_ty_global=>ty_tgobj_infos.
+    DATA tagged_objects TYPE STANDARD TABLE OF zabaptags_tagged_object.
+    DATA owner_range TYPE RANGE OF sy-uname.
+    DATA max_results TYPE i.
+    DATA object_name_range TYPE RANGE OF sobj_name.
+    DATA object_type_range TYPE RANGE OF trobjtype.
+    DATA parent_object_name_range TYPE RANGE OF sobj_name.
+    DATA parent_object_type_range TYPE RANGE OF trobjtype.
+    DATA tagged_objects_db TYPE zif_abaptags_ty_global=>ty_db_tagged_objects.
+    DATA search_params TYPE zabaptags_tgobj_search_params.
+    DATA comp_tgobj_where_filter TYPE string.
+    DATA obj_refs_for_name_mapping TYPE TABLE OF REF TO zabaptags_adt_obj_ref.
+    DATA cds_name_mapper TYPE REF TO zcl_abaptags_cds_name_mapper.
+    DATA tag_id_range TYPE zif_abaptags_ty_global=>ty_tag_id_range.
 
-    METHODS:
-      "! <p class="shorttext synchronized" lang="en">Retrieve Parameters</p>
-      get_parameters
-        IMPORTING
-          io_request TYPE REF TO if_adt_rest_request
-        RAISING
-          cx_adt_rest,
-      "! <p class="shorttext synchronized" lang="en">Get Content handler for response</p>
-      get_response_content_handler
-        RETURNING
-          VALUE(result) TYPE REF TO if_adt_rest_content_handler,
-      "! <p class="shorttext synchronized" lang="en">Get Content handler for request</p>
-      get_request_content_handler
-        RETURNING
-          VALUE(result) TYPE REF TO if_adt_rest_content_handler,
-      "! <p class="shorttext synchronized" lang="en">Search for tagged objects</p>
-      search,
-      determine_obj_name_range
-        IMPORTING
-          query TYPE string
-        RAISING
-          cx_adt_rest,
-      post_process_results,
-      fill_descriptions,
-      fill_ddl_display_names,
-      retrieve_tag_info,
-      determine_tadir_info,
-      get_tagged_object_info.
+    "! <p class="shorttext synchronized">Retrieve Parameters</p>
+    METHODS get_parameters
+      IMPORTING
+        io_request TYPE REF TO if_adt_rest_request
+      RAISING
+        cx_adt_rest.
+
+    "! <p class="shorttext synchronized">Get Content handler for response</p>
+    METHODS get_response_content_handler
+      RETURNING
+        VALUE(result) TYPE REF TO if_adt_rest_content_handler.
+
+    "! <p class="shorttext synchronized">Get Content handler for request</p>
+    METHODS get_request_content_handler
+      RETURNING
+        VALUE(result) TYPE REF TO if_adt_rest_content_handler.
+
+    "! <p class="shorttext synchronized">Search for tagged objects</p>
+    METHODS search.
+
+    METHODS determine_obj_name_range
+      IMPORTING
+        !query TYPE string
+      RAISING
+        cx_adt_rest.
+
+    METHODS post_process_results.
+    METHODS fill_descriptions.
+    METHODS fill_ddl_display_names.
+    METHODS retrieve_tag_info.
+    METHODS determine_tadir_info.
+    METHODS get_tagged_object_info.
 ENDCLASS.
 
 
-
 CLASS zcl_abaptags_adt_res_tgobjsrch IMPLEMENTATION.
-
-
   METHOD constructor.
     super->constructor( ).
     tags_dac = zcl_abaptags_tags_dac=>get_instance( ).
     cds_name_mapper = NEW #( ).
   ENDMETHOD.
 
-
   METHOD post.
-    request->get_body_data(
-      EXPORTING
-        content_handler = get_request_content_handler( )
-      IMPORTING
-        data            = search_params ).
+    request->get_body_data( EXPORTING content_handler = get_request_content_handler( )
+                            IMPORTING data            = search_params ).
 
-    IF search_params-tag_id IS INITIAL AND
-      search_params-query IS INITIAL.
+    IF     search_params-tag_id IS INITIAL
+       AND search_params-query  IS INITIAL.
       RETURN.
     ENDIF.
 
@@ -101,24 +96,19 @@ CLASS zcl_abaptags_adt_res_tgobjsrch IMPLEMENTATION.
 
     DATA(result) = CORRESPONDING zabaptags_tagged_object_t( tagged_objects ).
 
-    response->set_body_data(
-      content_handler = get_response_content_handler( )
-      data            = result ).
+    response->set_body_data( content_handler = get_response_content_handler( )
+                             data            = result ).
   ENDMETHOD.
 
-
   METHOD determine_obj_name_range.
-    DATA: obj_name_type  TYPE TABLE OF string,
-          obj_name_range LIKE object_name_range,
-          obj_type_range LIKE object_type_range.
+    DATA obj_name_type TYPE TABLE OF string.
+    DATA obj_name_range LIKE object_name_range.
+    DATA obj_type_range LIKE object_type_range.
 
     IF search_params-query_type = zif_abaptags_c_global=>tag_query_types-object_uri.
-      zcl_abaptags_adt_util=>map_uri_to_wb_object(
-        EXPORTING
-          uri         = query
-        IMPORTING
-          object_name = DATA(object_name)
-          tadir_type  = DATA(object_type) ).
+      zcl_abaptags_adt_util=>map_uri_to_wb_object( EXPORTING uri         = query
+                                                   IMPORTING object_name = DATA(object_name)
+                                                             tadir_type  = DATA(object_type) ).
       obj_name_range = VALUE #( ( sign = 'I' option = 'EQ' low = object_name ) ).
       obj_type_range = VALUE #( ( sign = 'I' option = 'EQ' low = object_type ) ).
     ELSEIF search_params-query_type = zif_abaptags_c_global=>tag_query_types-object_name_type_combo.
@@ -155,9 +145,7 @@ CLASS zcl_abaptags_adt_res_tgobjsrch IMPLEMENTATION.
       object_name_range = obj_name_range.
       object_type_range = obj_type_range.
     ENDIF.
-
   ENDMETHOD.
-
 
   METHOD determine_tadir_info.
     tadir_info_reader = NEW zcl_abaptags_tadir(
@@ -165,16 +153,13 @@ CLASS zcl_abaptags_adt_res_tgobjsrch IMPLEMENTATION.
       )->determine_tadir_entries( ).
   ENDMETHOD.
 
-
   METHOD fill_descriptions.
-    DATA: texts TYPE STANDARD TABLE OF seu_objtxt.
+    DATA texts TYPE STANDARD TABLE OF seu_objtxt.
 
-    texts = VALUE #(
-      FOR tagged_obj IN tagged_objects
-      ( object = tagged_obj-adt_obj_ref-tadir_type obj_name = tagged_obj-adt_obj_ref-name ) ).
+    texts = VALUE #( FOR tagged_obj IN tagged_objects
+                     ( object = tagged_obj-adt_obj_ref-tadir_type obj_name = tagged_obj-adt_obj_ref-name ) ).
     CALL FUNCTION 'RS_SHORTTEXT_GET'
-      TABLES
-        obj_tab = texts.
+      TABLES obj_tab = texts.
 
     LOOP AT tagged_objects ASSIGNING FIELD-SYMBOL(<entity>).
       ASSIGN texts[ obj_name = <entity>-adt_obj_ref-name object = <entity>-adt_obj_ref-tadir_type ] TO FIELD-SYMBOL(<text>).
@@ -184,18 +169,20 @@ CLASS zcl_abaptags_adt_res_tgobjsrch IMPLEMENTATION.
     ENDLOOP.
   ENDMETHOD.
 
-
   METHOD get_parameters.
     DATA(scope) = COND #(
-      WHEN search_params-search_scope IS INITIAL THEN zif_abaptags_c_global=>scopes-all
+      WHEN search_params-search_scope IS INITIAL
+      THEN zif_abaptags_c_global=>scopes-all
       ELSE search_params-search_scope ).
-    owner_range = SWITCH #(  scope
-      WHEN zif_abaptags_c_global=>scopes-global THEN VALUE #( ( sign = 'I' option = 'EQ' low = space ) )
-      WHEN zif_abaptags_c_global=>scopes-user   THEN VALUE #( ( sign = 'I' option = 'EQ' low = sy-uname ) ) ).
+    owner_range = SWITCH #( scope
+                            WHEN zif_abaptags_c_global=>scopes-global THEN
+                              VALUE #( ( sign = 'I' option = 'EQ' low = space ) )
+                            WHEN zif_abaptags_c_global=>scopes-user THEN
+                              VALUE #( ( sign = 'I' option = 'EQ' low = sy-uname ) ) ).
 
     max_results = search_params-max_results.
     IF max_results > 0.
-      ADD 1 TO max_results.
+      max_results = max_results + 1.
     ENDIF.
 
     IF search_params-query IS NOT INITIAL.
@@ -208,46 +195,43 @@ CLASS zcl_abaptags_adt_res_tgobjsrch IMPLEMENTATION.
     ENDIF.
   ENDMETHOD.
 
-
   METHOD get_request_content_handler.
     result = cl_adt_rest_cnt_hdl_factory=>get_instance( )->get_handler_for_xml_using_st(
-      st_name      = 'ZABAPTAGS_TGOBJ_SEARCH_PARAMS'
-      root_name    = 'SEARCH_PARAMS'
-      content_type = if_rest_media_type=>gc_appl_xml ).
+                 st_name      = 'ZABAPTAGS_TGOBJ_SEARCH_PARAMS'
+                 root_name    = 'SEARCH_PARAMS'
+                 content_type = if_rest_media_type=>gc_appl_xml ).
   ENDMETHOD.
-
 
   METHOD get_response_content_handler.
     result = cl_adt_rest_cnt_hdl_factory=>get_instance( )->get_handler_for_xml_using_st(
-      st_name      = 'ZABAPTAGS_TAGGED_OBJECTS'
-      root_name    = 'TAGGED_OBJECTS'
-      content_type = if_rest_media_type=>gc_appl_xml ).
+                 st_name      = 'ZABAPTAGS_TAGGED_OBJECTS'
+                 root_name    = 'TAGGED_OBJECTS'
+                 content_type = if_rest_media_type=>gc_appl_xml ).
   ENDMETHOD.
 
-
   METHOD post_process_results.
-    DATA: added_tgobj    TYPE REF TO zabaptags_tagged_object,
-          adt_object_ref TYPE zcl_abaptags_adt_util=>ty_adt_obj_ref_info.
+    DATA added_tgobj TYPE REF TO zabaptags_tagged_object.
+    DATA adt_object_ref TYPE zcl_abaptags_adt_util=>ty_adt_obj_ref_info.
 
     " map components to ADT uri
     DATA(cmp_adt_mapper) = NEW zcl_abaptags_comp_adt_mapper( ).
-    cmp_adt_mapper->add_components( VALUE #(
-      FOR <tgobj> IN tagged_objects_db WHERE ( component_name IS NOT INITIAL )
-      ( component_name = <tgobj>-component_name
-        component_type = <tgobj>-component_type
-        object_name    = <tgobj>-object_name
-        object_type    = <tgobj>-object_type ) ) ).
+    cmp_adt_mapper->add_components( VALUE #( FOR <tgobj> IN tagged_objects_db WHERE ( component_name IS NOT INITIAL )
+                                             ( component_name = <tgobj>-component_name
+                                               component_type = <tgobj>-component_type
+                                               object_name    = <tgobj>-object_name
+                                               object_type    = <tgobj>-object_type ) ) ).
 
     cmp_adt_mapper->determine_components( ).
 
     LOOP AT tagged_objects_db ASSIGNING FIELD-SYMBOL(<tagged_object>).
+      " TODO: variable is assigned but never used (ABAP cleaner)
       DATA(tadir_object_name) = <tagged_object>-object_name.
+      " TODO: variable is assigned but never used (ABAP cleaner)
       DATA(tadir_object_type) = <tagged_object>-object_type.
 
       TRY.
-          DATA(tadir_info) = tadir_info_reader->get_tadir_info(
-            name = <tagged_object>-object_name
-            type = <tagged_object>-object_type ).
+          DATA(tadir_info) = tadir_info_reader->get_tadir_info( name = <tagged_object>-object_name
+                                                                type = <tagged_object>-object_type ).
         CATCH cx_sy_itab_line_not_found.
           " TODO: handle some edge cases, like $-packages
           CONTINUE.
@@ -258,40 +242,38 @@ CLASS zcl_abaptags_adt_res_tgobjsrch IMPLEMENTATION.
       DATA(adt_type) = ``.
 
       IF <tagged_object>-component_name IS NOT INITIAL.
-        adt_object_ref = cmp_adt_mapper->get_adt_object( VALUE #(
-          object_name    = <tagged_object>-object_name
-          object_type    = <tagged_object>-object_type
-          component_name = <tagged_object>-component_name
-          component_type = <tagged_object>-component_type ) ).
+        adt_object_ref = cmp_adt_mapper->get_adt_object( VALUE #( object_name    = <tagged_object>-object_name
+                                                                  object_type    = <tagged_object>-object_type
+                                                                  component_name = <tagged_object>-component_name
+                                                                  component_type = <tagged_object>-component_type ) ).
         adt_type = <tagged_object>-component_type.
         object_name = <tagged_object>-component_name.
         parent_object_name = <tagged_object>-object_name.
       ELSE.
         adt_object_ref = zcl_abaptags_adt_util=>get_adt_obj_ref_for_tadir_type(
-          tadir_type = <tagged_object>-object_type
-          name       = <tagged_object>-object_name ).
+                             tadir_type = <tagged_object>-object_type
+                             name       = <tagged_object>-object_name ).
         adt_type = adt_object_ref-type.
         object_name = <tagged_object>-object_name.
       ENDIF.
 
       CHECK adt_object_ref IS NOT INITIAL.
 
-      DATA(tagged_object) = VALUE zabaptags_tagged_object(
-        adt_obj_ref = VALUE #(
-          name         = object_name
-          parent_name  = parent_object_name
-          type         = adt_type
-          tadir_type   = <tagged_object>-object_type
-          uri          = adt_object_ref-uri
-          package_name = tadir_info-package_name
-          owner        = tadir_info-author ) ).
+      DATA(tagged_object) = VALUE zabaptags_tagged_object( adt_obj_ref = VALUE #(
+                                                               name         = object_name
+                                                               parent_name  = parent_object_name
+                                                               type         = adt_type
+                                                               tadir_type   = <tagged_object>-object_type
+                                                               uri          = adt_object_ref-uri
+                                                               package_name = tadir_info-package_name
+                                                               owner        = tadir_info-author ) ).
 
-      LOOP AT tgobj_infos ASSIGNING FIELD-SYMBOL(<tag_info>) WHERE object_name = <tagged_object>-object_name
-                                                               AND object_type = <tagged_object>-object_type.
+      LOOP AT tgobj_infos ASSIGNING FIELD-SYMBOL(<tag_info>) WHERE     object_name = <tagged_object>-object_name
+                                                                   AND object_type = <tagged_object>-object_type.
         tagged_object-tags = VALUE #( BASE tagged_object-tags
-          ( tag_id   = <tag_info>-tag_id
-            tag_name = <tag_info>-tag_name
-            owner    = <tag_info>-tag_owner ) ).
+                                      ( tag_id   = <tag_info>-tag_id
+                                        tag_name = <tag_info>-tag_name
+                                        owner    = <tag_info>-tag_owner ) ).
 
         IF search_params-result_group_level = zif_abaptags_c_global=>search_result_group_level-by_tag_and_object.
           APPEND tagged_object TO tagged_objects REFERENCE INTO added_tgobj.
@@ -304,8 +286,8 @@ CLASS zcl_abaptags_adt_res_tgobjsrch IMPLEMENTATION.
 
       ENDLOOP.
 
-      IF search_params-result_group_level IS INITIAL OR
-          search_params-result_group_level = zif_abaptags_c_global=>search_result_group_level-by_object.
+      IF    search_params-result_group_level IS INITIAL
+         OR search_params-result_group_level  = zif_abaptags_c_global=>search_result_group_level-by_object.
         APPEND tagged_object TO tagged_objects REFERENCE INTO added_tgobj.
         IF cds_name_mapper->collect_entry( name = added_tgobj->adt_obj_ref-name
                                            type = added_tgobj->adt_obj_ref-tadir_type ).
@@ -313,24 +295,23 @@ CLASS zcl_abaptags_adt_res_tgobjsrch IMPLEMENTATION.
         ENDIF.
       ENDIF.
     ENDLOOP.
-
   ENDMETHOD.
 
-
   METHOD retrieve_tag_info.
-    DATA: tgobj_infos_mesh TYPE zif_abaptags_ty_global=>ty_tgobj_info_mesh.
+    DATA tgobj_infos_mesh TYPE zif_abaptags_ty_global=>ty_tgobj_info_mesh.
 
     CHECK search_params-with_tag_info = abap_true.
 
     get_tagged_object_info( ).
 
-    IF tgobj_infos IS INITIAL OR
-        search_params-tag_info_type <> zif_abaptags_c_global=>tag_info_types-children.
+    IF    tgobj_infos                 IS INITIAL
+       OR search_params-tag_info_type <> zif_abaptags_c_global=>tag_info_types-children.
       RETURN.
     ENDIF.
 
-    tgobj_infos_mesh-child_objects = tags_dac->get_children_of_tagged_objects( VALUE #(
-      FOR t IN tgobj_infos ( sign = 'I' option = 'EQ' low = t-tag_id ) ) ).
+    tgobj_infos_mesh-child_objects = tags_dac->get_children_of_tagged_objects(
+                                         VALUE #( FOR t IN tgobj_infos
+                                                  ( sign = 'I' option = 'EQ' low = t-tag_id ) ) ).
 
     IF tgobj_infos_mesh-child_objects IS INITIAL.
       CLEAR tgobj_infos.
@@ -346,22 +327,20 @@ CLASS zcl_abaptags_adt_res_tgobjsrch IMPLEMENTATION.
         CATCH cx_sy_itab_line_not_found.
           CONTINUE.
       ENDTRY.
-      child_tgobj_info-tag_id = <tgobj_child>-tag_id.
+      child_tgobj_info-tag_id   = <tgobj_child>-tag_id.
       child_tgobj_info-tag_name = child_tgobj_info-tag_name && ` > ` && <tgobj_child>-tag_name.
       tgobj_infos = VALUE #( BASE tgobj_infos ( child_tgobj_info ) ).
     ENDLOOP.
-
   ENDMETHOD.
 
-
   METHOD search.
-    tag_id_range = VALUE zif_abaptags_ty_global=>ty_tag_id_range(
-      FOR tag_id IN search_params-tag_id ( sign = 'I' option = 'EQ' low = tag_id ) ).
+    tag_id_range = VALUE zif_abaptags_ty_global=>ty_tag_id_range( FOR tag_id IN search_params-tag_id
+                                                                  ( sign = 'I' option = 'EQ' low = tag_id ) ).
 
     DATA(tag_count) = lines( tag_id_range ).
 
-    IF search_params-matches_all_tags = abap_true
-         AND tag_count > 0.
+    IF     search_params-matches_all_tags = abap_true
+       AND tag_count > 0.
       SELECT object_name, object_type, component_name, component_type
         FROM zabaptags_tgobjn
         WHERE tag_id IN @tag_id_range
@@ -390,7 +369,6 @@ CLASS zcl_abaptags_adt_res_tgobjsrch IMPLEMENTATION.
     ENDIF.
   ENDMETHOD.
 
-
   METHOD get_tagged_object_info.
     SELECT tagged_object~object_name,
          tagged_object~object_type,
@@ -408,7 +386,6 @@ CLASS zcl_abaptags_adt_res_tgobjsrch IMPLEMENTATION.
     INTO CORRESPONDING FIELDS OF TABLE @tgobj_infos.
   ENDMETHOD.
 
-
   METHOD fill_ddl_display_names.
     CHECK cds_name_mapper->map_entries( ).
 
@@ -416,7 +393,5 @@ CLASS zcl_abaptags_adt_res_tgobjsrch IMPLEMENTATION.
       obj_ref->alt_name = cds_name_mapper->get_display_name( name = obj_ref->name
                                                              type = obj_ref->tadir_type ).
     ENDLOOP.
-
   ENDMETHOD.
-
 ENDCLASS.

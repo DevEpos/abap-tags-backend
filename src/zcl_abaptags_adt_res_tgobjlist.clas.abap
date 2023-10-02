@@ -1,4 +1,4 @@
-"! <p class="shorttext synchronized" lang="en">Resource for retrieving a list of tagged objects</p>
+"! <p class="shorttext synchronized">Resource for retrieving a list of tagged objects</p>
 CLASS zcl_abaptags_adt_res_tgobjlist DEFINITION
   PUBLIC
   INHERITING FROM cl_adt_rest_resource
@@ -6,10 +6,11 @@ CLASS zcl_abaptags_adt_res_tgobjlist DEFINITION
   CREATE PUBLIC.
 
   PUBLIC SECTION.
-    METHODS:
-      constructor,
-      post REDEFINITION.
+    METHODS constructor.
+    METHODS post REDEFINITION.
+
   PROTECTED SECTION.
+
   PRIVATE SECTION.
     TYPES:
       BEGIN OF ty_tagged_object,
@@ -44,52 +45,55 @@ CLASS zcl_abaptags_adt_res_tgobjlist DEFINITION
           obj_infos_for_name_mapping TYPE TABLE OF REF TO zabaptags_tgobj_info,
           cds_name_mapper            TYPE REF TO zcl_abaptags_cds_name_mapper.
 
-    METHODS:
-      get_request_handler
-        RETURNING
-          VALUE(result) TYPE REF TO if_adt_rest_content_handler,
-      get_response_handler
-        RETURNING
-          VALUE(result) TYPE REF TO if_adt_rest_content_handler,
-      get_tagged_objects,
-      get_adjusted_types
-        IMPORTING
-          tagged_object      TYPE REF TO ty_tagged_object
-        EXPORTING
-          object_type        TYPE swo_objtyp
-          parent_object_type TYPE swo_objtyp,
-      get_adt_type_for_object
-        IMPORTING
-          name          TYPE sobj_name
-          type          TYPE trobjtype
-        RETURNING
-          VALUE(result) TYPE swo_objtyp,
-      get_tgobj_infos_by_sem_keys,
-      post_process_found_objects,
-      fill_semantic_key_tables,
-      find_obj_by_tag_n_obj,
-      find_obj_by_parent_obj,
-      find_obj_by_obj_n_comp,
-      find_obj_by_full_key,
-      find_obj_by_tag_id,
-      load_assigned_child_objects,
-      add_to_keytab
-        IMPORTING
-          tgobj_info_ext TYPE zabaptags_tgobj_info
-        CHANGING
-          keytab         TYPE ty_tagged_objects,
-      fill_cds_display_names.
+    METHODS get_request_handler
+      RETURNING
+        VALUE(result) TYPE REF TO if_adt_rest_content_handler.
+
+    METHODS get_response_handler
+      RETURNING
+        VALUE(result) TYPE REF TO if_adt_rest_content_handler.
+
+    METHODS get_tagged_objects.
+
+    METHODS get_adjusted_types
+      IMPORTING
+        tagged_object      TYPE REF TO ty_tagged_object
+      EXPORTING
+        object_type        TYPE swo_objtyp
+        parent_object_type TYPE swo_objtyp.
+
+    METHODS get_adt_type_for_object
+      IMPORTING
+        !name         TYPE sobj_name
+        !type         TYPE trobjtype
+      RETURNING
+        VALUE(result) TYPE swo_objtyp.
+
+    METHODS get_tgobj_infos_by_sem_keys.
+    METHODS post_process_found_objects.
+    METHODS fill_semantic_key_tables.
+    METHODS find_obj_by_tag_n_obj.
+    METHODS find_obj_by_parent_obj.
+    METHODS find_obj_by_obj_n_comp.
+    METHODS find_obj_by_full_key.
+    METHODS find_obj_by_tag_id.
+    METHODS load_assigned_child_objects.
+
+    METHODS add_to_keytab
+      IMPORTING
+        tgobj_info_ext TYPE zabaptags_tgobj_info
+      CHANGING
+        keytab         TYPE ty_tagged_objects.
+
+    METHODS fill_cds_display_names.
 ENDCLASS.
 
 
-
 CLASS zcl_abaptags_adt_res_tgobjlist IMPLEMENTATION.
-
   METHOD constructor.
     super->constructor( ).
     cds_name_mapper = NEW #( ).
   ENDMETHOD.
-
 
   METHOD post.
     request->get_body_data( EXPORTING content_handler = get_request_handler( )
@@ -103,26 +107,22 @@ CLASS zcl_abaptags_adt_res_tgobjlist IMPLEMENTATION.
     fill_cds_display_names( ).
 
     IF tagged_object_infos IS NOT INITIAL.
-      response->set_body_data(
-        content_handler = get_response_handler( )
-        data            = tagged_object_infos ).
+      response->set_body_data( content_handler = get_response_handler( )
+                               data            = tagged_object_infos ).
     ENDIF.
   ENDMETHOD.
 
-
   METHOD get_request_handler.
     result = cl_adt_rest_cnt_hdl_factory=>get_instance( )->get_handler_for_xml_using_st(
-      st_name   = 'ZABAPTAGS_TGOBJ_LIST_REQUEST'
-      root_name = 'REQUEST' ).
+                 st_name   = 'ZABAPTAGS_TGOBJ_LIST_REQUEST'
+                 root_name = 'REQUEST' ).
   ENDMETHOD.
-
 
   METHOD get_response_handler.
     result = cl_adt_rest_cnt_hdl_factory=>get_instance( )->get_handler_for_xml_using_st(
-      st_name   = 'ZABAPTAGS_TGOBJ_INFOS'
-      root_name = 'TGOBJ_INFOS' ).
+                 st_name   = 'ZABAPTAGS_TGOBJ_INFOS'
+                 root_name = 'TGOBJ_INFOS' ).
   ENDMETHOD.
-
 
   METHOD get_tagged_objects.
     IF list_request-tag_ids IS NOT INITIAL.
@@ -131,26 +131,22 @@ CLASS zcl_abaptags_adt_res_tgobjlist IMPLEMENTATION.
 
     fill_semantic_key_tables( ).
     get_tgobj_infos_by_sem_keys( ).
-
   ENDMETHOD.
-
 
   METHOD get_adjusted_types.
     object_type = get_adt_type_for_object( name = tagged_object->object_name
                                            type = tagged_object->object_type ).
 
-    IF tagged_object->parent_object_type IS NOT INITIAL AND
-        tagged_object->parent_object_name IS NOT INITIAL.
+    IF     tagged_object->parent_object_type IS NOT INITIAL
+       AND tagged_object->parent_object_name IS NOT INITIAL.
       parent_object_type = get_adt_type_for_object( name = tagged_object->parent_object_name
                                                     type = tagged_object->parent_object_type ).
     ENDIF.
   ENDMETHOD.
 
-
   METHOD get_adt_type_for_object.
-    DATA(adt_obj_info) = zcl_abaptags_adt_util=>get_adt_obj_ref_for_tadir_type(
-      tadir_type = type
-      name       = name ).
+    DATA(adt_obj_info) = zcl_abaptags_adt_util=>get_adt_obj_ref_for_tadir_type( tadir_type = type
+                                                                                name       = name ).
 
     IF adt_obj_info-type IS NOT INITIAL.
       result = adt_obj_info-type.
@@ -166,7 +162,6 @@ CLASS zcl_abaptags_adt_res_tgobjlist IMPLEMENTATION.
     ENDIF.
   ENDMETHOD.
 
-
   METHOD get_tgobj_infos_by_sem_keys.
     find_obj_by_tag_n_obj( ).
     find_obj_by_parent_obj( ).
@@ -175,37 +170,33 @@ CLASS zcl_abaptags_adt_res_tgobjlist IMPLEMENTATION.
     find_obj_by_tag_id( ).
   ENDMETHOD.
 
-
   METHOD fill_semantic_key_tables.
-
     LOOP AT list_request-tagged_object_infos ASSIGNING FIELD-SYMBOL(<tgobj>).
-      IF <tgobj>-parent_object_name IS NOT INITIAL AND
-          <tgobj>-parent_object_type IS NOT INITIAL AND
-          <tgobj>-parent_tag_id IS NOT INITIAL AND
-          <tgobj>-component_name IS NOT INITIAL AND
-          <tgobj>-component_type IS NOT INITIAL.
+      IF     <tgobj>-parent_object_name IS NOT INITIAL
+         AND <tgobj>-parent_object_type IS NOT INITIAL
+         AND <tgobj>-parent_tag_id      IS NOT INITIAL
+         AND <tgobj>-component_name     IS NOT INITIAL
+         AND <tgobj>-component_type     IS NOT INITIAL.
         add_to_keytab( EXPORTING tgobj_info_ext = <tgobj>
                        CHANGING  keytab         = select_keys-full_semantic ).
-      ELSEIF <tgobj>-parent_object_name IS NOT INITIAL AND
-          <tgobj>-parent_object_type IS NOT INITIAL AND
-          <tgobj>-parent_tag_id IS NOT INITIAL.
+      ELSEIF     <tgobj>-parent_object_name IS NOT INITIAL
+             AND <tgobj>-parent_object_type IS NOT INITIAL
+             AND <tgobj>-parent_tag_id      IS NOT INITIAL.
         add_to_keytab( EXPORTING tgobj_info_ext = <tgobj>
                        CHANGING  keytab         = select_keys-parent_obj ).
-      ELSEIF <tgobj>-object_type IS NOT INITIAL AND
-          <tgobj>-object_name IS NOT INITIAL AND
-          <tgobj>-component_name IS NOT INITIAL AND
-          <tgobj>-component_type IS NOT INITIAL.
+      ELSEIF     <tgobj>-object_type    IS NOT INITIAL
+             AND <tgobj>-object_name    IS NOT INITIAL
+             AND <tgobj>-component_name IS NOT INITIAL
+             AND <tgobj>-component_type IS NOT INITIAL.
         add_to_keytab( EXPORTING tgobj_info_ext = <tgobj>
                        CHANGING  keytab         = select_keys-comp_obj ).
-      ELSEIF <tgobj>-object_type IS NOT INITIAL AND
-          <tgobj>-object_name IS NOT INITIAL.
+      ELSEIF     <tgobj>-object_type IS NOT INITIAL
+             AND <tgobj>-object_name IS NOT INITIAL.
         add_to_keytab( EXPORTING tgobj_info_ext = <tgobj>
                        CHANGING  keytab         = select_keys-tag_and_obj ).
       ENDIF.
     ENDLOOP.
-
   ENDMETHOD.
-
 
   METHOD add_to_keytab.
     DATA(tgobj_key_tab_entry) = CORRESPONDING ty_tagged_object( tgobj_info_ext ).
@@ -219,7 +210,6 @@ CLASS zcl_abaptags_adt_res_tgobjlist IMPLEMENTATION.
 
     keytab = VALUE #( BASE keytab ( tgobj_key_tab_entry ) ).
   ENDMETHOD.
-
 
   METHOD find_obj_by_full_key.
     CHECK select_keys-full_semantic IS NOT INITIAL.
@@ -253,7 +243,6 @@ CLASS zcl_abaptags_adt_res_tgobjlist IMPLEMENTATION.
       APPENDING CORRESPONDING FIELDS OF TABLE @found_objects.
   ENDMETHOD.
 
-
   METHOD find_obj_by_parent_obj.
     CHECK select_keys-parent_obj IS NOT INITIAL.
 
@@ -286,7 +275,6 @@ CLASS zcl_abaptags_adt_res_tgobjlist IMPLEMENTATION.
       APPENDING CORRESPONDING FIELDS OF TABLE @found_objects.
   ENDMETHOD.
 
-
   METHOD find_obj_by_obj_n_comp.
     CHECK select_keys-comp_obj IS NOT INITIAL.
 
@@ -316,7 +304,6 @@ CLASS zcl_abaptags_adt_res_tgobjlist IMPLEMENTATION.
       APPENDING CORRESPONDING FIELDS OF TABLE @found_objects.
   ENDMETHOD.
 
-
   METHOD find_obj_by_tag_id.
     CHECK select_keys-tag_id IS NOT INITIAL.
 
@@ -341,7 +328,6 @@ CLASS zcl_abaptags_adt_res_tgobjlist IMPLEMENTATION.
       WHERE tgobj~tagid = @list_request-tag_ids-table_line
       APPENDING CORRESPONDING FIELDS OF TABLE @found_objects.
   ENDMETHOD.
-
 
   METHOD find_obj_by_tag_n_obj.
     CHECK select_keys-tag_and_obj IS NOT INITIAL.
@@ -371,7 +357,6 @@ CLASS zcl_abaptags_adt_res_tgobjlist IMPLEMENTATION.
           AND tgobj~tagid         = @select_keys-tag_and_obj-tag_id
       APPENDING CORRESPONDING FIELDS OF TABLE @found_objects.
   ENDMETHOD.
-
 
   METHOD load_assigned_child_objects.
     DATA(parent_objects) = found_objects.
@@ -409,9 +394,8 @@ CLASS zcl_abaptags_adt_res_tgobjlist IMPLEMENTATION.
     ENDWHILE.
   ENDMETHOD.
 
-
   METHOD post_process_found_objects.
-
+    " TODO: variable is assigned but never used (ABAP cleaner)
     DATA ddl_name_range TYPE RANGE OF ddlname.
 
     SORT found_objects BY id.
@@ -420,28 +404,28 @@ CLASS zcl_abaptags_adt_res_tgobjlist IMPLEMENTATION.
     LOOP AT found_objects REFERENCE INTO DATA(found_obj).
 
       DATA(new_tgobj_info) = VALUE zabaptags_tgobj_info(
-        id                 = found_obj->id
-        tag_id             = found_obj->tag_id
-        tag_type           = COND #(
-          WHEN found_obj->owner IS INITIAL THEN zif_abaptags_c_global=>tag_type-global
-          WHEN found_obj->owner = sy-uname THEN zif_abaptags_c_global=>tag_type-user
-          ELSE zif_abaptags_c_global=>tag_type-shared )
-        tag_name           = found_obj->tag_name
-        object_name        = found_obj->object_name
-        component_name     = found_obj->component_name
-        component_type     = found_obj->component_type
-        parent_tag_id      = found_obj->parent_tag_id
-        parent_tag_name    = found_obj->parent_tag_name
-        parent_object_name = found_obj->parent_object_name ).
+                                       id                 = found_obj->id
+                                       tag_id             = found_obj->tag_id
+                                       tag_type           = COND #(
+                                         WHEN found_obj->owner IS INITIAL THEN zif_abaptags_c_global=>tag_type-global
+                                         WHEN found_obj->owner = sy-uname THEN zif_abaptags_c_global=>tag_type-user
+                                         ELSE                                  zif_abaptags_c_global=>tag_type-shared )
+                                       tag_name           = found_obj->tag_name
+                                       object_name        = found_obj->object_name
+                                       component_name     = found_obj->component_name
+                                       component_type     = found_obj->component_type
+                                       parent_tag_id      = found_obj->parent_tag_id
+                                       parent_tag_name    = found_obj->parent_tag_name
+                                       parent_object_name = found_obj->parent_object_name ).
 
       IF new_tgobj_info-object_type = zif_abaptags_c_global=>object_types-data_definition.
-        ddl_name_range = VALUE #(
-          BASE ddl_name_range ( sign = 'I' option = 'EQ' low = new_tgobj_info-object_name ) ).
+        ddl_name_range = VALUE #( BASE ddl_name_range
+                                  ( sign = 'I' option = 'EQ' low = new_tgobj_info-object_name ) ).
       ENDIF.
 
       IF new_tgobj_info-parent_object_type = zif_abaptags_c_global=>object_types-data_definition.
-        ddl_name_range = VALUE #(
-          BASE ddl_name_range ( sign = 'I' option = 'EQ' low = new_tgobj_info-parent_object_name ) ).
+        ddl_name_range = VALUE #( BASE ddl_name_range
+                                  ( sign = 'I' option = 'EQ' low = new_tgobj_info-parent_object_name ) ).
       ENDIF.
 
       get_adjusted_types( EXPORTING tagged_object      = found_obj
@@ -461,11 +445,16 @@ CLASS zcl_abaptags_adt_res_tgobjlist IMPLEMENTATION.
 
     ENDLOOP.
 
-    SORT tagged_object_infos BY tag_type object_type tag_name object_name
-                                component_type component_name
-                                parent_tag_name parent_object_type parent_object_name.
+    SORT tagged_object_infos BY tag_type
+                                object_type
+                                tag_name
+                                object_name
+                                component_type
+                                component_name
+                                parent_tag_name
+                                parent_object_type
+                                parent_object_name.
   ENDMETHOD.
-
 
   METHOD fill_cds_display_names.
     CHECK cds_name_mapper->map_entries( ).
@@ -474,11 +463,10 @@ CLASS zcl_abaptags_adt_res_tgobjlist IMPLEMENTATION.
       obj_info->alt_obj_name = cds_name_mapper->get_display_name( name = CONV #( obj_info->object_name )
                                                                   type = CONV #( obj_info->object_type ) ).
       IF obj_info->parent_object_name IS NOT INITIAL.
-        obj_info->alt_parent_obj_name = cds_name_mapper->get_display_name( name = CONV #( obj_info->parent_object_name )
-                                                                           type = CONV #( obj_info->parent_object_type ) ).
+        obj_info->alt_parent_obj_name = cds_name_mapper->get_display_name(
+                                            name = CONV #( obj_info->parent_object_name )
+                                            type = CONV #( obj_info->parent_object_type ) ).
       ENDIF.
     ENDLOOP.
-
   ENDMETHOD.
-
 ENDCLASS.

@@ -1,4 +1,4 @@
-"! <p class="shorttext synchronized" lang="en">Version info of ABAP Tags</p>
+"! <p class="shorttext synchronized">Version info of ABAP Tags</p>
 INTERFACE zif_abaptags_version
   PUBLIC.
 

@@ -1,6 +1,5 @@
-"! <p class="shorttext synchronized" lang="en">ADT Types for ABAP Tags</p>
+"! <p class="shorttext synchronized">ADT Types for ABAP Tags</p>
 INTERFACE zif_abaptags_ty_adt_types
-  PUBLIC .
-
+  PUBLIC.
 
 ENDINTERFACE.

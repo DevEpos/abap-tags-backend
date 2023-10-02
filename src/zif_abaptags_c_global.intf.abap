@@ -1,6 +1,6 @@
-"! <p class="shorttext synchronized" lang="en">Global constants for ABAP Tags</p>
+"! <p class="shorttext synchronized">Global constants for ABAP Tags</p>
 INTERFACE zif_abaptags_c_global
-  PUBLIC .
+  PUBLIC.
   CONSTANTS:
     BEGIN OF message_types,
       error   TYPE string VALUE 'ERROR',

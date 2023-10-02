@@ -2,9 +2,8 @@
 *"* local helper classes, interface definitions and type
 *"* declarations
 CLASS lcl_source_code_util IMPLEMENTATION.
-
   METHOD determine_line_indexes.
-    DATA: l_source_table TYPE TABLE OF string.
+    DATA l_source_table TYPE TABLE OF string.
 
     DATA(line_offset) = 0.
 
@@ -17,29 +16,27 @@ CLASS lcl_source_code_util IMPLEMENTATION.
     ENDIF.
 
     LOOP AT l_source_table ASSIGNING FIELD-SYMBOL(<code_line>).
+      " TODO: variable is assigned but never used (ABAP cleaner)
       DATA(line_number) = sy-tabix.
       DATA(line_length) = strlen( <code_line> ).
       result = VALUE #( BASE result
-        ( number = sy-tabix
-          offset = line_offset
-          length = line_length ) ).
+                        ( number = sy-tabix
+                          offset = line_offset
+                          length = line_length ) ).
 
       line_offset = line_offset + line_length + line_feed_length.
     ENDLOOP.
   ENDMETHOD.
 
-
   METHOD transform_to_string.
     CLEAR: source_text,
            indexes.
 
-    indexes = determine_line_indexes(
-      source_table = source_table
-      line_feed    = line_feed ).
+    indexes = determine_line_indexes( source_table = source_table
+                                      line_feed    = line_feed ).
 
     source_text = concat_lines_of( table = source_table sep = line_feed ).
   ENDMETHOD.
-
 
   METHOD get_line_index_by_offset.
     LOOP AT line_indexes REFERENCE INTO DATA(index) WHERE offset > offset.
@@ -53,5 +50,4 @@ CLASS lcl_source_code_util IMPLEMENTATION.
       result = line_indexes[ lines( line_indexes ) ].
     ENDIF.
   ENDMETHOD.
-
 ENDCLASS.

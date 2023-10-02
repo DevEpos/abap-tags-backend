@@ -1,162 +1,176 @@
-"! <p class="shorttext synchronized" lang="en">Tag DB Access</p>
+"! <p class="shorttext synchronized">Tag DB Access</p>
 CLASS zcl_abaptags_tags_dac DEFINITION
   PUBLIC
   FINAL
-  CREATE PUBLIC .
+  CREATE PUBLIC.
 
   PUBLIC SECTION.
+    "! <p class="shorttext synchronized">Returns current instance of Tag Repository</p>
+    CLASS-METHODS get_instance
+      RETURNING
+        VALUE(result) TYPE REF TO zcl_abaptags_tags_dac.
 
-    CLASS-METHODS:
-      "! <p class="shorttext synchronized" lang="en">Returns current instance of Tag Repository</p>
-      get_instance
-        RETURNING
-          VALUE(result) TYPE REF TO zcl_abaptags_tags_dac.
+    "! <p class="shorttext synchronized">Converts user tags to global tags</p>
+    METHODS convert_tags_to_global
+      IMPORTING
+        tag_ids TYPE zif_abaptags_ty_global=>ty_tag_id_range.
 
-    METHODS:
-      "! <p class="shorttext synchronized" lang="en">Converts user tags to global tags</p>
-      convert_tags_to_global
-        IMPORTING
-          tag_ids TYPE zif_abaptags_ty_global=>ty_tag_id_range,
-      "! <p class="shorttext synchronized" lang="en">Counts tags by given criteria</p>
-      count_tags
-        IMPORTING
-          tag_id_range  TYPE zif_abaptags_ty_global=>ty_tag_id_range
-        RETURNING
-          VALUE(result) TYPE i,
-      "! <p class="shorttext synchronized" lang="en">Unshares list of tags</p>
-      delete_shared_tags_by_id
-        IMPORTING
-          tag_ids            TYPE zif_abaptags_ty_global=>ty_tag_id_range
-          unshare_completely TYPE abap_bool OPTIONAL,
-      "! <p class="shorttext synchronized" lang="en">Delete user/tag id combinations from shared tags DB</p>
-      delete_shared_tags
-        IMPORTING
-          shared_tags_db TYPE zif_abaptags_ty_global=>ty_db_shared_tags OPTIONAL,
-      "! <p class="shorttext synchronized" lang="en">Deletes tag db entries by id range</p>
-      delete_tag_by_id
-        IMPORTING
-          id_range TYPE zif_abaptags_ty_global=>ty_tag_id_range,
-      "! <p class="shorttext synchronized" lang="en">Checks if tag exists for given parameters</p>
-      exists_tag
-        IMPORTING
-          tag_id_range        TYPE zif_abaptags_ty_global=>ty_tag_id_range OPTIONAL
-          parent_tag_id_range TYPE zif_abaptags_ty_global=>ty_tag_id_range OPTIONAL
-          owner_range         TYPE zif_abaptags_ty_global=>ty_owner_range OPTIONAL
-          name_upper_range    TYPE zif_abaptags_ty_global=>ty_tag_name_range OPTIONAL
-        RETURNING
-          VALUE(result)       TYPE abap_bool,
-      "! <p class="shorttext synchronized" lang="en">Finds first matching global tag</p>
-      find_first_global_tag
-        IMPORTING
-          name_upper_range TYPE zif_abaptags_ty_global=>ty_tag_name_range OPTIONAL
-        RETURNING
-          VALUE(result)    TYPE zabaptags_tag_data,
-      "! <p class="shorttext synchronized" lang="en">Finds the first tag from the list of given tags</p>
-      find_first_tag_by_tags
-        IMPORTING
-          tags          TYPE zif_abaptags_ty_global=>ty_db_tags
-        RETURNING
-          VALUE(result) TYPE zabaptags_tags,
-      "! <p class="shorttext synchronized" lang="en">Finds shared tags</p>
-      "! This method will return only tags that are shared for the current
-      "! sy-uname user
-      find_shared_tags
-        RETURNING
-          VALUE(result) TYPE zabaptags_tag_data_t,
-      "! <p class="shorttext synchronized" lang="en">Finds users of a shared tag</p>
-      find_shared_tag_users
-        IMPORTING
-          tag_id        TYPE zabaptags_tag_id
-        RETURNING
-          VALUE(result) TYPE zabaptags_user_t,
-      "! <p class="shorttext synchronized" lang="en">Finds a list of tags that are shared</p>
-      find_shared_tags_db
-        IMPORTING
-          tag_ids       TYPE zif_abaptags_ty_global=>ty_tag_id_range
-        RETURNING
-          VALUE(result) TYPE zif_abaptags_ty_global=>ty_db_shared_tags,
-      "! <p class="shorttext synchronized" lang="en">Finds tags for the given filters</p>
-      find_tags
-        IMPORTING
-          single_select       TYPE abap_bool OPTIONAL
-          columns             TYPE string_table OPTIONAL
-          owner_range         TYPE zif_abaptags_ty_global=>ty_owner_range OPTIONAL
-          tag_id_range        TYPE zif_abaptags_ty_global=>ty_tag_id_range OPTIONAL
-          name_upper_range    TYPE zif_abaptags_ty_global=>ty_tag_name_range OPTIONAL
-          parent_tag_id_range TYPE zif_abaptags_ty_global=>ty_tag_id_range OPTIONAL
-        RETURNING
-          VALUE(result)       TYPE zabaptags_tag_data_t,
-      "! <p class="shorttext synchronized" lang="en">Finds tags of tadir object</p>
-      find_tags_of_object
-        IMPORTING
-          tadir_obj     TYPE zif_abaptags_ty_global=>ty_tadir_key
-        RETURNING
-          VALUE(result) TYPE zif_abaptags_ty_global=>ty_tag_infos,
-      "! <p class="shorttext synchronized" lang="en">Finds shared tags of tadir object</p>
-      find_shared_tags_of_object
-        IMPORTING
-          tadir_obj     TYPE zif_abaptags_ty_global=>ty_tadir_key
-        RETURNING
-          VALUE(result) TYPE zif_abaptags_ty_global=>ty_tag_infos,
-      "! <p class="shorttext synchronized" lang="en">Finds existing tagged objects</p>
-      filter_existing_tagged_objects
-        CHANGING
-          tagged_objects TYPE zif_abaptags_ty_global=>ty_db_tagged_objects,
-      "! <p class="shorttext synchronized" lang="en">Get info about tagged objects</p>
-      get_tagged_obj_info
-        IMPORTING
-          tagged_objects TYPE zif_abaptags_ty_global=>ty_db_tagged_objects
-          tag_id_range   TYPE zif_abaptags_ty_global=>ty_tag_id_range OPTIONAL
-        RETURNING
-          VALUE(result)  TYPE zif_abaptags_ty_global=>ty_tgobj_infos,
-      "! <p class="shorttext synchronized" lang="en">Get info about children of tagged objects</p>
-      get_children_of_tagged_objects
-        IMPORTING
-          parent_tag_ids TYPE zif_abaptags_ty_global=>ty_tag_id_range
-        RETURNING
-          VALUE(result)  TYPE zif_abaptags_ty_global=>ty_tgobj_child_infos,
-      "! <p class="shorttext synchronized" lang="en">Retrieves tag counts for object refs</p>
-      get_tagged_obj_count
-        IMPORTING
-          tag_ids       TYPE zif_abaptags_ty_global=>ty_tag_id_range OPTIONAL
-          object_refs   TYPE zabaptags_adt_obj_ref_t OPTIONAL
-        RETURNING
-          VALUE(result) TYPE zif_abaptags_ty_global=>ty_tag_counts,
-      "! <p class="shorttext synchronized" lang="en">Inserts new tagged objects into DB</p>
-      insert_tagged_objects
-        IMPORTING
-          new_tagged_objects TYPE zif_abaptags_ty_global=>ty_db_tagged_objects,
-      "! <p class="shorttext synchronized" lang="en">Inserts new tags into DB</p>
-      insert_tags
-        IMPORTING
-          tags          TYPE zif_abaptags_ty_global=>ty_db_tags
-        RETURNING
-          VALUE(result) TYPE abap_bool,
-      "! <p class="shorttext synchronized" lang="en">Modifies tags table from list of tag data</p>
-      modify_tags
-        IMPORTING
-          tags TYPE zif_abaptags_ty_global=>ty_db_tags,
-      "! <p class="shorttext synchronized" lang="en">Share the list of given tags</p>
-      share_tags
-        IMPORTING
-          tags_to_share TYPE zif_abaptags_ty_global=>ty_db_shared_tags
-          tag_ids       TYPE zif_abaptags_ty_global=>ty_tag_id_range OPTIONAL.
-  PROTECTED SECTION.
+    "! <p class="shorttext synchronized">Counts tags by given criteria</p>
+    METHODS count_tags
+      IMPORTING
+        tag_id_range  TYPE zif_abaptags_ty_global=>ty_tag_id_range
+      RETURNING
+        VALUE(result) TYPE i.
+
+    "! <p class="shorttext synchronized">Unshares list of tags</p>
+    METHODS delete_shared_tags_by_id
+      IMPORTING
+        tag_ids            TYPE zif_abaptags_ty_global=>ty_tag_id_range
+        unshare_completely TYPE abap_bool OPTIONAL.
+
+    "! <p class="shorttext synchronized">Delete user/tag id combinations from shared tags DB</p>
+    METHODS delete_shared_tags
+      IMPORTING
+        shared_tags_db TYPE zif_abaptags_ty_global=>ty_db_shared_tags OPTIONAL.
+
+    "! <p class="shorttext synchronized">Deletes tag db entries by id range</p>
+    METHODS delete_tag_by_id
+      IMPORTING
+        id_range TYPE zif_abaptags_ty_global=>ty_tag_id_range.
+
+    "! <p class="shorttext synchronized">Checks if tag exists for given parameters</p>
+    METHODS exists_tag
+      IMPORTING
+        tag_id_range        TYPE zif_abaptags_ty_global=>ty_tag_id_range   OPTIONAL
+        parent_tag_id_range TYPE zif_abaptags_ty_global=>ty_tag_id_range   OPTIONAL
+        owner_range         TYPE zif_abaptags_ty_global=>ty_owner_range    OPTIONAL
+        name_upper_range    TYPE zif_abaptags_ty_global=>ty_tag_name_range OPTIONAL
+      RETURNING
+        VALUE(result)       TYPE abap_bool.
+
+    "! <p class="shorttext synchronized">Finds first matching global tag</p>
+    METHODS find_first_global_tag
+      IMPORTING
+        name_upper_range TYPE zif_abaptags_ty_global=>ty_tag_name_range OPTIONAL
+      RETURNING
+        VALUE(result)    TYPE zabaptags_tag_data.
+
+    "! <p class="shorttext synchronized">Finds the first tag from the list of given tags</p>
+    METHODS find_first_tag_by_tags
+      IMPORTING
+        tags          TYPE zif_abaptags_ty_global=>ty_db_tags
+      RETURNING
+        VALUE(result) TYPE zabaptags_tags.
+
+    "! <p class="shorttext synchronized">Finds shared tags</p>
+    "! This method will return only tags that are shared for the current
+    "! sy-uname user
+    METHODS find_shared_tags
+      RETURNING
+        VALUE(result) TYPE zabaptags_tag_data_t.
+
+    "! <p class="shorttext synchronized">Finds users of a shared tag</p>
+    METHODS find_shared_tag_users
+      IMPORTING
+        tag_id        TYPE zabaptags_tag_id
+      RETURNING
+        VALUE(result) TYPE zabaptags_user_t.
+
+    "! <p class="shorttext synchronized">Finds a list of tags that are shared</p>
+    METHODS find_shared_tags_db
+      IMPORTING
+        tag_ids       TYPE zif_abaptags_ty_global=>ty_tag_id_range
+      RETURNING
+        VALUE(result) TYPE zif_abaptags_ty_global=>ty_db_shared_tags.
+
+    "! <p class="shorttext synchronized">Finds tags for the given filters</p>
+    METHODS find_tags
+      IMPORTING
+        single_select       TYPE abap_bool                                 OPTIONAL
+        !columns            TYPE string_table                              OPTIONAL
+        owner_range         TYPE zif_abaptags_ty_global=>ty_owner_range    OPTIONAL
+        tag_id_range        TYPE zif_abaptags_ty_global=>ty_tag_id_range   OPTIONAL
+        name_upper_range    TYPE zif_abaptags_ty_global=>ty_tag_name_range OPTIONAL
+        parent_tag_id_range TYPE zif_abaptags_ty_global=>ty_tag_id_range   OPTIONAL
+      RETURNING
+        VALUE(result)       TYPE zabaptags_tag_data_t.
+
+    "! <p class="shorttext synchronized">Finds tags of tadir object</p>
+    METHODS find_tags_of_object
+      IMPORTING
+        tadir_obj     TYPE zif_abaptags_ty_global=>ty_tadir_key
+      RETURNING
+        VALUE(result) TYPE zif_abaptags_ty_global=>ty_tag_infos.
+
+    "! <p class="shorttext synchronized">Finds shared tags of tadir object</p>
+    METHODS find_shared_tags_of_object
+      IMPORTING
+        tadir_obj     TYPE zif_abaptags_ty_global=>ty_tadir_key
+      RETURNING
+        VALUE(result) TYPE zif_abaptags_ty_global=>ty_tag_infos.
+
+    "! <p class="shorttext synchronized">Finds existing tagged objects</p>
+    METHODS filter_existing_tagged_objects
+      CHANGING
+        tagged_objects TYPE zif_abaptags_ty_global=>ty_db_tagged_objects.
+
+    "! <p class="shorttext synchronized">Get info about tagged objects</p>
+    METHODS get_tagged_obj_info
+      IMPORTING
+        tagged_objects TYPE zif_abaptags_ty_global=>ty_db_tagged_objects
+        tag_id_range   TYPE zif_abaptags_ty_global=>ty_tag_id_range OPTIONAL
+      RETURNING
+        VALUE(result)  TYPE zif_abaptags_ty_global=>ty_tgobj_infos.
+
+    "! <p class="shorttext synchronized">Get info about children of tagged objects</p>
+    METHODS get_children_of_tagged_objects
+      IMPORTING
+        parent_tag_ids TYPE zif_abaptags_ty_global=>ty_tag_id_range
+      RETURNING
+        VALUE(result)  TYPE zif_abaptags_ty_global=>ty_tgobj_child_infos.
+
+    "! <p class="shorttext synchronized">Retrieves tag counts for object refs</p>
+    METHODS get_tagged_obj_count
+      IMPORTING
+        tag_ids       TYPE zif_abaptags_ty_global=>ty_tag_id_range OPTIONAL
+        object_refs   TYPE zabaptags_adt_obj_ref_t                 OPTIONAL
+      RETURNING
+        VALUE(result) TYPE zif_abaptags_ty_global=>ty_tag_counts.
+
+    "! <p class="shorttext synchronized">Inserts new tagged objects into DB</p>
+    METHODS insert_tagged_objects
+      IMPORTING
+        new_tagged_objects TYPE zif_abaptags_ty_global=>ty_db_tagged_objects.
+
+    "! <p class="shorttext synchronized">Inserts new tags into DB</p>
+    METHODS insert_tags
+      IMPORTING
+        tags          TYPE zif_abaptags_ty_global=>ty_db_tags
+      RETURNING
+        VALUE(result) TYPE abap_bool.
+
+    "! <p class="shorttext synchronized">Modifies tags table from list of tag data</p>
+    METHODS modify_tags
+      IMPORTING
+        tags TYPE zif_abaptags_ty_global=>ty_db_tags.
+
+    "! <p class="shorttext synchronized">Share the list of given tags</p>
+    METHODS share_tags
+      IMPORTING
+        tags_to_share TYPE zif_abaptags_ty_global=>ty_db_shared_tags
+        tag_ids       TYPE zif_abaptags_ty_global=>ty_tag_id_range OPTIONAL.
+
   PRIVATE SECTION.
-    CONSTANTS:
-      c_initial_tag_id TYPE zabaptags_tag_id VALUE 0,
-      c_where_and      TYPE string VALUE ` AND `,
-      c_where_or       TYPE string VALUE ` OR `.
-    CLASS-DATA:
-      instance TYPE REF TO zcl_abaptags_tags_dac.
+    CONSTANTS c_initial_tag_id TYPE zabaptags_tag_id VALUE 0.
+    CONSTANTS c_where_and TYPE string VALUE ` AND `.
+    CONSTANTS c_where_or TYPE string VALUE ` OR `.
+
+    CLASS-DATA instance TYPE REF TO zcl_abaptags_tags_dac.
 
 ENDCLASS.
 
 
-
 CLASS zcl_abaptags_tags_dac IMPLEMENTATION.
-
-
   METHOD get_instance.
     IF instance IS INITIAL.
       instance = NEW #( ).
@@ -164,9 +178,8 @@ CLASS zcl_abaptags_tags_dac IMPLEMENTATION.
     result = instance.
   ENDMETHOD.
 
-
   METHOD convert_tags_to_global.
-    DATA: changed_datetime TYPE timestampl.
+    DATA changed_datetime TYPE timestampl.
 
     CHECK tag_ids IS NOT INITIAL.
 
@@ -182,7 +195,6 @@ CLASS zcl_abaptags_tags_dac IMPLEMENTATION.
     ENDIF.
   ENDMETHOD.
 
-
   METHOD count_tags.
     SELECT COUNT(*)
       FROM zabaptags_tags
@@ -190,27 +202,27 @@ CLASS zcl_abaptags_tags_dac IMPLEMENTATION.
       INTO @result.
   ENDMETHOD.
 
-
   METHOD delete_shared_tags_by_id.
-    DATA: changed_date_time TYPE timestampl.
+    DATA changed_date_time TYPE timestampl.
 
     CHECK tag_ids IS NOT INITIAL.
 
     DELETE FROM zabaptags_shtags WHERE tag_id IN @tag_ids.
-    IF sy-subrc = 0.
-      IF unshare_completely = abap_true.
-        GET TIME STAMP FIELD changed_date_time.
-        " remove 'is_shared' property of tags in masterdata table
-        UPDATE zabaptags_tags
-          SET is_shared = @abap_false,
-              changed_date_time = @changed_date_time,
-              changed_by = @sy-uname
-          WHERE tag_id IN @tag_ids.
-      ENDIF.
-      COMMIT WORK.
+    IF sy-subrc <> 0.
+      RETURN.
     ENDIF.
-  ENDMETHOD.
 
+    IF unshare_completely = abap_true.
+      GET TIME STAMP FIELD changed_date_time.
+      " remove 'is_shared' property of tags in masterdata table
+      UPDATE zabaptags_tags
+        SET is_shared = @abap_false,
+            changed_date_time = @changed_date_time,
+            changed_by = @sy-uname
+        WHERE tag_id IN @tag_ids.
+    ENDIF.
+    COMMIT WORK.
+  ENDMETHOD.
 
   METHOD delete_shared_tags.
     CHECK shared_tags_db IS NOT INITIAL.
@@ -221,25 +233,23 @@ CLASS zcl_abaptags_tags_dac IMPLEMENTATION.
     ENDIF.
   ENDMETHOD.
 
-
   METHOD delete_tag_by_id.
     CHECK id_range IS NOT INITIAL.
 
     DELETE FROM zabaptags_tgobjn WHERE tag_id IN id_range.
     DELETE FROM zabaptags_tags WHERE tag_id IN id_range.
     DELETE FROM zabaptags_shtags WHERE tag_id IN id_range.
-    DELETE FROM zabaptags_tagsrm WHERE tag_id IN id_range
-                                    OR root_tag_id IN id_range.
+    DELETE FROM zabaptags_tagsrm WHERE    tag_id      IN id_range
+                                       OR root_tag_id IN id_range.
 
     COMMIT WORK.
   ENDMETHOD.
 
-
   METHOD exists_tag.
-    IF tag_id_range IS INITIAL
-        AND owner_range IS INITIAL
-        AND name_upper_range IS INITIAL
-        AND parent_tag_id_range IS INITIAL.
+    IF     tag_id_range        IS INITIAL
+       AND owner_range         IS INITIAL
+       AND name_upper_range    IS INITIAL
+       AND parent_tag_id_range IS INITIAL.
       RETURN.
     ENDIF.
 
@@ -252,7 +262,6 @@ CLASS zcl_abaptags_tags_dac IMPLEMENTATION.
       INTO @result.
   ENDMETHOD.
 
-
   METHOD find_first_global_tag.
     SELECT SINGLE name
       FROM zabaptags_tags
@@ -261,7 +270,6 @@ CLASS zcl_abaptags_tags_dac IMPLEMENTATION.
         AND name_upper IN @name_upper_range
       INTO CORRESPONDING FIELDS OF @result.
   ENDMETHOD.
-
 
   METHOD find_first_tag_by_tags.
     IF tags IS INITIAL.
@@ -283,7 +291,6 @@ CLASS zcl_abaptags_tags_dac IMPLEMENTATION.
     ENDIF.
   ENDMETHOD.
 
-
   METHOD find_shared_tags.
     SELECT DISTINCT tag~*
       FROM zabaptags_shtags AS shared_tag
@@ -293,14 +300,12 @@ CLASS zcl_abaptags_tags_dac IMPLEMENTATION.
       INTO CORRESPONDING FIELDS OF TABLE @result.
   ENDMETHOD.
 
-
   METHOD find_shared_tag_users.
     SELECT shared_user
       FROM zabaptags_shtags
       WHERE tag_id = @tag_id
       INTO TABLE @result.
   ENDMETHOD.
-
 
   METHOD find_shared_tags_db.
     SELECT *
@@ -309,12 +314,12 @@ CLASS zcl_abaptags_tags_dac IMPLEMENTATION.
       INTO CORRESPONDING FIELDS OF TABLE @result.
   ENDMETHOD.
 
-
   METHOD find_tags.
-    DATA: single_result TYPE zabaptags_tag_data.
+    DATA single_result TYPE zabaptags_tag_data.
 
     DATA(l_columns) = COND string(
-      WHEN columns IS INITIAL THEN `*`
+      WHEN columns IS INITIAL
+      THEN `*`
       ELSE REDUCE #(
         INIT cols = `` sep = ``
         FOR col IN columns
@@ -342,7 +347,6 @@ CLASS zcl_abaptags_tags_dac IMPLEMENTATION.
     ENDIF.
   ENDMETHOD.
 
-
   METHOD find_tags_of_object.
     SELECT DISTINCT
            tag~tag_id,
@@ -358,7 +362,6 @@ CLASS zcl_abaptags_tags_dac IMPLEMENTATION.
       ORDER BY owner, name
       INTO CORRESPONDING FIELDS OF TABLE @result.
   ENDMETHOD.
-
 
   METHOD find_shared_tags_of_object.
     SELECT DISTINCT
@@ -380,11 +383,10 @@ CLASS zcl_abaptags_tags_dac IMPLEMENTATION.
       INTO CORRESPONDING FIELDS OF TABLE @result.
   ENDMETHOD.
 
-
   METHOD filter_existing_tagged_objects.
-    DATA: existing_tgobj TYPE SORTED TABLE OF zabaptags_tgobjn WITH NON-UNIQUE KEY object_name
-                                                                                   object_type
-                                                                                   tag_id.
+    DATA existing_tgobj TYPE SORTED TABLE OF zabaptags_tgobjn WITH NON-UNIQUE KEY object_name
+                                                                                  object_type
+                                                                                  tag_id.
 
     CHECK tagged_objects IS NOT INITIAL.
 
@@ -420,9 +422,7 @@ CLASS zcl_abaptags_tags_dac IMPLEMENTATION.
         DELETE tagged_objects.
       ENDIF.
     ENDLOOP.
-
   ENDMETHOD.
-
 
   METHOD get_tagged_obj_info.
     CHECK tagged_objects IS NOT INITIAL.
@@ -442,7 +442,6 @@ CLASS zcl_abaptags_tags_dac IMPLEMENTATION.
       INTO CORRESPONDING FIELDS OF TABLE @result.
   ENDMETHOD.
 
-
   METHOD get_children_of_tagged_objects.
     CHECK parent_tag_ids IS NOT INITIAL.
 
@@ -459,10 +458,9 @@ CLASS zcl_abaptags_tags_dac IMPLEMENTATION.
       INTO CORRESPONDING FIELDS OF TABLE @result.
   ENDMETHOD.
 
-
   METHOD get_tagged_obj_count.
-    DATA: where  TYPE TABLE OF string,
-          log_op TYPE string.
+    DATA where TYPE TABLE OF string.
+    DATA log_op TYPE string.
 
     LOOP AT object_refs ASSIGNING FIELD-SYMBOL(<obj_ref>).
       DATA(obj_name) = COND #(
@@ -482,7 +480,7 @@ CLASS zcl_abaptags_tags_dac IMPLEMENTATION.
       cond = |{ cond } )|.
 
       where = VALUE #( BASE where
-        ( cond ) ).
+                       ( cond ) ).
       log_op = c_where_or.
     ENDLOOP.
 
@@ -507,7 +505,6 @@ CLASS zcl_abaptags_tags_dac IMPLEMENTATION.
     ENDIF.
   ENDMETHOD.
 
-
   METHOD insert_tagged_objects.
     CHECK new_tagged_objects IS NOT INITIAL.
 
@@ -516,7 +513,6 @@ CLASS zcl_abaptags_tags_dac IMPLEMENTATION.
       COMMIT WORK.
     ENDIF.
   ENDMETHOD.
-
 
   METHOD insert_tags.
     CHECK tags IS NOT INITIAL.
@@ -528,7 +524,6 @@ CLASS zcl_abaptags_tags_dac IMPLEMENTATION.
     ENDIF.
   ENDMETHOD.
 
-
   METHOD modify_tags.
     CHECK tags IS NOT INITIAL.
 
@@ -538,24 +533,23 @@ CLASS zcl_abaptags_tags_dac IMPLEMENTATION.
     ENDIF.
   ENDMETHOD.
 
-
   METHOD share_tags.
     CHECK tags_to_share IS NOT INITIAL.
 
     INSERT zabaptags_shtags FROM TABLE tags_to_share.
-    IF sy-subrc = 0.
-      DATA(l_tag_ids) = tag_ids.
-      IF l_tag_ids IS INITIAL.
-        l_tag_ids = VALUE #( FOR shared_tag IN tags_to_share ( sign = 'I' option = 'EQ' low = shared_tag-tag_id ) ).
-      ENDIF.
-
-      DELETE ADJACENT DUPLICATES FROM l_tag_ids.
-      UPDATE zabaptags_tags
-        SET is_shared = @abap_true
-        WHERE tag_id IN @l_tag_ids.
-      COMMIT WORK.
+    IF sy-subrc <> 0.
+      RETURN.
     ENDIF.
+
+    DATA(l_tag_ids) = tag_ids.
+    IF l_tag_ids IS INITIAL.
+      l_tag_ids = VALUE #( FOR shared_tag IN tags_to_share ( sign = 'I' option = 'EQ' low = shared_tag-tag_id ) ).
+    ENDIF.
+
+    DELETE ADJACENT DUPLICATES FROM l_tag_ids.
+    UPDATE zabaptags_tags
+      SET is_shared = @abap_true
+      WHERE tag_id IN @l_tag_ids.
+    COMMIT WORK.
   ENDMETHOD.
-
-
 ENDCLASS.

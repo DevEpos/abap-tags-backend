@@ -1,73 +1,69 @@
-"! <p class="shorttext synchronized" lang="en">API for TADIR access</p>
+"! <p class="shorttext synchronized">API for TADIR access</p>
 CLASS zcl_abaptags_tadir DEFINITION
   PUBLIC
   FINAL
   CREATE PUBLIC.
 
   PUBLIC SECTION.
-    METHODS:
-      "! <p class="shorttext synchronized" lang="en">Creates new instance of TADIR access</p>
-      constructor
-        IMPORTING
-          keys TYPE zif_abaptags_ty_global=>ty_tadir_keys,
-      "! <p class="shorttext synchronized" lang="en">Determine TADIR information for key table</p>
-      determine_tadir_entries
-        RETURNING
-          VALUE(result) TYPE REF TO zcl_abaptags_tadir,
-      "! <p class="shorttext synchronized" lang="en">Get single TADIR info for key</p>
-      get_tadir_info
-        IMPORTING
-          name          TYPE sobj_name
-          type          TYPE trobjtype
-        RETURNING
-          VALUE(result) TYPE zif_abaptags_ty_global=>ty_tadir_info
-        RAISING
-          cx_sy_itab_line_not_found.
-  PROTECTED SECTION.
+    "! <p class="shorttext synchronized">Creates new instance of TADIR access</p>
+    METHODS constructor
+      IMPORTING
+        !keys TYPE zif_abaptags_ty_global=>ty_tadir_keys.
+
+    "! <p class="shorttext synchronized">Determine TADIR information for key table</p>
+    METHODS determine_tadir_entries
+      RETURNING
+        VALUE(result) TYPE REF TO zcl_abaptags_tadir.
+
+    "! <p class="shorttext synchronized">Get single TADIR info for key</p>
+    METHODS get_tadir_info
+      IMPORTING
+        !name         TYPE sobj_name
+        !type         TYPE trobjtype
+      RETURNING
+        VALUE(result) TYPE zif_abaptags_ty_global=>ty_tadir_info
+      RAISING
+        cx_sy_itab_line_not_found.
+
   PRIVATE SECTION.
     TYPES:
       BEGIN OF ty_fugr_include,
         include TYPE progname,
-        group   TYPE rs38l_area,
+        group TYPE rs38l_area,
       END OF ty_fugr_include.
 
-    DATA:
-      tadir_keys    TYPE zif_abaptags_ty_global=>ty_tadir_keys,
-      tadir_infos   TYPE zif_abaptags_ty_global=>ty_tadir_infos,
-      func_modules  TYPE zif_abaptags_ty_global=>ty_func_module_infos,
-      fugr_includes TYPE SORTED TABLE OF ty_fugr_include WITH UNIQUE KEY include.
+    DATA tadir_keys TYPE zif_abaptags_ty_global=>ty_tadir_keys.
+    DATA tadir_infos TYPE zif_abaptags_ty_global=>ty_tadir_infos.
+    DATA func_modules TYPE zif_abaptags_ty_global=>ty_func_module_infos.
+    DATA fugr_includes TYPE SORTED TABLE OF ty_fugr_include WITH UNIQUE KEY include.
 
-    METHODS:
-      find_func_module_info
-        IMPORTING
-          keys TYPE zif_abaptags_ty_global=>ty_func_module_range,
-      is_tadir_prog
-        IMPORTING
-          obj_name      TYPE tadir-obj_name
-        RETURNING
-          VALUE(result) TYPE abap_bool.
+    METHODS find_func_module_info
+      IMPORTING
+        !keys TYPE zif_abaptags_ty_global=>ty_func_module_range.
+
+    METHODS is_tadir_prog
+      IMPORTING
+        obj_name      TYPE tadir-obj_name
+      RETURNING
+        VALUE(result) TYPE abap_bool.
 ENDCLASS.
 
 
-
 CLASS zcl_abaptags_tadir IMPLEMENTATION.
-
-
   METHOD constructor.
     tadir_keys = keys.
   ENDMETHOD.
 
   METHOD determine_tadir_entries.
-    DATA: func_module_range TYPE RANGE OF tfdir-funcname,
-          l_keys            TYPE zif_abaptags_ty_global=>ty_tadir_keys.
+    DATA func_module_range TYPE RANGE OF tfdir-funcname.
 
     LOOP AT tadir_keys ASSIGNING FIELD-SYMBOL(<key>).
       IF <key>-type = zif_abaptags_c_global=>object_types-function.
         func_module_range = VALUE #( BASE func_module_range
-          ( sign = 'I' option = 'EQ' low = <key>-name ) ).
+                                     ( sign = 'I' option = 'EQ' low = <key>-name ) ).
         DELETE tadir_keys.
-      ELSEIF <key>-type = zif_abaptags_c_global=>object_types-program
-          AND NOT is_tadir_prog( <key>-name ).
+      ELSEIF         <key>-type = zif_abaptags_c_global=>object_types-program
+             AND NOT is_tadir_prog( <key>-name ).
         DELETE tadir_keys.
       ENDIF.
     ENDLOOP.
@@ -79,9 +75,8 @@ CLASS zcl_abaptags_tadir IMPLEMENTATION.
     result = me.
   ENDMETHOD.
 
-
   METHOD find_func_module_info.
-    DATA: group_namespace TYPE namespace.
+    DATA group_namespace TYPE namespace.
 
     CHECK keys IS NOT INITIAL.
 
@@ -89,46 +84,36 @@ CLASS zcl_abaptags_tadir IMPLEMENTATION.
 
     LOOP AT func_modules ASSIGNING FIELD-SYMBOL(<func_module>).
       CALL FUNCTION 'FUNCTION_INCLUDE_SPLIT'
-        EXPORTING
-          program   = <func_module>-program
-        IMPORTING
-          group     = <func_module>-group
-          namespace = group_namespace
-        EXCEPTIONS
-          OTHERS    = 1.
+        EXPORTING  program   = <func_module>-program
+        IMPORTING  group     = <func_module>-group
+                   namespace = group_namespace
+        EXCEPTIONS OTHERS    = 1.
       IF sy-subrc <> 0.
         DELETE func_modules.
       ELSE.
         IF group_namespace IS NOT INITIAL.
           <func_module>-group = group_namespace && <func_module>-group.
         ENDIF.
-        INSERT VALUE #(
-          name = <func_module>-group
-          type = zif_abaptags_c_global=>object_types-function_group ) INTO TABLE tadir_keys.
+        INSERT VALUE #( name = <func_module>-group
+                        type = zif_abaptags_c_global=>object_types-function_group ) INTO TABLE tadir_keys.
       ENDIF.
     ENDLOOP.
-
   ENDMETHOD.
 
-
   METHOD is_tadir_prog.
-    DATA: is_fugr_include TYPE abap_bool,
-          function_group  TYPE rs38l_area.
+    DATA is_fugr_include TYPE abap_bool.
+    DATA function_group TYPE rs38l_area.
 
     CALL FUNCTION 'RS_PROGNAME_SPLIT'
-      EXPORTING
-        progname_with_namespace = obj_name
-      IMPORTING
-        fugr_is_include_name    = is_fugr_include
-        fugr_group              = function_group
-      EXCEPTIONS
-        delimiter_error         = 0.
+      EXPORTING  progname_with_namespace = obj_name
+      IMPORTING  fugr_is_include_name    = is_fugr_include
+                 fugr_group              = function_group
+      EXCEPTIONS delimiter_error         = 0.
 
     IF is_fugr_include = abap_true.
       INSERT VALUE #( include = obj_name group = function_group ) INTO TABLE fugr_includes.
-      INSERT VALUE #(
-        name = function_group
-        type = zif_abaptags_c_global=>object_types-function_group ) INTO TABLE tadir_keys.
+      INSERT VALUE #( name = function_group
+                      type = zif_abaptags_c_global=>object_types-function_group ) INTO TABLE tadir_keys.
     ELSE.
       result = abap_true.
     ENDIF.
@@ -153,8 +138,7 @@ CLASS zcl_abaptags_tadir IMPLEMENTATION.
     ENDIF.
 
     result = tadir_infos[ KEY name_type
-      name = l_name
-      type = l_type ].
+                          name = l_name
+                          type = l_type ].
   ENDMETHOD.
-
 ENDCLASS.
