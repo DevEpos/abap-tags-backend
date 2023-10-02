@@ -206,9 +206,7 @@ CLASS zcl_abaptags_adt_util IMPLEMENTATION.
           get_adt_objects_and_names( EXPORTING object_name     = name
                                                object_type     = tadir_type
                                                retrieve_parent = retrieve_parent
-                                     IMPORTING adt_objectref   = DATA(adt_objectref)
-                                     " TODO: variable is assigned but never used (ABAP cleaner)
-                                               adt_uri_mapper  = DATA(uri_mapper) ).
+                                     IMPORTING adt_objectref   = DATA(adt_objectref) ).
           IF adt_objectref->ref_data-uri IS INITIAL.
             RETURN.
           ENDIF.

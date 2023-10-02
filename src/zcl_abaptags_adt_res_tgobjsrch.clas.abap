@@ -224,11 +224,6 @@ CLASS zcl_abaptags_adt_res_tgobjsrch IMPLEMENTATION.
     cmp_adt_mapper->determine_components( ).
 
     LOOP AT tagged_objects_db ASSIGNING FIELD-SYMBOL(<tagged_object>).
-      " TODO: variable is assigned but never used (ABAP cleaner)
-      DATA(tadir_object_name) = <tagged_object>-object_name.
-      " TODO: variable is assigned but never used (ABAP cleaner)
-      DATA(tadir_object_type) = <tagged_object>-object_type.
-
       TRY.
           DATA(tadir_info) = tadir_info_reader->get_tadir_info( name = <tagged_object>-object_name
                                                                 type = <tagged_object>-object_type ).
