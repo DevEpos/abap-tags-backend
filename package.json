@@ -1,0 +1,24 @@
+{
+  "name": "abap-tags-backend",
+  "version": "2.4.0",
+  "description": "ABAP Tags",
+  "scripts": {
+    "lint": "abaplint -f summary",
+    "lint:file": "abaplint -f summary > lint-issues.txt",
+    "format": "abap-cleanerc.exe --sourcedir src --recursive --overwrite --release 740 --profile abapcleaner.cfj"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/DevEpos/abap-tags-backend.git"
+  },
+  "keywords": [
+    "ABAP",
+    "ADT"
+  ],
+  "author": "Ludwig Stockbauer-Muhr",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/DevEpos/abap-tags-backend/issues"
+  },
+  "homepage": "https://github.com/DevEpos/abap-tags-backend#readme"
+}
