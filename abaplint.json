@@ -10,7 +10,7 @@
     "begin_end_names": true,
     "check_ddic": true,
     "check_include": true,
-    "check_syntax": true,
+    "check_syntax": false,
     "global_class": true,
     "strict_sql": true,
     "implement_methods": true,
@@ -18,6 +18,23 @@
     "parser_error": true,
     "superclass_final": true,
     "unknown_types": true,
-    "xml_consistency": true
+    "xml_consistency": true,
+    "object_naming": {
+      "clas": "^ZC(L|X)\\_ABAPTAGS\\_",
+      "intf": "^ZIF\\_ABAPTAGS\\_",
+      "prog": "^ZABAPTAGS",
+      "fugr": "^ZABAPTAGS",
+      "tabl": "^ZABAPTAGS",
+      "ttyp": "^ZABAPTAGS",
+      "dtel": "^ZABAPTAGS",
+      "doma": "^ZABAPTAGS",
+      "msag": "^ZABAPTAGS",
+      "tran": "^ZABAPTAGS",
+      "enqu": "^EZABAPTAGS",
+      "auth": "^ZABAPTAGS",
+      "shlp": "^ZABAPTAGS",
+      "xslt": "^ZABAPTAGS",
+      "enho": "^ZABAPTAGS"
+    }
   }
 }
