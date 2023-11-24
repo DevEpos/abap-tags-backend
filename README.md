@@ -4,7 +4,7 @@
 # abap-tags-backend
 
 This Repository contains the ADT Backend that is needed to use the eclipse plugin
-[ABAP Tags](https://www.github.com/DevEpos/abap-tags-ui)
+[ABAP Tags](https://github.com/DevEpos/eclipse-adt-plugins/tree/main/features/tags)
 
 ## Installation
 
