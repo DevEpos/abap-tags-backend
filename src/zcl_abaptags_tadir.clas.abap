@@ -103,16 +103,18 @@ CLASS zcl_abaptags_tadir IMPLEMENTATION.
   METHOD is_tadir_prog.
     DATA is_fugr_include TYPE abap_bool.
     DATA function_group TYPE rs38l_area.
+    DATA namespace TYPE namespace.
 
     CALL FUNCTION 'RS_PROGNAME_SPLIT'
       EXPORTING  progname_with_namespace = obj_name
       IMPORTING  fugr_is_include_name    = is_fugr_include
                  fugr_group              = function_group
+                 namespace               = namespace
       EXCEPTIONS delimiter_error         = 0.
 
     IF is_fugr_include = abap_true.
-      INSERT VALUE #( include = obj_name group = function_group ) INTO TABLE fugr_includes.
-      INSERT VALUE #( name = function_group
+      INSERT VALUE #( include = obj_name group = namespace && function_group ) INTO TABLE fugr_includes.
+      INSERT VALUE #( name = namespace && function_group
                       type = zif_abaptags_c_global=>object_types-function_group ) INTO TABLE tadir_keys.
     ELSE.
       result = abap_true.
