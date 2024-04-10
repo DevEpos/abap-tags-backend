@@ -195,13 +195,16 @@ CLASS zcl_abaptags_adt_res_tgobj IMPLEMENTATION.
 
       " Special handling for local classes/interface
       IF zcl_abaptags_obj_type_util=>is_local_class_or_intf_type( <tagged_object>-adt_obj_ref-type ).
-        DATA(glob_class_name) = COND #(
+        DATA(global_obj_name) = COND #(
           WHEN strlen( tadir_object ) > 30
           THEN tadir_object(30)
           ELSE tadir_object ).
-        tadir_object = condense( translate( val = glob_class_name from = '=' to = space ) ).
+        tadir_object = condense( translate( val = global_obj_name from = '=' to = space ) ).
         comp_name = <tagged_object>-adt_obj_ref-name.
         comp_type = <tagged_object>-adt_obj_ref-type.
+
+        zcl_abaptags_obj_type_util=>adjust_wb_type( EXPORTING uri      = <tagged_object>-adt_obj_ref-uri
+                                                    CHANGING  obj_type = comp_type ).
       ENDIF.
 
       collect_tgobj_for_insert( EXPORTING tadir_object = tadir_object

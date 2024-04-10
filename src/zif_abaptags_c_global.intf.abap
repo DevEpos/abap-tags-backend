@@ -1,28 +1,32 @@
 "! <p class="shorttext synchronized">Global constants for ABAP Tags</p>
 INTERFACE zif_abaptags_c_global
   PUBLIC.
+
   CONSTANTS:
     BEGIN OF message_types,
       error   TYPE string VALUE 'ERROR',
       warning TYPE string VALUE 'WARNING',
       info    TYPE string VALUE 'INFO',
-    END OF message_types,
+    END OF message_types.
 
+  CONSTANTS:
     "! The type of an ABAP Tag
     BEGIN OF tag_type,
       global TYPE string VALUE 'GLOBAL',
       user   TYPE string VALUE 'USER',
       shared TYPE string VALUE 'SHARED',
-    END OF tag_type,
+    END OF tag_type.
 
+  CONSTANTS:
     "! Possible scopes for reading tags or tagged objects
     BEGIN OF scopes,
       all    TYPE string VALUE 'all',
       global TYPE string VALUE 'global',
       user   TYPE string VALUE 'user',
       shared TYPE string VALUE 'shared',
-    END OF scopes,
+    END OF scopes.
 
+  CONSTANTS:
     "! Possible types for reading tag info of tagged objects
     BEGIN OF tag_info_types,
       "! All tags that are assigned to an object
@@ -31,27 +35,31 @@ INTERFACE zif_abaptags_c_global
       search_focus TYPE string VALUE 'searchFocus',
       "! Information about tagged child objects
       children     TYPE string VALUE 'children',
-    END OF tag_info_types,
+    END OF tag_info_types.
 
+  CONSTANTS:
     "! Grouping level of tagged object search
     BEGIN OF search_result_group_level,
       by_object         TYPE string VALUE 'byObject',
       by_tag_and_object TYPE string VALUE 'byTagAndObject',
-    END OF search_result_group_level,
+    END OF search_result_group_level.
 
+  CONSTANTS:
     "! Possible types of query for a tag search
     BEGIN OF tag_query_types,
       object_name            TYPE string VALUE 'objectName',
       object_uri             TYPE string VALUE 'objectUri',
       object_name_type_combo TYPE string VALUE 'objectNameTypeCombo',
-    END OF tag_query_types,
+    END OF tag_query_types.
 
+  CONSTANTS:
     "! Possible value for the focus of the tag query string
     BEGIN OF tag_query_focus,
       object        TYPE string VALUE 'object',
       parent_object TYPE string VALUE 'parentObject',
-    END OF tag_query_focus,
+    END OF tag_query_focus.
 
+  CONSTANTS:
     BEGIN OF object_types,
       function            TYPE trobjtype VALUE 'FUNC',
       function_group      TYPE trobjtype VALUE 'FUGR',
@@ -61,8 +69,9 @@ INTERFACE zif_abaptags_c_global
       data_definition     TYPE trobjtype VALUE 'DDLS',
       behavior_definition TYPE trobjtype VALUE 'BDEF',
       structured_object   TYPE trobjtype VALUE 'STOB',
-    END OF object_types,
+    END OF object_types.
 
+  CONSTANTS:
     BEGIN OF wb_object_types,
       class_local_class      TYPE swo_objtyp VALUE 'CLAS/OCL',
       class_local_interface  TYPE swo_objtyp VALUE 'CLAS/ON',

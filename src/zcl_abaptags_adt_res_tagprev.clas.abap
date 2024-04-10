@@ -78,10 +78,15 @@ CLASS zcl_abaptags_adt_res_tagprev IMPLEMENTATION.
                                                                  tadir_type  = obj_ref_int-tadir_type ).
 
           IF zcl_abaptags_obj_type_util=>is_local_class_or_intf_type( <obj_ref>-type ).
-            DATA(glob_class_name) = COND #(
-              WHEN strlen( obj_ref_int-name ) > 30 THEN obj_ref_int-name(30) ELSE obj_ref_int-name ).
-            obj_ref_int-parent_name = condense( translate( val = glob_class_name from = '=' to = space ) ).
+            DATA(global_obj_name) = COND #(
+              WHEN strlen( obj_ref_int-name ) > 30
+              THEN obj_ref_int-name(30)
+              ELSE obj_ref_int-name ).
+            obj_ref_int-parent_name = condense( translate( val = global_obj_name from = '=' to = space ) ).
             obj_ref_int-name        = <obj_ref>-name.
+
+            zcl_abaptags_obj_type_util=>adjust_wb_type( EXPORTING uri      = <obj_ref>-uri
+                                                        CHANGING  obj_type = obj_ref_int-type ).
           ELSE.
             obj_ref_int-type = COND #( WHEN object_type-subtype_wb IS NOT INITIAL
                                        THEN object_type-objtype_tr && '/' && object_type-subtype_wb
