@@ -1,7 +1,6 @@
 "! <p class="shorttext synchronized">Tag DB Access</p>
 CLASS zcl_abaptags_tags_dac DEFINITION
-  PUBLIC
-  FINAL
+  PUBLIC FINAL
   CREATE PUBLIC.
 
   PUBLIC SECTION.
@@ -196,8 +195,7 @@ CLASS zcl_abaptags_tags_dac IMPLEMENTATION.
   ENDMETHOD.
 
   METHOD count_tags.
-    SELECT COUNT(*)
-      FROM zabaptags_tags
+    SELECT COUNT(*) FROM zabaptags_tags
       WHERE tag_id IN @tag_id_range
       INTO @result.
   ENDMETHOD.
@@ -239,8 +237,8 @@ CLASS zcl_abaptags_tags_dac IMPLEMENTATION.
     DELETE FROM zabaptags_tgobjn WHERE tag_id IN id_range.
     DELETE FROM zabaptags_tags WHERE tag_id IN id_range.
     DELETE FROM zabaptags_shtags WHERE tag_id IN id_range.
-    DELETE FROM zabaptags_tagsrm WHERE    tag_id      IN id_range
-                                       OR root_tag_id IN id_range.
+    DELETE FROM zabaptags_tagsrm WHERE tag_id      IN id_range
+                                    OR root_tag_id IN id_range.
 
     COMMIT WORK.
   ENDMETHOD.
@@ -253,21 +251,19 @@ CLASS zcl_abaptags_tags_dac IMPLEMENTATION.
       RETURN.
     ENDIF.
 
-    SELECT SINGLE @abap_true
-      FROM zabaptags_tags
-      WHERE tag_id IN @tag_id_range
-        AND owner IN @owner_range
-        AND name_upper IN @name_upper_range
+    SELECT SINGLE @abap_true FROM zabaptags_tags
+      WHERE tag_id        IN @tag_id_range
+        AND owner         IN @owner_range
+        AND name_upper    IN @name_upper_range
         AND parent_tag_id IN @parent_tag_id_range
       INTO @result.
   ENDMETHOD.
 
   METHOD find_first_global_tag.
-    SELECT SINGLE name
-      FROM zabaptags_tags
-      WHERE owner = @space
-        AND parent_tag_id = @c_initial_tag_id
-        AND name_upper IN @name_upper_range
+    SELECT SINGLE name FROM zabaptags_tags
+      WHERE owner          = @space
+        AND parent_tag_id  = @c_initial_tag_id
+        AND name_upper    IN @name_upper_range
       INTO CORRESPONDING FIELDS OF @result.
   ENDMETHOD.
 
@@ -294,22 +290,20 @@ CLASS zcl_abaptags_tags_dac IMPLEMENTATION.
   METHOD find_shared_tags.
     SELECT DISTINCT tag~*
       FROM zabaptags_shtags AS shared_tag
-      INNER JOIN zabaptags_tags AS tag
-        ON  shared_tag~tag_id = tag~tag_id
-        AND shared_tag~shared_user = @sy-uname
+           INNER JOIN zabaptags_tags AS tag
+             ON  shared_tag~tag_id      = tag~tag_id
+             AND shared_tag~shared_user = @sy-uname
       INTO CORRESPONDING FIELDS OF TABLE @result.
   ENDMETHOD.
 
   METHOD find_shared_tag_users.
-    SELECT shared_user
-      FROM zabaptags_shtags
+    SELECT shared_user FROM zabaptags_shtags
       WHERE tag_id = @tag_id
       INTO TABLE @result.
   ENDMETHOD.
 
   METHOD find_shared_tags_db.
-    SELECT *
-      FROM zabaptags_shtags
+    SELECT * FROM zabaptags_shtags
       WHERE tag_id IN @tag_ids
       INTO CORRESPONDING FIELDS OF TABLE @result.
   ENDMETHOD.
@@ -326,60 +320,57 @@ CLASS zcl_abaptags_tags_dac IMPLEMENTATION.
         NEXT cols = cols && sep && col sep = `, ` ) ).
 
     IF single_select = abap_true.
-      SELECT SINGLE (l_columns)
-        FROM zabaptags_tags
-        WHERE tag_id IN @tag_id_range
-          AND owner IN @owner_range
-          AND name_upper IN @name_upper_range
+      SELECT SINGLE (l_columns) FROM zabaptags_tags
+        WHERE tag_id        IN @tag_id_range
+          AND owner         IN @owner_range
+          AND name_upper    IN @name_upper_range
           AND parent_tag_id IN @parent_tag_id_range
         INTO CORRESPONDING FIELDS OF @single_result.
       IF sy-subrc = 0.
         result = VALUE #( ( single_result ) ).
       ENDIF.
     ELSE.
-      SELECT (l_columns)
-        FROM zabaptags_tags
-        WHERE tag_id IN @tag_id_range
-          AND owner IN @owner_range
-          AND name_upper IN @name_upper_range
+      SELECT (l_columns) FROM zabaptags_tags
+        WHERE tag_id        IN @tag_id_range
+          AND owner         IN @owner_range
+          AND name_upper    IN @name_upper_range
           AND parent_tag_id IN @parent_tag_id_range
         INTO CORRESPONDING FIELDS OF TABLE @result.
     ENDIF.
   ENDMETHOD.
 
   METHOD find_tags_of_object.
-    SELECT DISTINCT
-           tag~tag_id,
-           tag~parent_tag_id,
-           tag~owner,
-           tag~name
+    SELECT DISTINCT tag~tag_id,
+                    tag~parent_tag_id,
+                    tag~owner,
+                    tag~name
       FROM zabaptags_tgobjn AS tgobj
-        INNER JOIN zabaptags_tags AS tag
-          ON tgobj~tag_id = tag~tag_id
+           INNER JOIN zabaptags_tags AS tag
+             ON tgobj~tag_id = tag~tag_id
       WHERE tgobj~object_name = @tadir_obj-name
         AND tgobj~object_type = @tadir_obj-type
         AND ( tag~owner = @sy-uname OR tag~owner = @space )
-      ORDER BY owner, name
+      ORDER BY owner,
+               name
       INTO CORRESPONDING FIELDS OF TABLE @result.
   ENDMETHOD.
 
   METHOD find_shared_tags_of_object.
-    SELECT DISTINCT
-           tag~tag_id,
-           tag~parent_tag_id,
-           tag~owner,
-           tag~name
+    SELECT DISTINCT tag~tag_id,
+                    tag~parent_tag_id,
+                    tag~owner,
+                    tag~name
       FROM zabaptags_tgobjn AS tgobj
-        INNER JOIN zabaptags_tags AS tag
-          ON tgobj~tag_id = tag~tag_id
-        INNER JOIN zabaptags_shtags AS shared_tag
-          ON tag~tag_id = shared_tag~tag_id
-      WHERE tgobj~object_name = @tadir_obj-name
-        AND tgobj~object_type = @tadir_obj-type
-        AND tag~owner <> @sy-uname
-        AND tag~owner <> @space
-        AND tag~is_shared = @abap_true
-        AND shared_tag~shared_user = @sy-uname
+           INNER JOIN zabaptags_tags AS tag
+             ON tgobj~tag_id = tag~tag_id
+           INNER JOIN zabaptags_shtags AS shared_tag
+             ON tag~tag_id = shared_tag~tag_id
+      WHERE tgobj~object_name       = @tadir_obj-name
+        AND tgobj~object_type       = @tadir_obj-type
+        AND tag~owner              <> @sy-uname
+        AND tag~owner              <> @space
+        AND tag~is_shared           = @abap_true
+        AND shared_tag~shared_user  = @sy-uname
       INTO CORRESPONDING FIELDS OF TABLE @result.
   ENDMETHOD.
 
@@ -430,30 +421,29 @@ CLASS zcl_abaptags_tags_dac IMPLEMENTATION.
     SELECT tagged_object~object_name,
            tagged_object~object_type,
            tag~tag_id,
-           tag~name AS tag_name,
-           tag~owner AS tag_owner
+           tag~name                  AS tag_name,
+           tag~owner                 AS tag_owner
       FROM zabaptags_tags AS tag
-        INNER JOIN zabaptags_tgobjn AS tagged_object
-          ON tag~tag_id = tagged_object~tag_id
+           INNER JOIN zabaptags_tgobjn AS tagged_object
+             ON tag~tag_id = tagged_object~tag_id
       FOR ALL ENTRIES IN @tagged_objects
-      WHERE tagged_object~object_type = @tagged_objects-object_type
-        AND tagged_object~object_name = @tagged_objects-object_name
-        AND tagged_object~tag_id IN @tag_id_range
+      WHERE tagged_object~object_type  = @tagged_objects-object_type
+        AND tagged_object~object_name  = @tagged_objects-object_name
+        AND tagged_object~tag_id      IN @tag_id_range
       INTO CORRESPONDING FIELDS OF TABLE @result.
   ENDMETHOD.
 
   METHOD get_children_of_tagged_objects.
     CHECK parent_tag_ids IS NOT INITIAL.
 
-    SELECT DISTINCT
-           tag~tag_id,
-           tag~name AS tag_name,
-           tag~parent_tag_id,
-           tgobj~parent_object_name,
-           tgobj~parent_object_type
+    SELECT DISTINCT tag~tag_id,
+                    tag~name                 AS tag_name,
+                    tag~parent_tag_id,
+                    tgobj~parent_object_name,
+                    tgobj~parent_object_type
       FROM zabaptags_tags AS tag
-        INNER JOIN zabaptags_tgobjn AS tgobj
-          ON tag~tag_id = tgobj~tag_id
+           INNER JOIN zabaptags_tgobjn AS tgobj
+             ON tag~tag_id = tgobj~tag_id
       WHERE tag~parent_tag_id IN @parent_tag_ids
       INTO CORRESPONDING FIELDS OF TABLE @result.
   ENDMETHOD.
@@ -490,14 +480,16 @@ CLASS zcl_abaptags_tags_dac IMPLEMENTATION.
       " As hierarchical tags can be assigned multiple times to an object
       " via different tags/parent objects a helper CDS view will be used to get the
       " correct tag count for the list of given objects
-      SELECT tag_id, COUNT( * ) AS count
+      SELECT tag_id,
+             COUNT( * ) AS count
         FROM zabaptags_i_taggedobjaggr
         WHERE (where)
           AND tag_id IN @tag_ids
         GROUP BY tag_id
         INTO CORRESPONDING FIELDS OF TABLE @result.
     ELSE.
-      SELECT tag_id, COUNT( * ) AS count
+      SELECT tag_id,
+             COUNT( * ) AS count
         FROM zabaptags_tgobjn
         WHERE tag_id IN @tag_ids
         GROUP BY tag_id

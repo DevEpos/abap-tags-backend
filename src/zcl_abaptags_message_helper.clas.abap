@@ -1,6 +1,5 @@
 CLASS zcl_abaptags_message_helper DEFINITION
-  PUBLIC
-  FINAL
+  PUBLIC FINAL
   CREATE PUBLIC.
 
   PUBLIC SECTION.

@@ -1,7 +1,6 @@
 "! <p class="shorttext synchronized">Access to users of SAP system</p>
 CLASS zcl_abaptags_user_dac DEFINITION
-  PUBLIC
-  FINAL
+  PUBLIC FINAL
   CREATE PUBLIC.
 
   PUBLIC SECTION.
@@ -34,14 +33,15 @@ CLASS zcl_abaptags_user_dac IMPLEMENTATION.
   METHOD find_users.
     CHECK id_range IS NOT INITIAL.
 
-    SELECT DISTINCT
-           usr02~bname AS name,
-           name_first,
-           name_last,
-           name_textc
-      FROM usr02 LEFT OUTER JOIN user_addr
-        ON usr02~bname = user_addr~bname
-      WHERE usr02~bname IN @id_range ORDER BY usr02~bname
+    SELECT DISTINCT usr02~bname AS name,
+                    name_first,
+                    name_last,
+                    name_textc
+      FROM usr02
+           LEFT OUTER JOIN user_addr
+             ON usr02~bname = user_addr~bname
+      WHERE usr02~bname IN @id_range
+      ORDER BY usr02~bname
       INTO TABLE @DATA(users).
 
     IF sy-subrc = 0.

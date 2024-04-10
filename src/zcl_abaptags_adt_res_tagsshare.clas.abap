@@ -1,8 +1,7 @@
 "! <p class="shorttext synchronized">Resource for Sharing Tags</p>
 CLASS zcl_abaptags_adt_res_tagsshare DEFINITION
   PUBLIC
-  INHERITING FROM cl_adt_rest_resource
-  FINAL
+  INHERITING FROM cl_adt_rest_resource FINAL
   CREATE PUBLIC.
 
   PUBLIC SECTION.
@@ -17,8 +16,9 @@ CLASS zcl_abaptags_adt_res_tagsshare DEFINITION
       BEGIN OF c_action,
         share   TYPE string VALUE 'share',
         unshare TYPE string VALUE 'unshare',
-      END OF c_action,
+      END OF c_action.
 
+    CONSTANTS:
       BEGIN OF c_uri_attributes,
         tag_id TYPE string VALUE 'tagId',
       END OF c_uri_attributes.
@@ -100,8 +100,8 @@ CLASS zcl_abaptags_adt_res_tagsshare IMPLEMENTATION.
   ENDMETHOD.
 
   METHOD share_tags.
-    DATA tags_to_be_shared    TYPE SORTED TABLE OF zabaptags_shtags WITH UNIQUE KEY tag_id shared_user.
-    DATA shared_tags          LIKE tags_to_be_shared.
+    DATA tags_to_be_shared TYPE SORTED TABLE OF zabaptags_shtags WITH UNIQUE KEY tag_id shared_user.
+    DATA shared_tags LIKE tags_to_be_shared.
     DATA tag_ids_to_be_shared TYPE RANGE OF zabaptags_tag_id.
     DATA update_relevant_tags TYPE abap_bool.
 

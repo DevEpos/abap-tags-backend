@@ -1,8 +1,7 @@
 "! <p class="shorttext synchronized">General Error in ADT API of ABAP Tags</p>
 CLASS zcx_abaptags_adt_error DEFINITION
   PUBLIC
-  INHERITING FROM cx_adt_rest
-  FINAL
+  INHERITING FROM cx_adt_rest FINAL
   CREATE PUBLIC.
 
   PUBLIC SECTION.
@@ -14,8 +13,9 @@ CLASS zcx_abaptags_adt_error DEFINITION
         attr2 TYPE scx_attrname VALUE '',
         attr3 TYPE scx_attrname VALUE '',
         attr4 TYPE scx_attrname VALUE '',
-      END OF unknown_tgobj_action,
+      END OF unknown_tgobj_action.
 
+    CONSTANTS:
       BEGIN OF no_tgobj_id_supplied,
         msgid TYPE symsgid VALUE 'ZABAPTAGS',
         msgno TYPE symsgno VALUE '012',
@@ -23,8 +23,9 @@ CLASS zcx_abaptags_adt_error DEFINITION
         attr2 TYPE scx_attrname VALUE '',
         attr3 TYPE scx_attrname VALUE '',
         attr4 TYPE scx_attrname VALUE '',
-      END OF no_tgobj_id_supplied,
+      END OF no_tgobj_id_supplied.
 
+    CONSTANTS:
       BEGIN OF unknown_tags_action,
         msgid TYPE symsgid VALUE 'ZABAPTAGS',
         msgno TYPE symsgno VALUE '011',
@@ -32,8 +33,9 @@ CLASS zcx_abaptags_adt_error DEFINITION
         attr2 TYPE scx_attrname VALUE '',
         attr3 TYPE scx_attrname VALUE '',
         attr4 TYPE scx_attrname VALUE '',
-      END OF unknown_tags_action,
+      END OF unknown_tags_action.
 
+    CONSTANTS:
       BEGIN OF chosen_tags_no_longer_exist,
         msgid TYPE symsgid VALUE 'ZABAPTAGS',
         msgno TYPE symsgno VALUE '009',
@@ -41,8 +43,9 @@ CLASS zcx_abaptags_adt_error DEFINITION
         attr2 TYPE scx_attrname VALUE '',
         attr3 TYPE scx_attrname VALUE '',
         attr4 TYPE scx_attrname VALUE '',
-      END OF chosen_tags_no_longer_exist,
+      END OF chosen_tags_no_longer_exist.
 
+    CONSTANTS:
       BEGIN OF parents_of_chs_tags_deleted,
         msgid TYPE symsgid VALUE 'ZABPATAGS',
         msgno TYPE symsgno VALUE '010',
@@ -50,8 +53,9 @@ CLASS zcx_abaptags_adt_error DEFINITION
         attr2 TYPE scx_attrname VALUE '',
         attr3 TYPE scx_attrname VALUE '',
         attr4 TYPE scx_attrname VALUE '',
-      END OF parents_of_chs_tags_deleted,
+      END OF parents_of_chs_tags_deleted.
 
+    CONSTANTS:
       BEGIN OF tag_parent_tag_already_exists,
         msgid TYPE symsgid VALUE 'ZABAPTAGS',
         msgno TYPE symsgno VALUE '008',
@@ -59,8 +63,9 @@ CLASS zcx_abaptags_adt_error DEFINITION
         attr2 TYPE scx_attrname VALUE 'MSGV2',
         attr3 TYPE scx_attrname VALUE 'MSGV3',
         attr4 TYPE scx_attrname VALUE '',
-      END OF tag_parent_tag_already_exists,
+      END OF tag_parent_tag_already_exists.
 
+    CONSTANTS:
       BEGIN OF tag_no_longer_exists,
         msgid TYPE symsgid VALUE 'ZABAPTAGS',
         msgno TYPE symsgno VALUE '006',
@@ -68,8 +73,9 @@ CLASS zcx_abaptags_adt_error DEFINITION
         attr2 TYPE scx_attrname VALUE 'MSGV2',
         attr3 TYPE scx_attrname VALUE '',
         attr4 TYPE scx_attrname VALUE '',
-      END OF tag_no_longer_exists,
+      END OF tag_no_longer_exists.
 
+    CONSTANTS:
       BEGIN OF parent_tag_no_longer_exists,
         msgid TYPE symsgid VALUE 'ZABAPTAGS',
         msgno TYPE symsgno VALUE '007',
@@ -77,8 +83,9 @@ CLASS zcx_abaptags_adt_error DEFINITION
         attr2 TYPE scx_attrname VALUE 'MSGV2',
         attr3 TYPE scx_attrname VALUE '',
         attr4 TYPE scx_attrname VALUE '',
-      END OF parent_tag_no_longer_exists,
+      END OF parent_tag_no_longer_exists.
 
+    CONSTANTS:
       BEGIN OF global_tag_already_exists,
         msgid TYPE symsgid VALUE 'ZABAPTAGS',
         msgno TYPE symsgno VALUE '005',
@@ -86,8 +93,9 @@ CLASS zcx_abaptags_adt_error DEFINITION
         attr2 TYPE scx_attrname VALUE '',
         attr3 TYPE scx_attrname VALUE '',
         attr4 TYPE scx_attrname VALUE '',
-      END OF global_tag_already_exists,
+      END OF global_tag_already_exists.
 
+    CONSTANTS:
       BEGIN OF tags_persisting_failure,
         msgid TYPE symsgid VALUE 'ZABAPTAGS',
         msgno TYPE symsgno VALUE '002',
@@ -95,8 +103,9 @@ CLASS zcx_abaptags_adt_error DEFINITION
         attr2 TYPE scx_attrname VALUE '',
         attr3 TYPE scx_attrname VALUE '',
         attr4 TYPE scx_attrname VALUE '',
-      END OF tags_persisting_failure,
+      END OF tags_persisting_failure.
 
+    CONSTANTS:
       BEGIN OF tag_with_name_not_found,
         msgid TYPE symsgid VALUE 'ZABAPTAGS',
         msgno TYPE symsgno VALUE '003',
@@ -104,8 +113,9 @@ CLASS zcx_abaptags_adt_error DEFINITION
         attr2 TYPE scx_attrname VALUE 'MSGV2',
         attr3 TYPE scx_attrname VALUE '',
         attr4 TYPE scx_attrname VALUE '',
-      END OF tag_with_name_not_found,
+      END OF tag_with_name_not_found.
 
+    CONSTANTS:
       BEGIN OF tag_already_exists,
         msgid TYPE symsgid VALUE 'ZABAPTAGS',
         msgno TYPE symsgno VALUE '004',

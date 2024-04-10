@@ -1,8 +1,7 @@
 "! <p class="shorttext synchronized">ADT Resource for handling Tagging Preview</p>
 CLASS zcl_abaptags_adt_res_tagprev DEFINITION
   PUBLIC
-  INHERITING FROM cl_adt_rest_resource
-  FINAL
+  INHERITING FROM cl_adt_rest_resource FINAL
   CREATE PUBLIC.
 
   PUBLIC SECTION.
@@ -89,9 +88,9 @@ CLASS zcl_abaptags_adt_res_tagprev IMPLEMENTATION.
                                                         CHANGING  obj_type = obj_ref_int-type ).
           ELSE.
             obj_ref_int-type = COND #( WHEN object_type-subtype_wb IS NOT INITIAL
-                                       THEN object_type-objtype_tr && '/' && object_type-subtype_wb
+                                       THEN |{ object_type-objtype_tr }/{ object_type-subtype_wb }|
                                        ELSE object_type-objtype_tr ).
-            CONDENSE obj_ref_int-name.
+            obj_ref_int-name = condense( obj_ref_int-name ).
             IF obj_ref_int-name CA ' '.
               DATA(whitespace_off) = find( val = obj_ref_int-name regex = '\s' ).
               IF whitespace_off <> -1.

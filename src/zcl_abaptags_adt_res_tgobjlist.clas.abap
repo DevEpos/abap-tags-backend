@@ -1,8 +1,7 @@
 "! <p class="shorttext synchronized">Resource for retrieving a list of tagged objects</p>
 CLASS zcl_abaptags_adt_res_tgobjlist DEFINITION
   PUBLIC
-  INHERITING FROM cl_adt_rest_resource
-  FINAL
+  INHERITING FROM cl_adt_rest_resource FINAL
   CREATE PUBLIC.
 
   PUBLIC SECTION.
@@ -30,20 +29,21 @@ CLASS zcl_abaptags_adt_res_tgobjlist DEFINITION
 
       ty_tagged_objects TYPE STANDARD TABLE OF ty_tagged_object WITH EMPTY KEY.
 
-    DATA: list_request        TYPE zabaptags_tgobj_list_request,
-          found_objects       TYPE ty_tagged_objects,
-          tagged_object_infos TYPE zabaptags_tgobj_info_t,
+    DATA list_request TYPE zabaptags_tgobj_list_request.
+    DATA found_objects TYPE ty_tagged_objects.
+    DATA tagged_object_infos TYPE zabaptags_tgobj_info_t.
 
-          BEGIN OF select_keys,
-            tag_id        TYPE TABLE OF zabaptags_tag_id,
-            full_semantic TYPE ty_tagged_objects,
-            parent_obj    TYPE ty_tagged_objects,
-            comp_obj      TYPE ty_tagged_objects,
-            tag_and_obj   TYPE ty_tagged_objects,
-          END OF select_keys,
+    DATA:
+      BEGIN OF select_keys,
+        tag_id        TYPE TABLE OF zabaptags_tag_id,
+        full_semantic TYPE ty_tagged_objects,
+        parent_obj    TYPE ty_tagged_objects,
+        comp_obj      TYPE ty_tagged_objects,
+        tag_and_obj   TYPE ty_tagged_objects,
+      END OF select_keys.
 
-          obj_infos_for_name_mapping TYPE TABLE OF REF TO zabaptags_tgobj_info,
-          cds_name_mapper            TYPE REF TO zcl_abaptags_cds_name_mapper.
+    DATA obj_infos_for_name_mapping TYPE TABLE OF REF TO zabaptags_tgobj_info.
+    DATA cds_name_mapper TYPE REF TO zcl_abaptags_cds_name_mapper.
 
     METHODS get_request_handler
       RETURNING
@@ -217,31 +217,31 @@ CLASS zcl_abaptags_adt_res_tgobjlist IMPLEMENTATION.
     CHECK select_keys-full_semantic IS NOT INITIAL.
 
     SELECT tgobj~id,
-           tgobj~tagid AS tag_id,
-           tag~name AS tag_name,
-           tag~owner AS owner,
-           tgobj~objectname AS object_name,
-           tgobj~objecttype AS object_type,
-           tgobj~componentname AS component_name,
-           tgobj~componenttype AS component_type,
-           tgobj~parenttagid AS parent_tag_id,
-           parent_tag~name AS parent_tag_name,
+           tgobj~tagid            AS tag_id,
+           tag~name               AS tag_name,
+           tag~owner              AS owner,
+           tgobj~objectname       AS object_name,
+           tgobj~objecttype       AS object_type,
+           tgobj~componentname    AS component_name,
+           tgobj~componenttype    AS component_type,
+           tgobj~parenttagid      AS parent_tag_id,
+           parent_tag~name        AS parent_tag_name,
            tgobj~parentobjectname AS parent_object_name,
            tgobj~parentobjecttype AS parent_object_type
       FROM zabaptags_i_tgobjn AS tgobj
-        INNER JOIN zabaptags_i_tag AS tag
-          ON tgobj~tagid = tag~tagid
-        LEFT OUTER JOIN zabaptags_i_tag AS parent_tag
-          ON tgobj~parenttagid = parent_tag~tagid
-        FOR ALL ENTRIES IN @select_keys-full_semantic
-        WHERE tgobj~objectname       = @select_keys-full_semantic-object_name
-          AND tgobj~objecttype       = @select_keys-full_semantic-object_type
-          AND tgobj~componentname    = @select_keys-full_semantic-component_name
-          AND tgobj~componenttype    = @select_keys-full_semantic-component_type
-          AND tgobj~tagid            = @select_keys-full_semantic-tag_id
-          AND tgobj~parentobjectname = @select_keys-full_semantic-parent_object_name
-          AND tgobj~parentobjecttype = @select_keys-full_semantic-parent_object_type
-          AND tgobj~parenttagid      = @select_keys-full_semantic-parent_tag_id
+           INNER JOIN zabaptags_i_tag AS tag
+             ON tgobj~tagid = tag~tagid
+           LEFT OUTER JOIN zabaptags_i_tag AS parent_tag
+             ON tgobj~parenttagid = parent_tag~tagid
+      FOR ALL ENTRIES IN @select_keys-full_semantic
+      WHERE tgobj~objectname       = @select_keys-full_semantic-object_name
+        AND tgobj~objecttype       = @select_keys-full_semantic-object_type
+        AND tgobj~componentname    = @select_keys-full_semantic-component_name
+        AND tgobj~componenttype    = @select_keys-full_semantic-component_type
+        AND tgobj~tagid            = @select_keys-full_semantic-tag_id
+        AND tgobj~parentobjectname = @select_keys-full_semantic-parent_object_name
+        AND tgobj~parentobjecttype = @select_keys-full_semantic-parent_object_type
+        AND tgobj~parenttagid      = @select_keys-full_semantic-parent_tag_id
       APPENDING CORRESPONDING FIELDS OF TABLE @found_objects.
   ENDMETHOD.
 
@@ -249,31 +249,31 @@ CLASS zcl_abaptags_adt_res_tgobjlist IMPLEMENTATION.
     CHECK select_keys-parent_obj IS NOT INITIAL.
 
     SELECT tgobj~id,
-           tgobj~tagid AS tag_id,
-           tag~name AS tag_name,
-           tag~owner AS owner,
-           tgobj~objectname AS object_name,
-           tgobj~objecttype AS object_type,
-           tgobj~componentname AS component_name,
-           tgobj~componenttype AS component_type,
-           tgobj~parenttagid AS parent_tag_id,
-           parent_tag~name AS parent_tag_name,
+           tgobj~tagid            AS tag_id,
+           tag~name               AS tag_name,
+           tag~owner              AS owner,
+           tgobj~objectname       AS object_name,
+           tgobj~objecttype       AS object_type,
+           tgobj~componentname    AS component_name,
+           tgobj~componenttype    AS component_type,
+           tgobj~parenttagid      AS parent_tag_id,
+           parent_tag~name        AS parent_tag_name,
            tgobj~parentobjectname AS parent_object_name,
            tgobj~parentobjecttype AS parent_object_type
       FROM zabaptags_i_tgobjn AS tgobj
-        INNER JOIN zabaptags_i_tag AS tag
-          ON tgobj~tagid = tag~tagid
-        LEFT OUTER JOIN zabaptags_i_tag AS parent_tag
-          ON tgobj~parenttagid = parent_tag~tagid
-        FOR ALL ENTRIES IN @select_keys-parent_obj
-        WHERE tgobj~objectname       = @select_keys-parent_obj-object_name
-          AND tgobj~objecttype       = @select_keys-parent_obj-object_type
-          AND tgobj~componentname    = @space
-          AND tgobj~componenttype    = @space
-          AND tgobj~tagid            = @select_keys-parent_obj-tag_id
-          AND tgobj~parentobjectname = @select_keys-parent_obj-parent_object_name
-          AND tgobj~parentobjecttype = @select_keys-parent_obj-parent_object_type
-          AND tgobj~parenttagid      = @select_keys-parent_obj-parent_tag_id
+           INNER JOIN zabaptags_i_tag AS tag
+             ON tgobj~tagid = tag~tagid
+           LEFT OUTER JOIN zabaptags_i_tag AS parent_tag
+             ON tgobj~parenttagid = parent_tag~tagid
+      FOR ALL ENTRIES IN @select_keys-parent_obj
+      WHERE tgobj~objectname       = @select_keys-parent_obj-object_name
+        AND tgobj~objecttype       = @select_keys-parent_obj-object_type
+        AND tgobj~componentname    = @space
+        AND tgobj~componenttype    = @space
+        AND tgobj~tagid            = @select_keys-parent_obj-tag_id
+        AND tgobj~parentobjectname = @select_keys-parent_obj-parent_object_name
+        AND tgobj~parentobjecttype = @select_keys-parent_obj-parent_object_type
+        AND tgobj~parenttagid      = @select_keys-parent_obj-parent_tag_id
       APPENDING CORRESPONDING FIELDS OF TABLE @found_objects.
   ENDMETHOD.
 
@@ -281,28 +281,28 @@ CLASS zcl_abaptags_adt_res_tgobjlist IMPLEMENTATION.
     CHECK select_keys-comp_obj IS NOT INITIAL.
 
     SELECT tgobj~id,
-           tgobj~tagid AS tag_id,
-           tag~name AS tag_name,
-           tag~owner AS owner,
-           tgobj~objectname AS object_name,
-           tgobj~objecttype AS object_type,
-           tgobj~componentname AS component_name,
-           tgobj~componenttype AS component_type,
-           tgobj~parenttagid AS parent_tag_id,
-           parent_tag~name AS parent_tag_name,
+           tgobj~tagid            AS tag_id,
+           tag~name               AS tag_name,
+           tag~owner              AS owner,
+           tgobj~objectname       AS object_name,
+           tgobj~objecttype       AS object_type,
+           tgobj~componentname    AS component_name,
+           tgobj~componenttype    AS component_type,
+           tgobj~parenttagid      AS parent_tag_id,
+           parent_tag~name        AS parent_tag_name,
            tgobj~parentobjectname AS parent_object_name,
            tgobj~parentobjecttype AS parent_object_type
       FROM zabaptags_i_tgobjn AS tgobj
-        INNER JOIN zabaptags_i_tag AS tag
-          ON tgobj~tagid = tag~tagid
-        LEFT OUTER JOIN zabaptags_i_tag AS parent_tag
-          ON tgobj~parenttagid = parent_tag~tagid
-        FOR ALL ENTRIES IN @select_keys-comp_obj
-        WHERE tgobj~objectname    = @select_keys-comp_obj-object_name
-          AND tgobj~objecttype    = @select_keys-comp_obj-object_type
-          AND tgobj~componentname = @select_keys-comp_obj-component_name
-          AND tgobj~componenttype = @select_keys-comp_obj-component_type
-          AND tgobj~tagid         = @select_keys-comp_obj-tag_id
+           INNER JOIN zabaptags_i_tag AS tag
+             ON tgobj~tagid = tag~tagid
+           LEFT OUTER JOIN zabaptags_i_tag AS parent_tag
+             ON tgobj~parenttagid = parent_tag~tagid
+      FOR ALL ENTRIES IN @select_keys-comp_obj
+      WHERE tgobj~objectname    = @select_keys-comp_obj-object_name
+        AND tgobj~objecttype    = @select_keys-comp_obj-object_type
+        AND tgobj~componentname = @select_keys-comp_obj-component_name
+        AND tgobj~componenttype = @select_keys-comp_obj-component_type
+        AND tgobj~tagid         = @select_keys-comp_obj-tag_id
       APPENDING CORRESPONDING FIELDS OF TABLE @found_objects.
   ENDMETHOD.
 
@@ -310,22 +310,22 @@ CLASS zcl_abaptags_adt_res_tgobjlist IMPLEMENTATION.
     CHECK select_keys-tag_id IS NOT INITIAL.
 
     SELECT tgobj~id,
-           tgobj~tagid AS tag_id,
-           tag~name AS tag_name,
-           tag~owner AS owner,
-           tgobj~objectname AS object_name,
-           tgobj~objecttype AS object_type,
-           tgobj~componentname AS component_name,
-           tgobj~componenttype AS component_type,
-           tgobj~parenttagid AS parent_tag_id,
-           parent_tag~name AS parent_tag_name,
+           tgobj~tagid            AS tag_id,
+           tag~name               AS tag_name,
+           tag~owner              AS owner,
+           tgobj~objectname       AS object_name,
+           tgobj~objecttype       AS object_type,
+           tgobj~componentname    AS component_name,
+           tgobj~componenttype    AS component_type,
+           tgobj~parenttagid      AS parent_tag_id,
+           parent_tag~name        AS parent_tag_name,
            tgobj~parentobjectname AS parent_object_name,
            tgobj~parentobjecttype AS parent_object_type
       FROM zabaptags_i_tgobjn AS tgobj
-        INNER JOIN zabaptags_i_tag AS tag
-          ON tgobj~tagid = tag~tagid
-        LEFT OUTER JOIN zabaptags_i_tag AS parent_tag
-          ON tgobj~parenttagid = parent_tag~tagid
+           INNER JOIN zabaptags_i_tag AS tag
+             ON tgobj~tagid = tag~tagid
+           LEFT OUTER JOIN zabaptags_i_tag AS parent_tag
+             ON tgobj~parenttagid = parent_tag~tagid
       FOR ALL ENTRIES IN @list_request-tag_ids
       WHERE tgobj~tagid = @list_request-tag_ids-table_line
       APPENDING CORRESPONDING FIELDS OF TABLE @found_objects.
@@ -335,28 +335,28 @@ CLASS zcl_abaptags_adt_res_tgobjlist IMPLEMENTATION.
     CHECK select_keys-tag_and_obj IS NOT INITIAL.
 
     SELECT tgobj~id,
-           tgobj~tagid AS tag_id,
-           tag~name AS tag_name,
-           tag~owner AS owner,
-           tgobj~objectname AS object_name,
-           tgobj~objecttype AS object_type,
-           tgobj~componentname AS component_name,
-           tgobj~componenttype AS component_type,
-           tgobj~parenttagid AS parent_tag_id,
-           parent_tag~name AS parent_tag_name,
+           tgobj~tagid            AS tag_id,
+           tag~name               AS tag_name,
+           tag~owner              AS owner,
+           tgobj~objectname       AS object_name,
+           tgobj~objecttype       AS object_type,
+           tgobj~componentname    AS component_name,
+           tgobj~componenttype    AS component_type,
+           tgobj~parenttagid      AS parent_tag_id,
+           parent_tag~name        AS parent_tag_name,
            tgobj~parentobjectname AS parent_object_name,
            tgobj~parentobjecttype AS parent_object_type
       FROM zabaptags_i_tgobjn AS tgobj
-        INNER JOIN zabaptags_i_tag AS tag
-          ON tgobj~tagid = tag~tagid
-        LEFT OUTER JOIN zabaptags_i_tag AS parent_tag
-          ON tgobj~parenttagid = parent_tag~tagid
-        FOR ALL ENTRIES IN @select_keys-tag_and_obj
-        WHERE tgobj~objectname    = @select_keys-tag_and_obj-object_name
-          AND tgobj~objecttype    = @select_keys-tag_and_obj-object_type
-          AND tgobj~componentname = @space
-          AND tgobj~componenttype = @space
-          AND tgobj~tagid         = @select_keys-tag_and_obj-tag_id
+           INNER JOIN zabaptags_i_tag AS tag
+             ON tgobj~tagid = tag~tagid
+           LEFT OUTER JOIN zabaptags_i_tag AS parent_tag
+             ON tgobj~parenttagid = parent_tag~tagid
+      FOR ALL ENTRIES IN @select_keys-tag_and_obj
+      WHERE tgobj~objectname    = @select_keys-tag_and_obj-object_name
+        AND tgobj~objecttype    = @select_keys-tag_and_obj-object_type
+        AND tgobj~componentname = @space
+        AND tgobj~componenttype = @space
+        AND tgobj~tagid         = @select_keys-tag_and_obj-tag_id
       APPENDING CORRESPONDING FIELDS OF TABLE @found_objects.
   ENDMETHOD.
 
@@ -365,26 +365,26 @@ CLASS zcl_abaptags_adt_res_tgobjlist IMPLEMENTATION.
 
     WHILE parent_objects IS NOT INITIAL.
       SELECT tgobj~id,
-             tgobj~tagid AS tag_id,
-             tag~name AS tag_name,
-             tag~owner AS owner,
-             tgobj~objectname AS object_name,
-             tgobj~objecttype AS object_type,
-             tgobj~componentname AS component_name,
-             tgobj~componenttype AS component_type,
-             tgobj~parenttagid AS parent_tag_id,
-             parent_tag~name AS parent_tag_name,
+             tgobj~tagid            AS tag_id,
+             tag~name               AS tag_name,
+             tag~owner              AS owner,
+             tgobj~objectname       AS object_name,
+             tgobj~objecttype       AS object_type,
+             tgobj~componentname    AS component_name,
+             tgobj~componenttype    AS component_type,
+             tgobj~parenttagid      AS parent_tag_id,
+             parent_tag~name        AS parent_tag_name,
              tgobj~parentobjectname AS parent_object_name,
              tgobj~parentobjecttype AS parent_object_type
         FROM zabaptags_i_tgobjn AS tgobj
-          INNER JOIN zabaptags_i_tag AS tag
-            ON tgobj~tagid = tag~tagid
-          LEFT OUTER JOIN zabaptags_i_tag AS parent_tag
-            ON tgobj~parenttagid = parent_tag~tagid
+             INNER JOIN zabaptags_i_tag AS tag
+               ON tgobj~tagid = tag~tagid
+             LEFT OUTER JOIN zabaptags_i_tag AS parent_tag
+               ON tgobj~parenttagid = parent_tag~tagid
         FOR ALL ENTRIES IN @parent_objects
         WHERE tgobj~parentobjectname = @parent_objects-object_name
           AND tgobj~parentobjecttype = @parent_objects-object_type
-          AND tgobj~parenttagid = @parent_objects-tag_id
+          AND tgobj~parenttagid      = @parent_objects-tag_id
         INTO TABLE @DATA(temp).
 
       IF sy-subrc = 0.

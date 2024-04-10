@@ -1,8 +1,7 @@
 "! <p class="shorttext synchronized">Resource for tagged object search</p>
 CLASS zcl_abaptags_adt_res_tgobjsrch DEFINITION
   PUBLIC
-  INHERITING FROM cl_adt_rest_resource
-  FINAL
+  INHERITING FROM cl_adt_rest_resource FINAL
   CREATE PUBLIC.
 
   PUBLIC SECTION.
@@ -170,6 +169,8 @@ CLASS zcl_abaptags_adt_res_tgobjsrch IMPLEMENTATION.
   ENDMETHOD.
 
   METHOD get_parameters.
+    " TODO: parameter IO_REQUEST is never used (ABAP cleaner)
+
     DATA(scope) = COND #(
       WHEN search_params-search_scope IS INITIAL
       THEN zif_abaptags_c_global=>scopes-all
@@ -274,7 +275,8 @@ CLASS zcl_abaptags_adt_res_tgobjsrch IMPLEMENTATION.
           APPEND tagged_object TO tagged_objects REFERENCE INTO added_tgobj.
           IF cds_name_mapper->collect_entry( name = added_tgobj->adt_obj_ref-name
                                              type = added_tgobj->adt_obj_ref-tadir_type ).
-            obj_refs_for_name_mapping = VALUE #( BASE obj_refs_for_name_mapping ( REF #( added_tgobj->adt_obj_ref ) ) ).
+            obj_refs_for_name_mapping = VALUE #( BASE obj_refs_for_name_mapping
+                                                 ( REF #( added_tgobj->adt_obj_ref ) ) ).
           ENDIF.
           CLEAR tagged_object-tags.
         ENDIF.
@@ -286,7 +288,8 @@ CLASS zcl_abaptags_adt_res_tgobjsrch IMPLEMENTATION.
         APPEND tagged_object TO tagged_objects REFERENCE INTO added_tgobj.
         IF cds_name_mapper->collect_entry( name = added_tgobj->adt_obj_ref-name
                                            type = added_tgobj->adt_obj_ref-tadir_type ).
-          obj_refs_for_name_mapping = VALUE #( BASE obj_refs_for_name_mapping ( REF #( added_tgobj->adt_obj_ref ) ) ).
+          obj_refs_for_name_mapping = VALUE #( BASE obj_refs_for_name_mapping
+                                               ( REF #( added_tgobj->adt_obj_ref ) ) ).
         ENDIF.
       ENDIF.
     ENDLOOP.
@@ -323,7 +326,7 @@ CLASS zcl_abaptags_adt_res_tgobjsrch IMPLEMENTATION.
           CONTINUE.
       ENDTRY.
       child_tgobj_info-tag_id   = <tgobj_child>-tag_id.
-      child_tgobj_info-tag_name = child_tgobj_info-tag_name && ` > ` && <tgobj_child>-tag_name.
+      child_tgobj_info-tag_name = |{ child_tgobj_info-tag_name } > { <tgobj_child>-tag_name }|.
       tgobj_infos = VALUE #( BASE tgobj_infos ( child_tgobj_info ) ).
     ENDLOOP.
   ENDMETHOD.
@@ -346,7 +349,8 @@ CLASS zcl_abaptags_adt_res_tgobjsrch IMPLEMENTATION.
           AND (comp_tgobj_where_filter)
         GROUP BY object_name, object_type, component_name, component_type
         HAVING COUNT(*) = @tag_count
-        ORDER BY object_type, object_name
+        ORDER BY object_type,
+                 object_name
         INTO CORRESPONDING FIELDS OF TABLE @tagged_objects_db
         UP TO @max_results ROWS.
     ELSE.
@@ -358,7 +362,8 @@ CLASS zcl_abaptags_adt_res_tgobjsrch IMPLEMENTATION.
           AND parent_object_name IN @parent_object_name_range
           AND parent_object_type IN @parent_object_type_range
           AND (comp_tgobj_where_filter)
-        ORDER BY object_type, object_name
+        ORDER BY object_type,
+                 object_name
         INTO CORRESPONDING FIELDS OF TABLE @tagged_objects_db
         UP TO @max_results ROWS.
     ENDIF.
@@ -366,19 +371,19 @@ CLASS zcl_abaptags_adt_res_tgobjsrch IMPLEMENTATION.
 
   METHOD get_tagged_object_info.
     SELECT tagged_object~object_name,
-         tagged_object~object_type,
-         tag~tag_id,
-         tag~name AS tag_name,
-         tag~owner AS tag_owner
-    FROM zabaptags_tags AS tag
-      INNER JOIN zabaptags_tgobjn AS tagged_object
-        ON tag~tag_id = tagged_object~tag_id
-    FOR ALL ENTRIES IN @tagged_objects_db
-    WHERE tagged_object~object_type = @tagged_objects_db-object_type
-      AND tagged_object~object_name = @tagged_objects_db-object_name
-      AND tagged_object~tag_id IN @tag_id_range
-      AND (comp_tgobj_where_filter)
-    INTO CORRESPONDING FIELDS OF TABLE @tgobj_infos.
+           tagged_object~object_type,
+           tag~tag_id,
+           tag~name                  AS tag_name,
+           tag~owner                 AS tag_owner
+      FROM zabaptags_tags AS tag
+           INNER JOIN zabaptags_tgobjn AS tagged_object
+             ON tag~tag_id = tagged_object~tag_id
+      FOR ALL ENTRIES IN @tagged_objects_db
+      WHERE tagged_object~object_type = @tagged_objects_db-object_type
+        AND tagged_object~object_name = @tagged_objects_db-object_name
+        AND tagged_object~tag_id IN @tag_id_range
+        AND (comp_tgobj_where_filter)
+      INTO CORRESPONDING FIELDS OF TABLE @tgobj_infos.
   ENDMETHOD.
 
   METHOD fill_ddl_display_names.

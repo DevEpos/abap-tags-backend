@@ -1,6 +1,5 @@
 CLASS zcl_abaptags_adt_util DEFINITION
-  PUBLIC
-  FINAL
+  PUBLIC FINAL
   CREATE PUBLIC.
 
   PUBLIC SECTION.
@@ -75,8 +74,9 @@ CLASS zcl_abaptags_adt_util DEFINITION
     CONSTANTS:
       BEGIN OF c_error_messages,
         wb_request_not_created TYPE string VALUE 'Workbench Request object could not be created' ##NO_TEXT,
-      END OF c_error_messages,
-      c_segw_project_uri_pattern TYPE string VALUE '/sap/bc/adt/vit/gw/sb/project/',
+      END OF c_error_messages.
+    CONSTANTS c_segw_project_uri_pattern TYPE string VALUE '/sap/bc/adt/vit/gw/sb/project/'.
+    CONSTANTS:
       BEGIN OF c_adt_types,
         function_module TYPE trobjtype VALUE 'FUNC',
         function_group  TYPE trobjtype VALUE 'FUGR',
@@ -87,13 +87,15 @@ CLASS zcl_abaptags_adt_util DEFINITION
       BEGIN OF ty_compiler_map,
         main_prog TYPE progname,
         ref       TYPE REF TO cl_abap_compiler,
-      END OF ty_compiler_map,
+      END OF ty_compiler_map.
 
+    TYPES:
       BEGIN OF ty_adt_object_uri_map,
         name TYPE seu_objkey,
         type TYPE wbobjtype,
         uri  TYPE string,
-      END OF ty_adt_object_uri_map,
+      END OF ty_adt_object_uri_map.
+    TYPES:
       BEGIN OF ty_adt_object_info_map,
         name       TYPE sobj_name,
         type       TYPE trobjtype,
@@ -101,7 +103,7 @@ CLASS zcl_abaptags_adt_util DEFINITION
       END OF ty_adt_object_info_map.
 
     CLASS-DATA adt_obj_infos TYPE HASHED TABLE OF ty_adt_object_info_map WITH UNIQUE KEY name type.
-    CLASS-DATA compiler_map  TYPE HASHED TABLE OF ty_compiler_map WITH UNIQUE KEY main_prog.
+    CLASS-DATA compiler_map TYPE HASHED TABLE OF ty_compiler_map WITH UNIQUE KEY main_prog.
 
     CLASS-METHODS resolve_parent_uri
       CHANGING

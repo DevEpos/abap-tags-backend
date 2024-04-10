@@ -1,8 +1,7 @@
 "! <p class="shorttext synchronized">Router for ABAP Tags</p>
 CLASS zcl_abaptags_adt_disc_app DEFINITION
   PUBLIC
-  INHERITING FROM cl_adt_disc_res_app_base
-  FINAL
+  INHERITING FROM cl_adt_disc_res_app_base FINAL
   CREATE PUBLIC.
 
   PUBLIC SECTION.

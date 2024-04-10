@@ -1,7 +1,6 @@
 "! <p class="shorttext synchronized">Reads tagged object infos for local clas, intf, etc.</p>
 CLASS zcl_abaptags_tgobj_read_locals DEFINITION
- PUBLIC
-  FINAL
+  PUBLIC FINAL
   CREATE PUBLIC.
 
   PUBLIC SECTION.
@@ -87,35 +86,34 @@ CLASS zcl_abaptags_tgobj_read_locals IMPLEMENTATION.
       RETURN.
     ENDIF.
 
-    SELECT DISTINCT
-           tag~tag_id,
-           tgobj~parent_tag_id,
-           tag~owner,
-           tag~name,
-           parent~name AS parent_tag_name,
-           tgobj~component_name,
-           tgobj~component_type,
-           tgobj~parent_object_name,
-           tgobj~parent_object_type
+    SELECT DISTINCT tag~tag_id,
+                    tgobj~parent_tag_id,
+                    tag~owner,
+                    tag~name,
+                    parent~name              AS parent_tag_name,
+                    tgobj~component_name,
+                    tgobj~component_type,
+                    tgobj~parent_object_name,
+                    tgobj~parent_object_type
       FROM zabaptags_tgobjn AS tgobj
-        INNER JOIN zabaptags_tags AS tag
-          ON tgobj~tag_id = tag~tag_id
-        LEFT OUTER JOIN zabaptags_tags AS parent
-          ON tgobj~parent_tag_id = parent~tag_id
+           INNER JOIN zabaptags_tags AS tag
+             ON tgobj~tag_id = tag~tag_id
+           LEFT OUTER JOIN zabaptags_tags AS parent
+             ON tgobj~parent_tag_id = parent~tag_id
       WHERE tgobj~component_name <> @space
-        AND tgobj~tag_id IN @shared_tags_of_logon_user
-        AND tgobj~object_name = @object_name
-        AND tgobj~object_type = @tadir_type
-        AND tag~owner <> @sy-uname
-        AND tag~owner <> @space
+        AND tgobj~tag_id         IN @shared_tags_of_logon_user
+        AND tgobj~object_name     = @object_name
+        AND tgobj~object_type     = @tadir_type
+        AND tag~owner            <> @sy-uname
+        AND tag~owner            <> @space
       INTO CORRESPONDING FIELDS OF TABLE @result.
   ENDMETHOD.
 
   METHOD find_shared_tags_of_logon_user.
     DATA current_usr_shared_tags TYPE RANGE OF zabaptags_tag_id.
 
-    SELECT 'I' AS sign,
-           'EQ' AS option,
+    SELECT 'I'    AS sign,
+           'EQ'   AS option,
            tag_id AS low
       FROM zabaptags_shtags
       WHERE shared_user = @sy-uname
@@ -126,8 +124,8 @@ CLASS zcl_abaptags_tgobj_read_locals IMPLEMENTATION.
 
       " additionally collect all the child tags of the
       " found shared tags
-      SELECT 'I' AS sign,
-             'EQ' AS option,
+      SELECT 'I'    AS sign,
+             'EQ'   AS option,
              tag_id AS low
         FROM zabaptags_tagsrm
         WHERE root_tag_id IN @current_usr_shared_tags
@@ -136,26 +134,26 @@ CLASS zcl_abaptags_tgobj_read_locals IMPLEMENTATION.
   ENDMETHOD.
 
   METHOD find_tags_of_of_local_objects.
-    SELECT DISTINCT
-           tag~tag_id,
-           tgobj~parent_tag_id,
-           tag~owner,
-           tag~name,
-           parent~name AS parent_tag_name,
-           tgobj~component_name,
-           tgobj~component_type,
-           tgobj~parent_object_name,
-           tgobj~parent_object_type
+    SELECT DISTINCT tag~tag_id,
+                    tgobj~parent_tag_id,
+                    tag~owner,
+                    tag~name,
+                    parent~name              AS parent_tag_name,
+                    tgobj~component_name,
+                    tgobj~component_type,
+                    tgobj~parent_object_name,
+                    tgobj~parent_object_type
       FROM zabaptags_tgobjn AS tgobj
-        INNER JOIN zabaptags_tags AS tag
-          ON tgobj~tag_id = tag~tag_id
-        LEFT OUTER JOIN zabaptags_tags AS parent
-          ON tgobj~parent_tag_id = parent~tag_id
+           INNER JOIN zabaptags_tags AS tag
+             ON tgobj~tag_id = tag~tag_id
+           LEFT OUTER JOIN zabaptags_tags AS parent
+             ON tgobj~parent_tag_id = parent~tag_id
       WHERE tgobj~component_name <> @space
-        AND tgobj~object_name = @object_name
-        AND tgobj~object_type = @tadir_type
+        AND tgobj~object_name     = @object_name
+        AND tgobj~object_type     = @tadir_type
         AND ( tag~owner = @sy-uname OR tag~owner = @space )
-      ORDER BY tag~owner, tag~name
+      ORDER BY tag~owner,
+               tag~name
       INTO CORRESPONDING FIELDS OF TABLE @result.
   ENDMETHOD.
 
@@ -192,13 +190,13 @@ CLASS zcl_abaptags_tgobj_read_locals IMPLEMENTATION.
       ENDIF.
 
       DATA(tagged_local_obj) = VALUE zabaptags_tagged_object(
-          adt_obj_ref = VALUE #( name        = <local_obj_info_entry>-component_name
-                                 " Type will be changed during mapping to a more generic type so
-                                 " we keep the originally persisted one
-                                 type        = <local_obj_info_entry>-component_type
-                                 parent_name = object_name
-                                 uri         = local_adt_obj_ref-uri
-                                 parent_uri  = object_uri ) ).
+                                         adt_obj_ref = VALUE #( name        = <local_obj_info_entry>-component_name
+                                                                " Type will be changed during mapping to a more generic type so
+                                                                " we keep the originally persisted one
+                                                                type        = <local_obj_info_entry>-component_type
+                                                                parent_name = object_name
+                                                                uri         = local_adt_obj_ref-uri
+                                                                parent_uri  = object_uri ) ).
 
       LOOP AT GROUP <local_obj_info_entry> ASSIGNING FIELD-SYMBOL(<local_obj_info_group_entry>).
         DATA(parent) = get_adt_obj( object_name = <local_obj_info_group_entry>-parent_object_name

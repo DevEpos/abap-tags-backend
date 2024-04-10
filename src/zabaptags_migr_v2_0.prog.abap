@@ -60,18 +60,15 @@ CLASS lcl_migrator IMPLEMENTATION.
   ENDMETHOD.
 
   METHOD is_tgobj_migration_required.
-    SELECT SINGLE @abap_true
-      FROM zabaptags_tgobj
+    SELECT SINGLE @abap_true FROM zabaptags_tgobj
       INTO @result.
   ENDMETHOD.
 
   METHOD is_tagsrm_migration_required.
-    SELECT SINGLE @abap_true
-      FROM zabaptags_tags AS tag
-      WHERE tag~parent_tag_id <> '00000000000000000000000000000000'
+    SELECT SINGLE @abap_true FROM zabaptags_tags AS tag
+      WHERE     tag~parent_tag_id <> '00000000000000000000000000000000'
         AND NOT EXISTS (
-          SELECT @abap_true
-            FROM zabaptags_tagsrm
+          SELECT @abap_true FROM zabaptags_tagsrm
             WHERE root_tag_id = tag~parent_tag_id )
       INTO @result.
   ENDMETHOD.
@@ -90,8 +87,8 @@ CLASS lcl_migrator IMPLEMENTATION.
              tgobj~tagged_by,
              tgobj~tagged_date
         FROM zabaptags_tgobj AS tgobj
-          INNER JOIN zabaptags_tags AS tag
-            ON tgobj~tag_id = tag~tag_id.
+             INNER JOIN zabaptags_tags AS tag
+               ON tgobj~tag_id = tag~tag_id.
 
     DO.
       FETCH NEXT CURSOR @tgobj_curs
@@ -174,13 +171,12 @@ CLASS lcl_migrator IMPLEMENTATION.
       RETURN.
     ENDIF.
 
-    SELECT *
-      FROM zabaptags_tgobjn
+    SELECT * FROM zabaptags_tgobjn
       FOR ALL ENTRIES IN @tagged_objects
-      WHERE tag_id = @tagged_objects-tag_id
-        AND object_name = @tagged_objects-object_name
-        AND object_type = @tagged_objects-object_type
-        AND parent_tag_id = @tagged_objects-parent_tag_id
+      WHERE tag_id             = @tagged_objects-tag_id
+        AND object_name        = @tagged_objects-object_name
+        AND object_type        = @tagged_objects-object_type
+        AND parent_tag_id      = @tagged_objects-parent_tag_id
         AND parent_object_type = @tagged_objects-parent_object_type
         AND parent_object_name = @tagged_objects-parent_object_name
       INTO CORRESPONDING FIELDS OF TABLE @existing_entries.

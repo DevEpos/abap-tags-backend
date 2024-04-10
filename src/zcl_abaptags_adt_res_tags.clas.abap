@@ -1,8 +1,7 @@
 "! <p class="shorttext synchronized">ADT Resource for ABAP Tags</p>
 CLASS zcl_abaptags_adt_res_tags DEFINITION
   PUBLIC
-  INHERITING FROM cl_adt_rest_resource
-  FINAL
+  INHERITING FROM cl_adt_rest_resource FINAL
   CREATE PUBLIC.
 
   PUBLIC SECTION.
@@ -19,8 +18,9 @@ CLASS zcl_abaptags_adt_res_tags DEFINITION
         unlock       TYPE string VALUE 'unlock' ##NO_TEXT,
         batch_delete TYPE string VALUE 'batchDelete' ##NO_TEXT,
         make_global  TYPE string VALUE 'makeGlobal' ##NO_TEXT,
-      END OF c_actions,
+      END OF c_actions.
 
+    CONSTANTS:
       BEGIN OF c_params,
         query             TYPE string VALUE 'query' ##NO_TEXT,
         scope             TYPE string VALUE 'scope' ##NO_TEXT,
@@ -33,7 +33,8 @@ CLASS zcl_abaptags_adt_res_tags DEFINITION
       BEGIN OF ty_tag_map,
         tag_id TYPE zabaptags_tag_id,
         data   TYPE REF TO zabaptags_tag_data,
-      END OF ty_tag_map,
+      END OF ty_tag_map.
+    TYPES:
       BEGIN OF ty_tag_id,
         tag_id TYPE zabaptags_tag_id,
       END OF ty_tag_id.
@@ -219,8 +220,7 @@ CLASS zcl_abaptags_adt_res_tags IMPLEMENTATION.
     CHECK tags IS NOT INITIAL.
 
     " determine sub tags via root/tag map
-    SELECT *
-      FROM zabaptags_tagsrm
+    SELECT * FROM zabaptags_tagsrm
       FOR ALL ENTRIES IN @tags
       WHERE root_tag_id = @tags-tag_id
       INTO TABLE @DATA(root_maps).

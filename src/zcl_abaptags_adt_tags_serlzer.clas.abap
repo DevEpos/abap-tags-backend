@@ -1,7 +1,6 @@
 "! <p class="shorttext synchronized">Serializer for child tags of ABAP Tag</p>
 CLASS zcl_abaptags_adt_tags_serlzer DEFINITION
-  PUBLIC
-  FINAL
+  PUBLIC FINAL
   CREATE PUBLIC.
 
   PUBLIC SECTION.
@@ -60,6 +59,8 @@ CLASS zcl_abaptags_adt_tags_serlzer IMPLEMENTATION.
   ENDMETHOD.
 
   METHOD serialize.
+    " TODO: parameter WRITER is never used (ABAP cleaner)
+
     FIELD-SYMBOLS <children> TYPE zabaptags_tag_data_t.
 
     CHECK tag-child_tags IS BOUND.

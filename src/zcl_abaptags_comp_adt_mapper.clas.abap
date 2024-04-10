@@ -9,8 +9,7 @@
 "! This issues may be resolved with a adjusted RegEx logic and some post processing of the matches
 "! to consider all possible variations of declaration/implementation statements.
 CLASS zcl_abaptags_comp_adt_mapper DEFINITION
-  PUBLIC
-  FINAL
+  PUBLIC FINAL
   CREATE PUBLIC.
 
   PUBLIC SECTION.
@@ -212,7 +211,8 @@ CLASS zcl_abaptags_comp_adt_mapper IMPLEMENTATION.
       EXCEPTIONS delimiter_error         = 0.
 
     IF is_fugr_include = abap_true.
-      process_function_include( main_obj = main_obj alt_main_obj_type = zif_abaptags_c_global=>object_types-function_group ).
+      process_function_include( main_obj          = main_obj
+                                alt_main_obj_type = zif_abaptags_c_global=>object_types-function_group ).
     ELSE.
       search_include( main_obj  = main_obj
                       main_prog = CONV #( main_obj-name )

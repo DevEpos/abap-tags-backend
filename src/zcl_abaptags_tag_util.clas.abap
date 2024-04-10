@@ -1,7 +1,6 @@
 "! <p class="shorttext synchronized">Utility methods for ABAP Tags</p>
 CLASS zcl_abaptags_tag_util DEFINITION
-  PUBLIC
-  FINAL
+  PUBLIC FINAL
   CREATE PUBLIC.
 
   PUBLIC SECTION.

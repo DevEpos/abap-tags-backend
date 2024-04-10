@@ -1,8 +1,7 @@
 "! <p class="shorttext synchronized">Resource for deletion check of tagged objects</p>
 CLASS zcl_abaptags_adt_res_tgobjdchk DEFINITION
   PUBLIC
-  INHERITING FROM cl_adt_rest_resource
-  FINAL
+  INHERITING FROM cl_adt_rest_resource FINAL
   CREATE PUBLIC.
 
   PUBLIC SECTION.
@@ -87,12 +86,12 @@ CLASS zcl_abaptags_adt_res_tgobjdchk IMPLEMENTATION.
     SELECT tgobj~id,
            child~id AS child_id
       FROM zabaptags_i_tgobjn AS tgobj
-        LEFT OUTER JOIN zabaptags_i_tgobjn AS child
-          ON  tgobj~tagid         = child~parenttagid
-          AND tgobj~objectname    = child~parentobjectname
-          AND tgobj~objecttype    = child~parentobjecttype
-          " Hint: Components can not have children at this time
-          AND tgobj~componentname = @space
+           LEFT OUTER JOIN zabaptags_i_tgobjn AS child
+             ON  tgobj~tagid         = child~parenttagid
+             AND tgobj~objectname    = child~parentobjectname
+             AND tgobj~objecttype    = child~parentobjecttype
+             " Hint: Components can not have children at this time
+             AND tgobj~componentname = @space
       FOR ALL ENTRIES IN @object_ids
       WHERE tgobj~id = @object_ids-table_line
       INTO TABLE @found_objects.

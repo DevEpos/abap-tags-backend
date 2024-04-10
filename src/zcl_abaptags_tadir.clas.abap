@@ -1,7 +1,6 @@
 "! <p class="shorttext synchronized">API for TADIR access</p>
 CLASS zcl_abaptags_tadir DEFINITION
-  PUBLIC
-  FINAL
+  PUBLIC FINAL
   CREATE PUBLIC.
 
   PUBLIC SECTION.

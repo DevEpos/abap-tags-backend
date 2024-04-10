@@ -1,7 +1,6 @@
 "! <p class="shorttext synchronized">Request Util for ADT</p>
 CLASS zcl_abaptags_adt_request_util DEFINITION
-  PUBLIC
-  FINAL
+  PUBLIC FINAL
   CREATE PUBLIC.
 
   PUBLIC SECTION.
@@ -87,7 +86,7 @@ CLASS zcl_abaptags_adt_request_util IMPLEMENTATION.
     ENDIF.
 
     IF upper_case = abap_true.
-      TRANSLATE result TO UPPER CASE.
+      result = to_upper( result ).
     ENDIF.
   ENDMETHOD.
 
@@ -106,7 +105,7 @@ CLASS zcl_abaptags_adt_request_util IMPLEMENTATION.
     IF upper_case = abap_true.
 
       LOOP AT results ASSIGNING FIELD-SYMBOL(<value>).
-        TRANSLATE <value> TO UPPER CASE.
+        <value> = to_upper( <value> ).
       ENDLOOP.
 
     ENDIF.

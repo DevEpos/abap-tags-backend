@@ -1,7 +1,6 @@
 "! <p class="shorttext synchronized">Reads Tagged Object information about a single object</p>
 CLASS zcl_abaptags_tgobj_read_single DEFINITION
-  PUBLIC
-  FINAL
+  PUBLIC FINAL
   CREATE PUBLIC.
 
   PUBLIC SECTION.
@@ -86,24 +85,24 @@ CLASS zcl_abaptags_tgobj_read_single IMPLEMENTATION.
   ENDMETHOD.
 
   METHOD find_tags_of_object.
-    SELECT DISTINCT
-           tag~tag_id,
-           tgobj~parent_tag_id,
-           tag~owner,
-           tag~name,
-           parent~name AS parent_tag_name,
-           tgobj~parent_object_name,
-           tgobj~parent_object_type
+    SELECT DISTINCT tag~tag_id,
+                    tgobj~parent_tag_id,
+                    tag~owner,
+                    tag~name,
+                    parent~name              AS parent_tag_name,
+                    tgobj~parent_object_name,
+                    tgobj~parent_object_type
       FROM zabaptags_tgobjn AS tgobj
-        INNER JOIN zabaptags_tags AS tag
-          ON tgobj~tag_id = tag~tag_id
-        LEFT OUTER JOIN zabaptags_tags AS parent
-          ON tgobj~parent_tag_id = parent~tag_id
+           INNER JOIN zabaptags_tags AS tag
+             ON tgobj~tag_id = tag~tag_id
+           LEFT OUTER JOIN zabaptags_tags AS parent
+             ON tgobj~parent_tag_id = parent~tag_id
       WHERE tgobj~object_name = @object_name
         AND tgobj~object_type = @tadir_type
         AND ( tag~owner = @sy-uname OR tag~owner = @space )
         AND tgobj~component_name = @space
-      ORDER BY tag~owner, tag~name
+      ORDER BY tag~owner,
+               tag~name
       INTO CORRESPONDING FIELDS OF TABLE @result.
   ENDMETHOD.
 
@@ -114,33 +113,32 @@ CLASS zcl_abaptags_tgobj_read_single IMPLEMENTATION.
       RETURN.
     ENDIF.
 
-    SELECT DISTINCT
-           tag~tag_id,
-           tgobj~parent_tag_id,
-           tag~owner,
-           tag~name,
-           parent~name AS parent_tag_name,
-           tgobj~parent_object_name,
-           tgobj~parent_object_type
+    SELECT DISTINCT tag~tag_id,
+                    tgobj~parent_tag_id,
+                    tag~owner,
+                    tag~name,
+                    parent~name              AS parent_tag_name,
+                    tgobj~parent_object_name,
+                    tgobj~parent_object_type
       FROM zabaptags_tgobjn AS tgobj
-        INNER JOIN zabaptags_tags AS tag
-          ON tgobj~tag_id = tag~tag_id
-        LEFT OUTER JOIN zabaptags_tags AS parent
-          ON tgobj~parent_tag_id = parent~tag_id
-      WHERE tgobj~tag_id IN @shared_tags_of_logon_user
-        AND tgobj~object_name = @object_name
-        AND tgobj~object_type = @tadir_type
-        AND tag~owner <> @sy-uname
-        AND tag~owner <> @space
-        AND tgobj~component_name = @space
+           INNER JOIN zabaptags_tags AS tag
+             ON tgobj~tag_id = tag~tag_id
+           LEFT OUTER JOIN zabaptags_tags AS parent
+             ON tgobj~parent_tag_id = parent~tag_id
+      WHERE tgobj~tag_id         IN @shared_tags_of_logon_user
+        AND tgobj~object_name     = @object_name
+        AND tgobj~object_type     = @tadir_type
+        AND tag~owner            <> @sy-uname
+        AND tag~owner            <> @space
+        AND tgobj~component_name  = @space
       INTO CORRESPONDING FIELDS OF TABLE @result.
   ENDMETHOD.
 
   METHOD find_shared_tags_of_logon_user.
     DATA current_usr_shared_tags TYPE RANGE OF zabaptags_tag_id.
 
-    SELECT 'I' AS sign,
-           'EQ' AS option,
+    SELECT 'I'    AS sign,
+           'EQ'   AS option,
            tag_id AS low
       FROM zabaptags_shtags
       WHERE shared_user = @sy-uname
@@ -151,8 +149,8 @@ CLASS zcl_abaptags_tgobj_read_single IMPLEMENTATION.
 
       " additionally collect all the child tags of the
       " found shared tags
-      SELECT 'I' AS sign,
-             'EQ' AS option,
+      SELECT 'I'    AS sign,
+             'EQ'   AS option,
              tag_id AS low
         FROM zabaptags_tagsrm
         WHERE root_tag_id IN @current_usr_shared_tags

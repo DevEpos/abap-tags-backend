@@ -1,7 +1,6 @@
 "! <p class="shorttext synchronized">DB Access for TADIR</p>
 CLASS zcl_abaptags_tadir_dac DEFINITION
-  PUBLIC
-  FINAL
+  PUBLIC FINAL
   CREATE PUBLIC.
 
   PUBLIC SECTION.
@@ -33,11 +32,10 @@ CLASS zcl_abaptags_tadir_dac IMPLEMENTATION.
   METHOD get_tadir_infos.
     CHECK tadir_keys IS NOT INITIAL.
 
-    SELECT DISTINCT
-           obj_name AS name,
-           object AS type,
-           devclass AS package_name,
-           author
+    SELECT DISTINCT obj_name AS name,
+                    object   AS type,
+                    devclass AS package_name,
+                    author
       FROM tadir
       FOR ALL ENTRIES IN @tadir_keys
       WHERE obj_name = @tadir_keys-name

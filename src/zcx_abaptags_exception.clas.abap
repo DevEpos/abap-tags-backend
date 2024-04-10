@@ -1,8 +1,7 @@
 "! <p class="shorttext synchronized">General Exception in ABAP Tags API</p>
 CLASS zcx_abaptags_exception DEFINITION
   PUBLIC
-  INHERITING FROM cx_static_check
-  FINAL
+  INHERITING FROM cx_static_check FINAL
   CREATE PUBLIC.
 
   PUBLIC SECTION.

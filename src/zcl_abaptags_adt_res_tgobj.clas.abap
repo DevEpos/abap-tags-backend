@@ -1,8 +1,7 @@
 "! <p class="shorttext synchronized">ADT Resource for Tagged Objects</p>
 CLASS zcl_abaptags_adt_res_tgobj DEFINITION
   PUBLIC
-  INHERITING FROM cl_adt_rest_resource
-  FINAL
+  INHERITING FROM cl_adt_rest_resource FINAL
   CREATE PUBLIC.
 
   PUBLIC SECTION.

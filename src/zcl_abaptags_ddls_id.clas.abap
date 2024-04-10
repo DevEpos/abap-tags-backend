@@ -1,7 +1,6 @@
 "! <p class="shorttext synchronized">Hold release independent DDLS Id's for Open SQL</p>
 CLASS zcl_abaptags_ddls_id DEFINITION
-  PUBLIC
-  FINAL
+  PUBLIC FINAL
   CREATE PRIVATE.
 
   PUBLIC SECTION.

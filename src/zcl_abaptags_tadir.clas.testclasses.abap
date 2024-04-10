@@ -1,7 +1,6 @@
 *"* use this source file for your ABAP unit test classes
-CLASS ltcl_abap_unit DEFINITION FINAL FOR TESTING
-  DURATION SHORT
-  RISK LEVEL HARMLESS.
+CLASS ltcl_abap_unit DEFINITION FINAL
+  FOR TESTING RISK LEVEL HARMLESS DURATION SHORT.
 
   PRIVATE SECTION.
     TYPES BEGIN OF ty_extended_key.
@@ -31,9 +30,9 @@ CLASS ltcl_abap_unit IMPLEMENTATION.
     cut->determine_tadir_entries( ).
 
     LOOP AT keys ASSIGNING FIELD-SYMBOL(<key>).
-      cl_abap_unit_assert=>assert_equals( act = cut->get_tadir_info( name = <key>-name
-                                                                     type = <key>-type )-package_name
-                                          exp = <key>-package ).
+      cl_abap_unit_assert=>assert_equals( exp = <key>-package
+                                          act = cut->get_tadir_info( name = <key>-name
+                                                                     type = <key>-type )-package_name ).
     ENDLOOP.
 
     TRY.

@@ -1,7 +1,6 @@
 "! <p class="shorttext synchronized">DB Access for TFDIR</p>
 CLASS zcl_abaptags_tfdir_dac DEFINITION
-  PUBLIC
-  FINAL
+  PUBLIC FINAL
   CREATE PUBLIC.
 
   PUBLIC SECTION.
@@ -34,7 +33,7 @@ CLASS zcl_abaptags_tfdir_dac IMPLEMENTATION.
     CHECK keys IS NOT INITIAL.
 
     SELECT funcname AS function,
-           pname AS program
+           pname    AS program
       FROM tfdir
       WHERE funcname IN @keys
       INTO CORRESPONDING FIELDS OF TABLE @result.

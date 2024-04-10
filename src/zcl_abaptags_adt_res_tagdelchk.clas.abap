@@ -1,8 +1,7 @@
 "! <p class="shorttext synchronized">Resource to check Tag Deletion</p>
 CLASS zcl_abaptags_adt_res_tagdelchk DEFINITION
   PUBLIC
-  INHERITING FROM cl_adt_rest_resource
-  FINAL
+  INHERITING FROM cl_adt_rest_resource FINAL
   CREATE PUBLIC.
 
   PUBLIC SECTION.
@@ -60,7 +59,7 @@ CLASS zcl_abaptags_adt_res_tagdelchk IMPLEMENTATION.
 
     " run check against selected nodes first
     SELECT aggr~tag_id,
-           COUNT(*) AS count
+           COUNT(*)    AS count
       FROM zabaptags_i_taggedobjaggr AS aggr
       WHERE aggr~tag_id IN @tags_range
       GROUP BY aggr~tag_id
@@ -70,14 +69,14 @@ CLASS zcl_abaptags_adt_res_tagdelchk IMPLEMENTATION.
     LOOP AT counts ASSIGNING FIELD-SYMBOL(<tag_obj_count>).
       check_result-tags = VALUE #( BASE check_result-tags
                                    ( tag_id       = <tag_obj_count>-tag_id
-                                     message      = |Still { <tag_obj_count>-count } | && COND #(
-                                       WHEN <tag_obj_count>-count > 1 THEN `objects` ELSE `object` ) && ` assigned`
+                                     message      = |Still { <tag_obj_count>-count } { COND #(
+                                       WHEN <tag_obj_count>-count > 1 THEN `objects` ELSE `object` ) } assigned|
                                      message_type = zif_abaptags_c_global=>message_types-error ) ).
     ENDLOOP.
 
     IF lines( counts ) <> lines( tags_to_delete ).
       " check if there are child tags with tagged objects
-      SELECT tagid AS tag_id,
+      SELECT tagid       AS tag_id,
              objectcount AS count
         FROM zabaptags_i_roottagswocnt
         WHERE tagid IN @tags_range
@@ -89,15 +88,15 @@ CLASS zcl_abaptags_adt_res_tagdelchk IMPLEMENTATION.
         check_result-tags = VALUE #(
             BASE check_result-tags
             ( tag_id       = <root_count>-tag_id
-              message      = |Still { <root_count>-count } | && COND #(
-                WHEN <root_count>-count > 1 THEN `objects` ELSE `object` ) && ` in lower tree levels assigned`
+              message      = |Still { <root_count>-count } { COND #(
+                WHEN <root_count>-count > 1 THEN `objects` ELSE `object` ) } in lower tree levels assigned|
               message_type = zif_abaptags_c_global=>message_types-error ) ).
       ENDLOOP.
     ENDIF.
 
     IF lines( check_result-tags ) <> lines( tags_to_delete ).
       SELECT root_tag_id,
-             COUNT(*) AS count
+             COUNT(*)    AS count
         FROM zabaptags_tagsrm AS root_child
         WHERE root_tag_id IN @tags_range
         GROUP BY root_tag_id

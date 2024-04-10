@@ -1,8 +1,7 @@
 "! <p class="shorttext synchronized">Resource for Tagged object tree services</p>
 CLASS zcl_abaptags_adt_res_tgobjtsrv DEFINITION
   PUBLIC
-  INHERITING FROM cl_adt_rest_resource
-  FINAL
+  INHERITING FROM cl_adt_rest_resource FINAL
   CREATE PUBLIC.
 
   PUBLIC SECTION.
@@ -24,13 +23,15 @@ CLASS zcl_abaptags_adt_res_tgobjtsrv DEFINITION
         tag_id      TYPE zabaptags_tag_id,
         root_tag_id TYPE zabaptags_tag_id,
         has_objects TYPE abap_bool,
-      END OF ty_tag_to_root_tag,
+      END OF ty_tag_to_root_tag.
 
+    TYPES:
       BEGIN OF ty_tag_with_obj_count,
         tag_id              TYPE zabaptags_tags-tag_id,
         tagged_object_count TYPE i,
-      END OF ty_tag_with_obj_count,
+      END OF ty_tag_with_obj_count.
 
+    TYPES:
       BEGIN OF ty_sub_lvl_obj_with_tag,
         tag_id             TYPE zabaptags_tag_id,
         parent_tag_id      TYPE zabaptags_tag_id,
@@ -45,9 +46,9 @@ CLASS zcl_abaptags_adt_res_tgobjtsrv DEFINITION
         has_grand_children TYPE abap_bool,
       END OF ty_sub_lvl_obj_with_tag,
 
-      ty_sub_lvl_objs_with_tag TYPE STANDARD TABLE OF ty_sub_lvl_obj_with_tag WITH EMPTY KEY,
-      ty_tags_with_obj_counts  TYPE STANDARD TABLE OF ty_tag_with_obj_count WITH EMPTY KEY,
-      ty_tag_data_sorted       TYPE SORTED TABLE OF zabaptags_tag_data WITH UNIQUE KEY tag_id.
+      ty_sub_lvl_objs_with_tag TYPE STANDARD TABLE OF ty_sub_lvl_obj_with_tag WITH EMPTY KEY.
+    TYPES ty_tags_with_obj_counts TYPE STANDARD TABLE OF ty_tag_with_obj_count WITH EMPTY KEY.
+    TYPES ty_tag_data_sorted TYPE SORTED TABLE OF zabaptags_tag_data WITH UNIQUE KEY tag_id.
 
     DATA parent_object_name_range TYPE RANGE OF sobj_name.
     DATA parent_object_type_range TYPE RANGE OF trobjtype.
@@ -141,6 +142,8 @@ CLASS zcl_abaptags_adt_res_tgobjtsrv IMPLEMENTATION.
   ENDMETHOD.
 
   METHOD get_parameters.
+    " TODO: parameter IO_REQUEST is never used (ABAP cleaner)
+
     IF request_data-tag_id IS NOT INITIAL.
       tag_id_range = VALUE #( ( sign = 'I' option = 'EQ' low = request_data-tag_id ) ).
     ELSE.
@@ -201,21 +204,21 @@ CLASS zcl_abaptags_adt_res_tgobjtsrv IMPLEMENTATION.
     ENDIF.
 
     IF tag_infos-has_children = abap_true.
-      SELECT tgobj~tagid AS tag_id,
-             tgobj~objectname AS name,
-             tgobj~objecttype AS type,
-             tgobj~componentname AS comp_name,
-             tgobj~componenttype AS comp_type,
+      SELECT tgobj~tagid                              AS tag_id,
+             tgobj~objectname                         AS name,
+             tgobj~objecttype                         AS type,
+             tgobj~componentname                      AS comp_name,
+             tgobj~componenttype                      AS comp_type,
              coalesce( sub_tgobj~dummy, @abap_false ) AS has_children
         FROM zabaptags_i_tgobjn AS tgobj
-          LEFT OUTER JOIN zabaptags_i_tgobjn AS sub_tgobj
-            ON  tgobj~objectname    = sub_tgobj~parentobjectname
-            AND tgobj~objecttype    = sub_tgobj~parentobjecttype
-            AND tgobj~tagid         = sub_tgobj~parenttagid
-            " Hint: Components can not have children at this time
-            AND tgobj~componentname = @space
-        WHERE tgobj~tagid IN @tag_id_range
-          AND tgobj~parentobjectname = @space
+             LEFT OUTER JOIN zabaptags_i_tgobjn AS sub_tgobj
+               ON  tgobj~objectname    = sub_tgobj~parentobjectname
+               AND tgobj~objecttype    = sub_tgobj~parentobjecttype
+               AND tgobj~tagid         = sub_tgobj~parenttagid
+               " Hint: Components can not have children at this time
+               AND tgobj~componentname = @space
+        WHERE tgobj~tagid            IN @tag_id_range
+          AND tgobj~parentobjectname  = @space
         GROUP BY tgobj~tagid,
                  tgobj~objectname,
                  tgobj~objecttype,
@@ -224,16 +227,15 @@ CLASS zcl_abaptags_adt_res_tgobjtsrv IMPLEMENTATION.
                  sub_tgobj~dummy
         INTO CORRESPONDING FIELDS OF TABLE @matching_objects.
     ELSE.
-      SELECT DISTINCT
-             tgobj~tagid AS tag_id,
-             tgobj~objectname AS name,
-             tgobj~objecttype AS type,
-             tgobj~componentname AS comp_name,
-             tgobj~componenttype AS comp_type,
-             @abap_false AS has_children
+      SELECT DISTINCT tgobj~tagid         AS tag_id,
+                      tgobj~objectname    AS name,
+                      tgobj~objecttype    AS type,
+                      tgobj~componentname AS comp_name,
+                      tgobj~componenttype AS comp_type,
+                      @abap_false         AS has_children
         FROM zabaptags_i_tgobjn AS tgobj
-        WHERE tgobj~tagid IN @tag_id_range
-          AND tgobj~parentobjectname = @space
+        WHERE tgobj~tagid            IN @tag_id_range
+          AND tgobj~parentobjectname  = @space
         INTO CORRESPONDING FIELDS OF TABLE @matching_objects.
     ENDIF.
     IF sy-subrc <> 0.
@@ -324,12 +326,12 @@ CLASS zcl_abaptags_adt_res_tgobjtsrv IMPLEMENTATION.
 
   METHOD get_shared_tags.
     IF is_shared_tags_read = abap_false.
-      SELECT 'I' AS sign,
-             'EQ' AS option,
-              shared~tag_id AS low
+      SELECT 'I'           AS sign,
+             'EQ'          AS option,
+             shared~tag_id AS low
         FROM zabaptags_shtags AS shared
-          INNER JOIN zabaptags_tags AS tags
-            ON shared~tag_id = tags~tag_id
+             INNER JOIN zabaptags_tags AS tags
+               ON shared~tag_id = tags~tag_id
         WHERE shared_user = @sy-uname
         INTO CORRESPONDING FIELDS OF TABLE @shared_tags_range.
 
@@ -375,10 +377,10 @@ CLASS zcl_abaptags_adt_res_tgobjtsrv IMPLEMENTATION.
     SELECT map~tag_id,
            COUNT( * ) AS tagged_object_count
       FROM zabaptags_tagsrm AS map
-        INNER JOIN zabaptags_tgobjn AS tgobj
-          ON tgobj~tag_id = map~tag_id
-      WHERE map~root_tag_id IN @tag_id_range
-        AND tgobj~parent_object_name = @space
+           INNER JOIN zabaptags_tgobjn AS tgobj
+             ON tgobj~tag_id = map~tag_id
+      WHERE map~root_tag_id          IN @tag_id_range
+        AND tgobj~parent_object_name  = @space
       GROUP BY map~tag_id
       INTO TABLE @DATA(sub_tags_with_obj_counts).
 
@@ -427,22 +429,19 @@ CLASS zcl_abaptags_adt_res_tgobjtsrv IMPLEMENTATION.
 
     DATA(tag_id) = tag_id_range[ 1 ]-low.
 
-    SELECT SINGLE *
-      FROM zabaptags_tags
+    SELECT SINGLE * FROM zabaptags_tags
       WHERE tag_id = @tag_id
       INTO CORRESPONDING FIELDS OF @tag_infos.
 
     " read flag to mark tagged objects as expandable or not
-    SELECT SINGLE @abap_true
-      FROM zabaptags_tags
+    SELECT SINGLE @abap_true FROM zabaptags_tags
       WHERE parent_tag_id = @tag_id
       INTO @tag_infos-has_children.
 
     IF tag_infos-is_shared = abap_true.
       IF tag_infos-parent_tag_id IS INITIAL.
         " Really necessary to verify if it is still shared for the current user???
-        SELECT SINGLE @abap_true
-          FROM zabaptags_shtags
+        SELECT SINGLE @abap_true FROM zabaptags_shtags
           WHERE tag_id = @tag_id
           INTO @tag_infos-is_shared_for_me.
       ELSE.
@@ -562,18 +561,18 @@ CLASS zcl_abaptags_adt_res_tgobjtsrv IMPLEMENTATION.
   ENDMETHOD.
 
   METHOD find_sub_level_comps_with_tags.
-    SELECT childtagid AS tag_id,
-           childparenttagid AS parent_tag_id,
-           childobjectname AS object_name,
-           childobjecttype AS object_type,
-           childcomponentname AS component_name,
-           childcomponenttype AS component_type,
-           childtagname AS name,
-           childtagnameupper AS name_upper,
+    SELECT childtagid          AS tag_id,
+           childparenttagid    AS parent_tag_id,
+           childobjectname     AS object_name,
+           childobjecttype     AS object_type,
+           childcomponentname  AS component_name,
+           childcomponenttype  AS component_type,
+           childtagname        AS name,
+           childtagnameupper   AS name_upper,
            childtagdescription AS description,
-           childtagowner AS owner
+           childtagowner       AS owner
       FROM zabaptags_i_sublvlcmpwtag
-      WHERE childparenttagid IN @tag_id_range
+      WHERE childparenttagid      IN @tag_id_range
         AND childparentobjectname IN @parent_object_name_range
         AND childparentobjecttype IN @parent_object_type_range
       GROUP BY childtagid,
@@ -590,17 +589,17 @@ CLASS zcl_abaptags_adt_res_tgobjtsrv IMPLEMENTATION.
   ENDMETHOD.
 
   METHOD find_sub_level_objs_with_tags.
-    SELECT childtagid AS tag_id,
-           childparenttagid AS parent_tag_id,
-           childobjectname AS object_name,
-           childobjecttype AS object_type,
-           childtagname AS name,
-           childtagnameupper AS name_upper,
+    SELECT childtagid          AS tag_id,
+           childparenttagid    AS parent_tag_id,
+           childobjectname     AS object_name,
+           childobjecttype     AS object_type,
+           childtagname        AS name,
+           childtagnameupper   AS name_upper,
            childtagdescription AS description,
-           childtagowner AS owner,
-           hasgrandchildren AS has_grand_children
+           childtagowner       AS owner,
+           hasgrandchildren    AS has_grand_children
       FROM zabaptags_i_sublvlobjwtag
-      WHERE childparenttagid IN @tag_id_range
+      WHERE childparenttagid      IN @tag_id_range
         AND childparentobjectname IN @parent_object_name_range
         AND childparentobjecttype IN @parent_object_type_range
       GROUP BY childtagid,
@@ -617,14 +616,14 @@ CLASS zcl_abaptags_adt_res_tgobjtsrv IMPLEMENTATION.
 
   METHOD get_tags_in_hierarchy.
     SELECT tag~tag_id,
-          tag~parent_tag_id,
-          tag~name,
-          tag~name_upper,
-          tag~description,
-          tag~owner
+           tag~parent_tag_id,
+           tag~name,
+           tag~name_upper,
+           tag~description,
+           tag~owner
       FROM zabaptags_tagsrm AS map
-        INNER JOIN zabaptags_tags AS tag
-          ON map~tag_id = tag~tag_id
+           INNER JOIN zabaptags_tags AS tag
+             ON map~tag_id = tag~tag_id
       WHERE map~root_tag_id IN @tag_id_range
       INTO CORRESPONDING FIELDS OF TABLE @result.
   ENDMETHOD.
@@ -634,7 +633,8 @@ CLASS zcl_abaptags_adt_res_tgobjtsrv IMPLEMENTATION.
       |INNER JOIN zabaptags_tags AS tag| &&
       |  ON aggr~tag_id = tag~tag_id|.
 
-    SELECT tag~tag_id, COUNT(*) AS tagged_object_count
+    SELECT tag~tag_id,
+           COUNT(*)   AS tagged_object_count
       FROM (dyn_from)
       WHERE tag~parent_tag_id = @c_empty_uuid
       GROUP BY tag~tag_id
@@ -647,7 +647,7 @@ CLASS zcl_abaptags_adt_res_tgobjtsrv IMPLEMENTATION.
       |  ON  aggr~tagid = tag~tag_id| &&
       |  AND tag~parent_tag_id = @c_empty_uuid|.
 
-    SELECT tagid AS tag_id,
+    SELECT tagid       AS tag_id,
            objectcount AS tagged_object_count
       FROM (dyn_from)
       INTO CORRESPONDING FIELDS OF TABLE @result.
@@ -656,8 +656,8 @@ CLASS zcl_abaptags_adt_res_tgobjtsrv IMPLEMENTATION.
   METHOD fetch_full_tree_count.
     SELECT COUNT(*)
       FROM zabaptags_tgobjn AS tgobj
-        INNER JOIN zabaptags_tags AS tag
-          ON tgobj~tag_id = tag~tag_id
+           INNER JOIN zabaptags_tags AS tag
+             ON tgobj~tag_id = tag~tag_id
       WHERE tag~owner = @sy-uname
          OR tag~owner = @space
       INTO @tree_result-tagged_object_count.
