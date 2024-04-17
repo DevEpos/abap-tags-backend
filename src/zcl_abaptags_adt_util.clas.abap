@@ -76,6 +76,7 @@ CLASS zcl_abaptags_adt_util DEFINITION
         wb_request_not_created TYPE string VALUE 'Workbench Request object could not be created' ##NO_TEXT,
       END OF c_error_messages.
     CONSTANTS c_segw_project_uri_pattern TYPE string VALUE '/sap/bc/adt/vit/gw/sb/project/'.
+    CONSTANTS c_sapl_pattern TYPE string VALUE 'SAPL*'.
     CONSTANTS:
       BEGIN OF c_adt_types,
         function_module TYPE trobjtype VALUE 'FUNC',
@@ -111,13 +112,21 @@ CLASS zcl_abaptags_adt_util DEFINITION
 
     CLASS-METHODS adjust_object_reference
       CHANGING
-        adt_obj_info TYPE zcl_abaptags_adt_util=>ty_adt_obj_ref_info.
+        adt_obj_info TYPE ty_adt_obj_ref_info.
 
     CLASS-METHODS get_compiler
       IMPORTING
         main_prog     TYPE program
       RETURNING
         VALUE(result) TYPE REF TO cl_abap_compiler.
+
+    CLASS-METHODS split_namespace
+      IMPORTING
+        object_name     TYPE string
+      EXPORTING
+        namespace       TYPE namespace
+        name_without_ns TYPE string.
+
 ENDCLASS.
 
 
@@ -294,11 +303,16 @@ CLASS zcl_abaptags_adt_util IMPLEMENTATION.
     wb_object->get_object_type_ref( )->get_tadir_types( IMPORTING p_r3tr_object_type = tadir_type ).
 
     IF object_type-objtype_tr = c_adt_types-function_group.
+      split_namespace( EXPORTING object_name     = object_name
+                       IMPORTING namespace       = DATA(namespace)
+                                 name_without_ns = DATA(l_obj_name) ).
 
-      IF object_name CP 'SAPL*'.
+      IF l_obj_name CP c_sapl_pattern.
         tadir_type = object_type-objtype_tr.
         object_type-subtype_wb = swbm_c_type_function_pool.
-        object_name = object_name+4.
+        object_name = COND #( WHEN namespace IS NOT INITIAL
+                              THEN |/{ namespace }/{ l_obj_name+4 }|
+                              ELSE l_obj_name+4 ).
       ENDIF.
 
       IF object_type-subtype_wb = swbm_c_type_function.
@@ -312,9 +326,6 @@ CLASS zcl_abaptags_adt_util IMPLEMENTATION.
                           IMPORTING object_name = DATA(parent_name)
                                     object_type = DATA(parent_type) ).
     adt_obj_info-parent_name = parent_name.
-    IF adt_obj_info-parent_name CP 'SAPL*'.
-      adt_obj_info-parent_name = adt_obj_info-parent_name+4.
-    ENDIF.
     adt_obj_info-parent_type = COND #(
       WHEN parent_type-subtype_wb IS NOT INITIAL
       THEN |{ parent_type-objtype_tr }/{ parent_type-subtype_wb }|
@@ -322,10 +333,19 @@ CLASS zcl_abaptags_adt_util IMPLEMENTATION.
   ENDMETHOD.
 
   METHOD adjust_object_reference.
-    IF     adt_obj_info-type CP 'FUGR*'
-       AND adt_obj_info-name CP 'SAPL*'.
+    IF adt_obj_info-type NP 'FUGR*'.
+      RETURN.
+    ENDIF.
 
-      adt_obj_info-name = adt_obj_info-name+4.
+    split_namespace( EXPORTING object_name     = adt_obj_info-name
+                     IMPORTING namespace       = DATA(namespace)
+                               name_without_ns = DATA(l_obj_name) ).
+
+    IF l_obj_name CP c_sapl_pattern.
+      adt_obj_info-type = |{ c_adt_types-function_group }/{ swbm_c_type_function_pool }|.
+      adt_obj_info-name = COND #( WHEN namespace IS NOT INITIAL
+                                  THEN |/{ namespace }/{ l_obj_name+4 }|
+                                  ELSE l_obj_name+4 ).
       CLEAR adt_obj_info-parent_uri.
     ENDIF.
   ENDMETHOD.
@@ -374,5 +394,14 @@ CLASS zcl_abaptags_adt_util IMPLEMENTATION.
     ENDIF.
 
     result = <compiler>-ref.
+  ENDMETHOD.
+
+  METHOD split_namespace.
+    name_without_ns = object_name.
+
+    IF object_name(1) = '/'.
+      namespace = segment( val = object_name index = 2 sep = '/' ).
+      name_without_ns = segment( val = object_name index = 3 sep = '/' ).
+    ENDIF.
   ENDMETHOD.
 ENDCLASS.
