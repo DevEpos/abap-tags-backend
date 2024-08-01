@@ -189,6 +189,10 @@ CLASS zcl_abaptags_comp_adt_mapper IMPLEMENTATION.
   METHOD process_class.
     DATA(main_prog) = cl_oo_classname_service=>get_classpool_name( main_obj-name ).
 
+    " in case, class was created in older release
+    search_include( main_obj  = main_obj
+                    main_prog = main_prog
+                    incl_name = cl_oo_classname_service=>get_cl_name( main_obj-name ) ).
     search_include( main_obj  = main_obj
                     main_prog = main_prog
                     incl_name = cl_oo_classname_service=>get_ccdef_name( main_obj-name ) ).
