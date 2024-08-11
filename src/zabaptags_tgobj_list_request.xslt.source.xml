@@ -9,6 +9,9 @@
       <tt:cond check="not-initial(request.load_child_objects)">
         <tt:attribute name="atm:loadChildObjects" option="format(boolean)" value-ref="request.load_child_objects"/>
       </tt:cond>
+      <tt:cond check="not-initial(request.deleted_objects_only)">
+        <tt:attribute name="atm:deletedObjectsOnly" option="format(boolean)" value-ref="request.deleted_objects_only"/>
+      </tt:cond>
 
       <!-- Handle list of TagIds -->
       <tt:cond check="exist(request.tag_ids)">

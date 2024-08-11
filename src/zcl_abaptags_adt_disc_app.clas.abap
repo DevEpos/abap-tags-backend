@@ -5,6 +5,11 @@ CLASS zcl_abaptags_adt_disc_app DEFINITION
   CREATE PUBLIC.
 
   PUBLIC SECTION.
+    CLASS-DATA:
+      BEGIN OF uris,
+        tagged_object_info_list TYPE string,
+      END OF uris.
+
     CONSTANTS c_root_scheme TYPE string VALUE 'http://www.devepos.com/adt/atm'.
     CONSTANTS c_root_rel_scheme TYPE string VALUE 'http://www.devepos.com/adt/relations/atm'.
     CONSTANTS c_tags_uri TYPE string VALUE '/tags'.
@@ -17,6 +22,8 @@ CLASS zcl_abaptags_adt_disc_app DEFINITION
     CONSTANTS c_tagged_object_del_check_uri TYPE string VALUE '/taggedobjects/deletion/check'.
     CONSTANTS c_tagged_object_tree_srv_uri TYPE string VALUE '/taggedobjects/tree/contents'.
     CONSTANTS c_static_uri TYPE string VALUE '/devepos/adt/atm'.
+
+    CLASS-METHODS class_constructor.
 
     METHODS if_adt_rest_rfc_application~get_static_uri_path REDEFINITION.
 
@@ -47,10 +54,18 @@ CLASS zcl_abaptags_adt_disc_app DEFINITION
     METHODS register_tag_tree_services
       IMPORTING
         registry TYPE REF TO if_adt_disc_rest_rc_registry.
+
+    METHODS register_plugin_features
+      IMPORTING
+        registry TYPE REF TO if_adt_disc_rest_rc_registry.
 ENDCLASS.
 
 
 CLASS zcl_abaptags_adt_disc_app IMPLEMENTATION.
+  METHOD class_constructor.
+    uris-tagged_object_info_list = |{ c_static_uri }{ c_tagged_object_info_list_uri }|.
+  ENDMETHOD.
+
   METHOD fill_router.
     super->fill_router( CHANGING router = router ).
     router->attach( iv_template      = '/discovery'
@@ -70,6 +85,7 @@ CLASS zcl_abaptags_adt_disc_app IMPLEMENTATION.
     register_tag_search( registry ).
     register_tag_tree_services( registry ).
     register_object_tagging_res( registry ).
+    register_plugin_features( registry ).
   ENDMETHOD.
 
   METHOD register_object_tagging_res.
@@ -150,5 +166,13 @@ CLASS zcl_abaptags_adt_disc_app IMPLEMENTATION.
                                               description     = 'Tagged Object Tree Contents'
                                               category_scheme = c_root_scheme
                                               category_term   = 'taggedobjecttree' ).
+  ENDMETHOD.
+
+  METHOD register_plugin_features.
+    registry->register_discoverable_resource( url             = '/pluginfeatures'
+                                              handler_class   = 'ZCL_ABAPTAGS_ADT_RES_FEATURES'
+                                              description     = 'Available Plugin features'
+                                              category_scheme = c_root_scheme
+                                              category_term   = 'pluginFeatures' ).
   ENDMETHOD.
 ENDCLASS.

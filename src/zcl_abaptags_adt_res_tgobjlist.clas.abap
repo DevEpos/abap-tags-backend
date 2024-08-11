@@ -44,6 +44,7 @@ CLASS zcl_abaptags_adt_res_tgobjlist DEFINITION
 
     DATA obj_infos_for_name_mapping TYPE TABLE OF REF TO zabaptags_tgobj_info.
     DATA cds_name_mapper TYPE REF TO zcl_abaptags_cds_name_mapper.
+    DATA comp_mapper TYPE REF TO zcl_abaptags_comp_adt_mapper.
 
     METHODS get_request_handler
       RETURNING
@@ -86,6 +87,13 @@ CLASS zcl_abaptags_adt_res_tgobjlist DEFINITION
         keytab         TYPE ty_tagged_objects.
 
     METHODS fill_cds_display_names.
+
+    METHODS is_object_deleted
+      IMPORTING
+        tgobj   TYPE REF TO zcl_abaptags_adt_res_tgobjlist=>ty_tagged_object
+        tgobj_info   TYPE zabaptags_tgobj_info
+      RETURNING
+        VALUE(result) TYPE abap_bool.
 ENDCLASS.
 
 
@@ -400,28 +408,39 @@ CLASS zcl_abaptags_adt_res_tgobjlist IMPLEMENTATION.
     SORT found_objects BY id.
     DELETE ADJACENT DUPLICATES FROM found_objects COMPARING id.
 
+    IF list_request-deleted_objects_only = abap_true.
+      comp_mapper = NEW zcl_abaptags_comp_adt_mapper( ).
+      comp_mapper->add_components(
+          VALUE #( FOR <c> IN found_objects WHERE ( component_name IS NOT INITIAL ) ( CORRESPONDING #( <c> ) ) ) ).
+      comp_mapper->determine_components( ).
+    ENDIF.
+
     LOOP AT found_objects REFERENCE INTO DATA(found_obj).
 
-      DATA(new_tgobj_info) = VALUE zabaptags_tgobj_info(
-                                       id                 = found_obj->id
-                                       tag_id             = found_obj->tag_id
-                                       tag_type           = COND #(
-                                         WHEN found_obj->owner IS INITIAL THEN zif_abaptags_c_global=>tag_type-global
-                                         WHEN found_obj->owner = sy-uname THEN zif_abaptags_c_global=>tag_type-user
-                                         ELSE                                  zif_abaptags_c_global=>tag_type-shared )
-                                       tag_name           = found_obj->tag_name
-                                       object_name        = found_obj->object_name
-                                       component_name     = found_obj->component_name
-                                       component_type     = found_obj->component_type
-                                       parent_tag_id      = found_obj->parent_tag_id
-                                       parent_tag_name    = found_obj->parent_tag_name
-                                       parent_object_name = found_obj->parent_object_name ).
+      DATA(new_tgobj) = VALUE zabaptags_tgobj_info(
+                                  id                 = found_obj->id
+                                  tag_id             = found_obj->tag_id
+                                  tag_type           = COND #(
+                                    WHEN found_obj->owner IS INITIAL THEN zif_abaptags_c_global=>tag_type-global
+                                    WHEN found_obj->owner = sy-uname THEN zif_abaptags_c_global=>tag_type-user
+                                    ELSE                                  zif_abaptags_c_global=>tag_type-shared )
+                                  tag_name           = found_obj->tag_name
+                                  object_name        = found_obj->object_name
+                                  component_name     = found_obj->component_name
+                                  component_type     = found_obj->component_type
+                                  parent_tag_id      = found_obj->parent_tag_id
+                                  parent_tag_name    = found_obj->parent_tag_name
+                                  parent_object_name = found_obj->parent_object_name ).
 
       get_adjusted_types( EXPORTING tagged_object      = found_obj
-                          IMPORTING object_type        = new_tgobj_info-object_type
-                                    parent_object_type = new_tgobj_info-parent_object_type ).
+                          IMPORTING object_type        = new_tgobj-object_type
+                                    parent_object_type = new_tgobj-parent_object_type ).
+      IF list_request-deleted_objects_only = abap_true AND is_object_deleted( tgobj = found_obj
+                                                                              tgobj_info = new_tgobj ) = abap_false.
+        CONTINUE.
+      ENDIF.
 
-      APPEND new_tgobj_info TO tagged_object_infos REFERENCE INTO DATA(added_tgobj_info).
+      APPEND new_tgobj TO tagged_object_infos REFERENCE INTO DATA(added_tgobj_info).
 
       DATA(obj_is_cds) = cds_name_mapper->collect_entry( name = CONV #( added_tgobj_info->object_name )
                                                          type = added_tgobj_info->object_type(4) ).
@@ -457,5 +476,34 @@ CLASS zcl_abaptags_adt_res_tgobjlist IMPLEMENTATION.
                                             type = CONV #( obj_info->parent_object_type ) ).
       ENDIF.
     ENDLOOP.
+  ENDMETHOD.
+
+  METHOD is_object_deleted.
+    IF tgobj->component_name IS NOT INITIAL.
+      IF comp_mapper->get_adt_object( comp = VALUE #( component_name = tgobj_info-component_name
+                                                      component_type = tgobj_info-component_type
+                                                      object_name    = tgobj_info-object_name
+                                                      object_type    = tgobj->object_type ) ) IS NOT INITIAL.
+        RETURN.
+      ENDIF.
+    ELSEIF tgobj_info-object_type = zif_abaptags_c_global=>wb_object_types-function_group_include.
+      " PROG type successfully mapped to existing function group include
+      RETURN.
+    ELSEIF tgobj->object_type = zif_abaptags_c_global=>object_types-function.
+      SELECT SINGLE @abap_true FROM tfdir WHERE funcname = @tgobj->object_name INTO @DATA(func_exists) ##NEEDED.
+      IF sy-subrc = 0.
+        RETURN.
+      ENDIF.
+    ELSE.
+      SELECT SINGLE @abap_true FROM tadir
+        WHERE object   = @tgobj->object_type
+          AND obj_name = @tgobj->object_name
+        INTO @DATA(tadir_obj_exists) ##NEEDED.
+      IF sy-subrc = 0.
+        RETURN.
+      ENDIF.
+    ENDIF.
+
+    result = abap_true.
   ENDMETHOD.
 ENDCLASS.
