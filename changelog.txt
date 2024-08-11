@@ -9,12 +9,17 @@ Legend
 + : added
 - : removed
 
+2024-08-11 v2.6.0
+-------------------
+
+! Deleted components are no longer ignored when reading tagged object infos
++ Tagged objects can be restricted to objects that no longer exist
+
 2024-08-01 v2.5.0
 -------------------
 
 + Local classes in old CL include are now also considered for tagged components
 * Fixes issue in component mapping where local classes with namespaces were ignored
-
 
 2024-04-10 v2.4.1
 -------------------
