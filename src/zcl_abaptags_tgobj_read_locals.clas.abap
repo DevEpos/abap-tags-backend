@@ -185,10 +185,6 @@ CLASS zcl_abaptags_tgobj_read_locals IMPLEMENTATION.
                                              component_name = <local_obj_info_entry>-component_name
                                              component_type = <local_obj_info_entry>-component_type ) ).
 
-      IF local_adt_obj_ref IS INITIAL OR local_adt_obj_ref-uri IS INITIAL.
-        CONTINUE.
-      ENDIF.
-
       DATA(tagged_local_obj) = VALUE zabaptags_tagged_object(
                                          adt_obj_ref = VALUE #( name        = <local_obj_info_entry>-component_name
                                                                 " Type will be changed during mapping to a more generic type so
