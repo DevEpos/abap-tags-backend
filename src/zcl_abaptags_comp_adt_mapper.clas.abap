@@ -275,7 +275,7 @@ CLASS zcl_abaptags_comp_adt_mapper IMPLEMENTATION.
   ENDMETHOD.
 
   METHOD find_cls_defs.
-    FIND ALL OCCURRENCES OF REGEX `^\s*class\s+([\w\/]+)([\w\s]*)\.` IN source_code
+    FIND ALL OCCURRENCES OF REGEX `^\s*class\s+([\w\/]+)([\w\s\/]*)\.` IN source_code
          RESULTS DATA(matches) IGNORING CASE.
 
     IF sy-subrc <> 0.
