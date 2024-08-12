@@ -9,6 +9,11 @@ Legend
 + : added
 - : removed
 
+2024-08-12 v2.6.1
+-------------------
+
+* Fixes an issue where local classes that inherit from classes with namespaces are not recognized
+
 2024-08-11 v2.6.0
 -------------------
 
