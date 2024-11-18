@@ -187,6 +187,8 @@ CLASS zcl_abaptags_adt_res_tgobj IMPLEMENTATION.
     validate_tags( ).
 
     LOOP AT tagged_objects ASSIGNING <tagged_object>.
+      CLEAR: comp_name,
+             comp_type.
 
       zcl_abaptags_adt_util=>map_uri_to_wb_object( EXPORTING uri         = <tagged_object>-adt_obj_ref-uri
                                                    IMPORTING object_name = tadir_object
