@@ -9,6 +9,11 @@ Legend
 + : added
 - : removed
 
+2024-11-18 v2.6.2
+-------------------
+ 
+* Fixes an issue during tagging combinations of components/global objects
+
 2024-08-12 v2.6.1
 -------------------
 
