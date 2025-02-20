@@ -25,7 +25,7 @@ ENDCLASS.
 
 CLASS zcl_abaptags_adt_res_features IMPLEMENTATION.
   METHOD get.
-    DATA(features) = VALUE zif_adcoset_ty_adt_types=>ty_adt_plugin_features(
+    DATA(features) = VALUE zif_abaptags_ty_adt_types=>ty_adt_plugin_features(
                                category = c_feature_categories-request_attribute
                                ( endpoint    = zcl_abaptags_adt_disc_app=>uris-tagged_object_info_list
                                  name        = 'considerOnlyDeletedObjects'
