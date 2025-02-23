@@ -1,5 +1,5 @@
 ![](https://img.shields.io/badge/ABAP-v7.40sp08+-green)
-[![abap package version](https://img.shields.io/endpoint?url=https://shield.abap.space/version-shield-json/github/DevEpos/abap-tags-backend/src/zif_abaptags_version.intf.abap/version&label=version)](https://github.com/DevEpos/abap-tags-backend/blob/main/src/zif_abaptags_version.intf.abap)
+[![abap package version](https://img.shields.io/endpoint?url=https://shield.abappm.com/github/DevEpos/abap-tags-backend/-main/src/zif_abaptags_version.intf.abap/version&label=version)](https://github.com/DevEpos/abap-tags-backend/blob/main/src/zif_abaptags_version.intf.abap)
 
 # abap-tags-backend
 
