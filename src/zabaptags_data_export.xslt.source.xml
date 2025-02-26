@@ -1,0 +1,52 @@
+<?sap.transform simple?>
+<tt:transform
+  xmlns:tt="http://www.sap.com/transformation-templates"
+  xmlns:ddic="http://www.sap.com/abapxml/types/dictionary"
+  xmlns:atm="http://www.devepos.com/adt/atm">
+
+  <tt:root name="data_export" type="ddic:zabaptags_data_export"/>
+  <tt:include name="zabaptags_tag" template="tags"/>
+  <tt:include name="zabaptags_tgobj_infos" template="tgobjInfos"/>
+  <tt:include name="zabaptags_shared_tag" template="sharedTagProperties"/>
+
+  <tt:template>
+  </tt:template>
+
+  <tt:template name="tagExportData">
+    <tt:context>
+      <tt:root name="data_export" />
+    </tt:context>
+
+    <!-- Tags -->
+    <tt:cond check="exist(data_export.tags)">
+      <tt:cond check="not-initial(data_export.tags)">
+        <tt:apply name="tags">
+          <tt:with-root name="tags" ref="data_export.tags"/>
+        </tt:apply>
+      </tt:cond>
+    </tt:cond>
+
+      <!-- Tagged Objects -->
+    <tt:cond check="exist(data_export.tagged_objects)">
+      <tt:cond check="not-initial(data_export.tagged_objects)">
+        <tt:apply name="tgobjInfos">
+          <tt:with-root name="tgobj_infos" ref="data_export.tagged_objects" />
+        </tt:apply>
+      </tt:cond>
+    </tt:cond>
+
+      <!-- Shared Tags -->
+    <tt:cond check="exist(data_export.shared_tags)">
+      <tt:cond check="not-initial(data_export.shared_tags)">
+        <tt:loop ref="data_export.shared_tags">
+          <atm:sharedTag>
+            <tt:apply name="sharedTagProperties">
+              <tt:with-root name="shared_tag" ref="$ref"/>
+            </tt:apply>
+          </atm:sharedTag>
+        </tt:loop>
+      </tt:cond>
+    </tt:cond>
+  </tt:template>
+
+</tt:transform>

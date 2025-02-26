@@ -1,0 +1,17 @@
+<?sap.transform simple?>
+<tt:transform xmlns:tt="http://www.sap.com/transformation-templates"
+              xmlns:ddic="http://www.sap.com/abapxml/types/dictionary"
+              xmlns:atm="http://www.devepos.com/adt/atm">
+
+  <tt:root name="response" type="ddic:zabaptags_data_export"/>
+  <tt:include name="zabaptags_data_export" template="tagExportData"/>
+
+  <tt:template>
+    <atm:tagExportResponse tt:extensible="deep">
+      <tt:apply name="tagExportData">
+        <tt:with-root name="data_export" ref="response" />
+      </tt:apply>
+    </atm:tagExportResponse>
+  </tt:template>
+
+</tt:transform>

@@ -25,6 +25,7 @@ CLASS zcl_abaptags_tadir DEFINITION
         cx_sy_itab_line_not_found.
 
   PRIVATE SECTION.
+    TYPES ty_pack_range TYPE RANGE OF devclass.
     TYPES:
       BEGIN OF ty_fugr_include,
         include TYPE progname,
@@ -45,6 +46,10 @@ CLASS zcl_abaptags_tadir DEFINITION
         obj_name      TYPE tadir-obj_name
       RETURNING
         VALUE(result) TYPE abap_bool.
+
+    METHODS add_local_packages
+      IMPORTING
+        pack_range TYPE ty_pack_range.
 ENDCLASS.
 
 
@@ -55,6 +60,7 @@ CLASS zcl_abaptags_tadir IMPLEMENTATION.
 
   METHOD determine_tadir_entries.
     DATA func_module_range TYPE RANGE OF tfdir-funcname.
+    DATA local_package_range TYPE ty_pack_range.
 
     LOOP AT tadir_keys ASSIGNING FIELD-SYMBOL(<key>).
       IF <key>-type = zif_abaptags_c_global=>object_types-function.
@@ -64,12 +70,18 @@ CLASS zcl_abaptags_tadir IMPLEMENTATION.
       ELSEIF         <key>-type = zif_abaptags_c_global=>object_types-program
              AND NOT is_tadir_prog( <key>-name ).
         DELETE tadir_keys.
+      ELSEIF     <key>-type  = zif_abaptags_c_global=>object_types-package
+             AND <key>-name CP '$*'.
+        local_package_range = VALUE #( BASE local_package_range ( sign = 'I' option = 'EQ' low = <key>-name ) ).
+        DELETE tadir_keys.
       ENDIF.
     ENDLOOP.
 
     find_func_module_info( func_module_range ).
 
     tadir_infos = zcl_abaptags_tadir_dac=>get_instance( )->get_tadir_infos( tadir_keys ).
+
+    add_local_packages( local_package_range ).
 
     result = me.
   ENDMETHOD.
@@ -125,7 +137,8 @@ CLASS zcl_abaptags_tadir IMPLEMENTATION.
     DATA(l_type) = type.
 
     IF type = zif_abaptags_c_global=>object_types-function.
-      ASSIGN func_modules[ KEY function function = name ] TO FIELD-SYMBOL(<function>).
+      ASSIGN func_modules[ KEY function
+                           function = name ] TO FIELD-SYMBOL(<function>).
       IF sy-subrc = 0.
         l_name = <function>-group.
         l_type = zif_abaptags_c_global=>object_types-function_group.
@@ -141,5 +154,15 @@ CLASS zcl_abaptags_tadir IMPLEMENTATION.
     result = tadir_infos[ KEY name_type
                           name = l_name
                           type = l_type ].
+  ENDMETHOD.
+
+  METHOD add_local_packages.
+    SELECT devclass AS name,
+           'DEVC'   AS type,
+           as4user  AS author,
+           devclass AS package_name
+      FROM tdevc
+      WHERE devclass IN @pack_range
+      APPENDING CORRESPONDING FIELDS OF TABLE @tadir_infos.
   ENDMETHOD.
 ENDCLASS.

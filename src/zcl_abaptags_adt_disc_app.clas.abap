@@ -21,6 +21,7 @@ CLASS zcl_abaptags_adt_disc_app DEFINITION
     CONSTANTS c_tagged_object_info_list_uri TYPE string VALUE '/taggedobjects/infos'.
     CONSTANTS c_tagged_object_del_check_uri TYPE string VALUE '/taggedobjects/deletion/check'.
     CONSTANTS c_tagged_object_tree_srv_uri TYPE string VALUE '/taggedobjects/tree/contents'.
+    CONSTANTS c_tag_export_uri TYPE string VALUE '/tags/export'.
     CONSTANTS c_static_uri TYPE string VALUE '/devepos/adt/atm'.
 
     CLASS-METHODS class_constructor.
@@ -58,6 +59,10 @@ CLASS zcl_abaptags_adt_disc_app DEFINITION
     METHODS register_plugin_features
       IMPORTING
         registry TYPE REF TO if_adt_disc_rest_rc_registry.
+
+    METHODS register_import_export
+      IMPORTING
+        registry TYPE REF TO if_adt_disc_rest_rc_registry.
 ENDCLASS.
 
 
@@ -85,6 +90,7 @@ CLASS zcl_abaptags_adt_disc_app IMPLEMENTATION.
     register_tag_search( registry ).
     register_tag_tree_services( registry ).
     register_object_tagging_res( registry ).
+    register_import_export( registry ).
     register_plugin_features( registry ).
   ENDMETHOD.
 
@@ -174,5 +180,13 @@ CLASS zcl_abaptags_adt_disc_app IMPLEMENTATION.
                                               description     = 'Available Plugin features'
                                               category_scheme = c_root_scheme
                                               category_term   = 'pluginFeatures' ).
+  ENDMETHOD.
+
+  METHOD register_import_export.
+    registry->register_discoverable_resource( url             = c_tag_export_uri
+                                              handler_class   = 'ZCL_ABAPTAGS_ADT_RES_TAGEXPORT'
+                                              description     = 'Exported ABAP Tags & Tagged Objects'
+                                              category_scheme = c_root_scheme
+                                              category_term   = 'tagExport' ).
   ENDMETHOD.
 ENDCLASS.
