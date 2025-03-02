@@ -42,13 +42,12 @@ CLASS zcl_abaptags_adt_res_tags DEFINITION
     DATA action_name TYPE string.
     DATA tags TYPE zabaptags_tag_data_t.
     DATA tags_dac TYPE REF TO zcl_abaptags_tags_dac.
-    DATA owner TYPE sy-uname.
     DATA owner_range TYPE RANGE OF sy-uname.
     DATA lock_owner TYPE sy-uname.
     DATA do_not_resolve_hierarchy TYPE abap_bool.
     DATA query TYPE string.
-    DATA scope TYPE string.
     DATA with_object_count TYPE abap_bool.
+    DATA scopes TYPE string_table.
 
     METHODS get_tags_content_handler
       RETURNING
@@ -110,8 +109,9 @@ CLASS zcl_abaptags_adt_res_tags IMPLEMENTATION.
       CASE action_name.
 
         WHEN c_actions-lock.
-          zcl_abaptags_tag_util=>lock_tags( lock_owner  = lock_owner
-                                            global_tags = xsdbool( scope = zif_abaptags_c_global=>scopes-global ) ).
+          zcl_abaptags_tag_util=>lock_tags(
+              lock_owner  = lock_owner
+              global_tags = xsdbool( lines( scopes ) = 1 AND scopes[ 1 ] = zif_abaptags_c_global=>scopes-global ) ).
 
         WHEN c_actions-unlock.
           zcl_abaptags_tag_util=>unlock_tags( lock_owner ).
@@ -145,7 +145,7 @@ CLASS zcl_abaptags_adt_res_tags IMPLEMENTATION.
     DATA(tags) = tags_dac->find_tags( owner_range      = owner_range
                                       name_upper_range = tag_name_range ).
 
-    IF scope = zif_abaptags_c_global=>scopes-all.
+    IF line_exists( scopes[ table_line = zif_abaptags_c_global=>scopes-all ] ).
       tags = VALUE #( BASE tags
                       ( LINES OF zcl_abaptags_tag_util=>get_shared_tags( abap_true ) ) ).
     ENDIF.
@@ -191,27 +191,30 @@ CLASS zcl_abaptags_adt_res_tags IMPLEMENTATION.
     action_name = zcl_abaptags_adt_request_util=>get_request_param_value( param_name = c_params-action
                                                                           request    = request ).
 
-    scope = zcl_abaptags_adt_request_util=>get_request_param_value( param_name    = c_params-scope
-                                                                    default_value = zif_abaptags_c_global=>scopes-all
-                                                                    request       = request ).
+    scopes = zcl_abaptags_adt_request_util=>get_request_param_values(
+                 param_name     = c_params-scope
+                 default_values = VALUE #( ( zif_abaptags_c_global=>scopes-all ) )
+                 request        = request ).
 
-    CASE scope.
+    IF line_exists( scopes[ table_line = zif_abaptags_c_global=>scopes-all ] ).
+      owner_range = VALUE #( sign   = 'I'
+                             option = 'EQ'
+                             ( low = sy-uname )
+                             ( low = space ) ).
+    ELSE.
+      LOOP AT scopes INTO DATA(scope).
+        CASE scope.
 
-      WHEN zif_abaptags_c_global=>scopes-global.
-        owner_range = VALUE #( ( sign = 'I' option = 'EQ' low = space ) ).
-        lock_owner = '*'.
+          WHEN zif_abaptags_c_global=>scopes-global.
+            owner_range = VALUE #( BASE owner_range ( sign = 'I' option = 'EQ' low = space ) ).
+            lock_owner = '*'.
 
-      WHEN zif_abaptags_c_global=>scopes-user.
-        owner_range = VALUE #( ( sign = 'I' option = 'EQ' low = sy-uname ) ).
-        owner = sy-uname.
-        lock_owner = sy-uname.
-
-      WHEN zif_abaptags_c_global=>scopes-all.
-        owner_range = VALUE #( sign   = 'I'
-                               option = 'EQ'
-                               ( low = sy-uname )
-                               ( low = space ) ).
-    ENDCASE.
+          WHEN zif_abaptags_c_global=>scopes-user.
+            owner_range = VALUE #( BASE owner_range ( sign = 'I' option = 'EQ' low = sy-uname ) ).
+            lock_owner = sy-uname.
+        ENDCASE.
+      ENDLOOP.
+    ENDIF.
   ENDMETHOD.
 
   METHOD delete_tags.
