@@ -157,6 +157,8 @@ CLASS zcl_abaptags_tadir IMPLEMENTATION.
   ENDMETHOD.
 
   METHOD add_local_packages.
+    CHECK pack_range IS NOT INITIAL.
+
     SELECT devclass AS name,
            'DEVC'   AS type,
            as4user  AS author,

@@ -56,19 +56,7 @@ CLASS zcl_abaptags_adt_res_tgobjlist DEFINITION
 
     METHODS get_tagged_objects.
 
-    METHODS get_adjusted_types
-      IMPORTING
-        tagged_object      TYPE REF TO ty_tagged_object
-      EXPORTING
-        object_type        TYPE swo_objtyp
-        parent_object_type TYPE swo_objtyp.
 
-    METHODS get_adt_type_for_object
-      IMPORTING
-        !name         TYPE sobj_name
-        !type         TYPE trobjtype
-      RETURNING
-        VALUE(result) TYPE swo_objtyp.
 
     METHODS get_tgobj_infos_by_sem_keys.
     METHODS post_process_found_objects.
@@ -90,8 +78,8 @@ CLASS zcl_abaptags_adt_res_tgobjlist DEFINITION
 
     METHODS is_object_deleted
       IMPORTING
-        tgobj   TYPE REF TO zcl_abaptags_adt_res_tgobjlist=>ty_tagged_object
-        tgobj_info   TYPE zabaptags_tgobj_info
+        tgobj         TYPE REF TO zcl_abaptags_adt_res_tgobjlist=>ty_tagged_object
+        tgobj_info    TYPE zabaptags_tgobj_info
       RETURNING
         VALUE(result) TYPE abap_bool.
 ENDCLASS.
@@ -139,35 +127,6 @@ CLASS zcl_abaptags_adt_res_tgobjlist IMPLEMENTATION.
 
     fill_semantic_key_tables( ).
     get_tgobj_infos_by_sem_keys( ).
-  ENDMETHOD.
-
-  METHOD get_adjusted_types.
-    object_type = get_adt_type_for_object( name = tagged_object->object_name
-                                           type = tagged_object->object_type ).
-
-    IF     tagged_object->parent_object_type IS NOT INITIAL
-       AND tagged_object->parent_object_name IS NOT INITIAL.
-      parent_object_type = get_adt_type_for_object( name = tagged_object->parent_object_name
-                                                    type = tagged_object->parent_object_type ).
-    ENDIF.
-  ENDMETHOD.
-
-  METHOD get_adt_type_for_object.
-    DATA(adt_obj_info) = zcl_abaptags_adt_util=>get_adt_obj_ref_for_tadir_type( tadir_type = type
-                                                                                name       = name ).
-
-    IF adt_obj_info-type IS NOT INITIAL.
-      result = adt_obj_info-type.
-      RETURN.
-    ENDIF.
-
-    DATA(wb_object_type) = cl_wb_object_type=>create_from_exttype( p_external_id = type ).
-    DATA(main_global_type) = wb_object_type->get_r3tr_global_type( ).
-    IF main_global_type-subtype_wb IS NOT INITIAL.
-      result = |{ main_global_type-objtype_tr }/{ main_global_type-subtype_wb }|.
-    ELSE.
-      result = main_global_type-objtype_tr.
-    ENDIF.
   ENDMETHOD.
 
   METHOD get_tgobj_infos_by_sem_keys.
@@ -432,10 +391,10 @@ CLASS zcl_abaptags_adt_res_tgobjlist IMPLEMENTATION.
                                   parent_tag_name    = found_obj->parent_tag_name
                                   parent_object_name = found_obj->parent_object_name ).
 
-      get_adjusted_types( EXPORTING tagged_object      = found_obj
-                          IMPORTING object_type        = new_tgobj-object_type
-                                    parent_object_type = new_tgobj-parent_object_type ).
-      IF list_request-deleted_objects_only = abap_true AND is_object_deleted( tgobj = found_obj
+      zcl_abaptags_tag_util=>get_adt_types_for_tgobj( EXPORTING tagged_object      = found_obj->*
+                                                      IMPORTING object_type        = new_tgobj-object_type
+                                                                parent_object_type = new_tgobj-parent_object_type ).
+      IF list_request-deleted_objects_only = abap_true AND is_object_deleted( tgobj      = found_obj
                                                                               tgobj_info = new_tgobj ) = abap_false.
         CONTINUE.
       ENDIF.
@@ -498,9 +457,17 @@ CLASS zcl_abaptags_adt_res_tgobjlist IMPLEMENTATION.
       SELECT SINGLE @abap_true FROM tadir
         WHERE object   = @tgobj->object_type
           AND obj_name = @tgobj->object_name
-        INTO @DATA(tadir_obj_exists) ##NEEDED.
-      IF sy-subrc = 0.
+        INTO @DATA(obj_exists) ##NEEDED.
+      IF obj_exists = abap_true.
         RETURN.
+      ELSEIF tgobj->object_name CP '$*' AND tgobj->object_type = zif_abaptags_c_global=>object_types-package.
+        " custom check for local packages
+        SELECT SINGLE @abap_true FROM tdevc
+          WHERE devclass = @tgobj->object_name
+          INTO @obj_exists.
+        IF obj_exists = abap_true.
+          RETURN.
+        ENDIF.
       ENDIF.
     ENDIF.
 

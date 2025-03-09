@@ -4,14 +4,14 @@ CLASS zcl_abaptags_tag_util DEFINITION
   CREATE PUBLIC.
 
   PUBLIC SECTION.
-    "! <p class="shorttext synchronized">Retrieves shared tags of other users</p>
+    "! Retrieves shared tags of other users
     CLASS-METHODS get_shared_tags
       IMPORTING
         consider_children_as_shared TYPE abap_bool OPTIONAL
       RETURNING
         VALUE(result)               TYPE zabaptags_tag_data_t.
 
-    "! <p class="shorttext synchronized">Builds hierarchical tags from flat tags table</p>
+    "! Builds hierarchical tags from flat tags table
     CLASS-METHODS build_hierarchical_tags
       IMPORTING
         tags_flat              TYPE zabaptags_tag_data_t
@@ -19,12 +19,12 @@ CLASS zcl_abaptags_tag_util DEFINITION
       RETURNING
         VALUE(tags_result)     TYPE zabaptags_tag_data_t.
 
-    "! <p class="shorttext synchronized">Unlocks tags</p>
+    "! Unlocks tags
     CLASS-METHODS unlock_tags
       IMPORTING
         lock_owner TYPE uname.
 
-    "! <p class="shorttext synchronized">Locks Tags against foreign access</p>
+    "! Locks Tags against foreign access
     CLASS-METHODS lock_tags
       IMPORTING
         lock_owner  TYPE uname
@@ -32,7 +32,7 @@ CLASS zcl_abaptags_tag_util DEFINITION
       RAISING
         cx_adt_res_no_access.
 
-    "! <p class="shorttext synchronized">Retrieves Lock Entry for Tags</p>
+    "! Retrieves Lock Entry for Tags
     CLASS-METHODS get_tags_lock_entry
       IMPORTING
         owner            TYPE uname
@@ -43,12 +43,21 @@ CLASS zcl_abaptags_tag_util DEFINITION
       CHANGING
         tag_info TYPE zif_abaptags_ty_global=>ty_tag_infos.
 
-    "! <p class="shorttext synchronized">Determines all child tags for the given tags</p>
+    "! Determines all child tags for the given tags
     CLASS-METHODS determine_all_child_tags
       IMPORTING
         tag_id_only TYPE abap_bool OPTIONAL
       CHANGING
         tags        TYPE zabaptags_tag_data_t.
+
+    "! Gets adjusted objects types for the object type / parent object type
+    "! of the given tagged object
+    CLASS-METHODS get_adt_types_for_tgobj
+      IMPORTING
+        tagged_object      TYPE zif_abaptags_ty_global=>ty_tagged_object
+      EXPORTING
+        object_type        TYPE swo_objtyp
+        parent_object_type TYPE swo_objtyp.
 
   PRIVATE SECTION.
     TYPES:
@@ -258,5 +267,16 @@ CLASS zcl_abaptags_tag_util IMPLEMENTATION.
     CALL FUNCTION 'DEQUEUE_EZABAPTAGS_TAG'
       EXPORTING _scope = '1'
                 owner  = lock_owner.
+  ENDMETHOD.
+
+  METHOD get_adt_types_for_tgobj.
+    object_type = zcl_abaptags_adt_util=>get_adt_type_for_object( name = tagged_object-object_name
+                                                                  type = tagged_object-object_type ).
+
+    IF     tagged_object-parent_object_type IS NOT INITIAL
+       AND tagged_object-parent_object_name IS NOT INITIAL.
+      parent_object_type = zcl_abaptags_adt_util=>get_adt_type_for_object( name = tagged_object-parent_object_name
+                                                                           type = tagged_object-parent_object_type ).
+    ENDIF.
   ENDMETHOD.
 ENDCLASS.
