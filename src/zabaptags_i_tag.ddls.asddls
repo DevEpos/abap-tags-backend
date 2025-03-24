@@ -1,13 +1,17 @@
-@AbapCatalog.sqlViewName: 'ZABAPTAGSITAG'
 @AbapCatalog.compiler.compareFilter: true
 @AbapCatalog.preserveKey: true
+@AbapCatalog.sqlViewName: 'ZABAPTAGSITAG'
+
 @AccessControl.authorizationCheck: #NOT_REQUIRED
+
 @EndUserText.label: 'ABAP Tag'
 
 define view ZAbapTags_I_Tag
   as select from zabaptags_tags
+
 {
   key tag_id            as TagId,
+
       name              as Name,
       name_upper        as NameUpper,
       description       as Description,

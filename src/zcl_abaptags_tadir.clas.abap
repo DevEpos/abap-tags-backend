@@ -125,7 +125,8 @@ CLASS zcl_abaptags_tadir IMPLEMENTATION.
     DATA(l_type) = type.
 
     IF type = zif_abaptags_c_global=>object_types-function.
-      ASSIGN func_modules[ KEY function function = name ] TO FIELD-SYMBOL(<function>).
+      ASSIGN func_modules[ KEY function
+                           function = name ] TO FIELD-SYMBOL(<function>).
       IF sy-subrc = 0.
         l_name = <function>-group.
         l_type = zif_abaptags_c_global=>object_types-function_group.
