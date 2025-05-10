@@ -76,8 +76,7 @@ CLASS zcl_abaptags_adt_res_tagexport IMPLEMENTATION.
     DATA adt_object_ref TYPE zcl_abaptags_adt_util=>ty_adt_obj_ref_info.
 
     " 1) retrieve flat tagged objects
-    SELECT tgobj_db~id,
-           tgobj_db~objecttype       AS object_type,
+    SELECT tgobj_db~objecttype       AS object_type,
            tgobj_db~objectname       AS object_name,
            tgobj_db~componentname    AS component_name,
            tgobj_db~componenttype    AS component_type,
@@ -87,16 +86,12 @@ CLASS zcl_abaptags_adt_res_tagexport IMPLEMENTATION.
            tgobj_db~parenttagid      AS parent_tag_id,
            tgobj_db~parentobjecttype AS parent_object_type,
            tgobj_db~parentobjectname AS parent_object_name,
-           parent_tag~name           AS parent_tag_name,
-           orig_parent_tag~tagid     AS orig_parent_tag_id,
-           orig_parent_tag~name      AS orig_parent_tag_name
+           parent_tag~name           AS parent_tag_name
       FROM zabaptags_i_tgobjn AS tgobj_db
            INNER JOIN zabaptags_i_tag AS tag
              ON tgobj_db~tagid = tag~tagid
            LEFT OUTER JOIN zabaptags_i_tag AS parent_tag
              ON tgobj_db~parenttagid = parent_tag~tagid
-           LEFT OUTER JOIN zabaptags_i_tag AS orig_parent_tag
-             ON orig_parent_tag~tagid = tag~parenttagid
       WHERE tgobj_db~tagid IN @tag_id_range
       INTO TABLE @DATA(tagged_objects).
 
@@ -144,15 +139,20 @@ CLASS zcl_abaptags_adt_res_tagexport IMPLEMENTATION.
       tgobj_info-tag_type    = COND #( WHEN tgobj->owner IS INITIAL THEN zif_abaptags_c_global=>tag_type-global
                                        WHEN tgobj->owner = sy-uname THEN zif_abaptags_c_global=>tag_type-user ).
 
-      validate_parent_object( EXPORTING tadir_reader = parent_obj_tadir_reader
-                              CHANGING  tgobj_info   = tgobj_info ).
-      IF tgobj_info-parent_tag_id IS INITIAL.
-        tgobj_info-parent_tag_id   = tgobj->orig_parent_tag_id.
-        tgobj_info-parent_tag_name = tgobj->orig_parent_tag_name.
+      IF tgobj_info-parent_object_name IS NOT INITIAL.
+        validate_parent_object( EXPORTING tadir_reader = parent_obj_tadir_reader
+                                CHANGING  tgobj_info   = tgobj_info ).
+        IF tgobj_info-parent_object_name IS INITIAL.
+          CONTINUE.
+        ENDIF.
       ENDIF.
 
       export_response-tagged_objects = VALUE #( BASE export_response-tagged_objects ( tgobj_info ) ).
     ENDLOOP.
+
+    SORT export_response-tagged_objects BY tag_id
+                                           object_type
+                                           object_name.
   ENDMETHOD.
 
   METHOD get_shared_tags.
@@ -188,6 +188,7 @@ CLASS zcl_abaptags_adt_res_tagexport IMPLEMENTATION.
 
     IF tgobj_info-parent_object_name IS INITIAL OR tgobj_info-parent_object_type IS INITIAL.
       CLEAR tgobj_info-parent_tag_id. " not required during import/export
+      CLEAR tgobj_info-parent_tag_name.
       RETURN.
     ENDIF.
 
