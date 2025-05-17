@@ -245,7 +245,8 @@ CLASS zcl_abaptags_adt_res_tags IMPLEMENTATION.
 
   METHOD create_or_update_tags.
     DATA tags_to_update TYPE zif_abaptags_ty_global=>ty_db_tags.
-    DATA tags_for_root_mapping TYPE zif_abaptags_ty_global=>ty_tag_with_parent_maps.
+
+    DATA(root_mapper) = NEW zcl_abaptags_root_mapper( ).
 
     LOOP AT tags ASSIGNING FIELD-SYMBOL(<tag>).
       <tag>-name_upper = to_upper( <tag>-name ).
@@ -258,11 +259,7 @@ CLASS zcl_abaptags_adt_res_tags IMPLEMENTATION.
               EXPORTING previous = uuid_error.
         ENDTRY.
 
-        IF <tag>-parent_tag_id IS NOT INITIAL.
-          tags_for_root_mapping = VALUE #( BASE tags_for_root_mapping
-                                           ( tag_id        = <tag>-tag_id
-                                             parent_tag_id = <tag>-parent_tag_id ) ).
-        ENDIF.
+        root_mapper->collect_parent( tag_id = <tag>-tag_id parent_tag_id = <tag>-parent_tag_id ).
 
         <tag>-created_by = sy-uname.
         GET TIME STAMP FIELD <tag>-created_date_time.
@@ -274,7 +271,7 @@ CLASS zcl_abaptags_adt_res_tags IMPLEMENTATION.
       tags_to_update = VALUE #( BASE tags_to_update ( CORRESPONDING #( <tag> ) ) ).
     ENDLOOP.
 
-    map_tags_to_root( tags_for_root_mapping ).
+    root_mapper->map_tags_to_root( ).
 
     tags_dac->modify_tags( tags_to_update ).
   ENDMETHOD.
@@ -341,7 +338,8 @@ CLASS zcl_abaptags_adt_res_tags IMPLEMENTATION.
 
       " check tag existence if tag will be modified
       IF         tag-tag_id IS NOT INITIAL
-         AND NOT line_exists( tags[ tag_id = tag-tag_id ] ).
+         AND NOT line_exists( tags[ KEY tag_id
+                                    tag_id = tag-tag_id ] ).
         RAISE EXCEPTION TYPE zcx_abaptags_adt_error
           EXPORTING textid = zcx_abaptags_adt_error=>tag_no_longer_exists
                     msgv1  = |{ tag-name }|
@@ -350,7 +348,8 @@ CLASS zcl_abaptags_adt_res_tags IMPLEMENTATION.
 
       " check parent tag existence if tag is in a hierarchy
       IF         tag-parent_tag_id IS NOT INITIAL
-         AND NOT line_exists( tags[ tag_id = tag-parent_tag_id ] ).
+         AND NOT line_exists( tags[ KEY tag_id
+                                    tag_id = tag-parent_tag_id ] ).
         RAISE EXCEPTION TYPE zcx_abaptags_adt_error
           EXPORTING textid = zcx_abaptags_adt_error=>parent_tag_no_longer_exists
                     msgv1  = |{ tag-name }|
@@ -376,7 +375,8 @@ CLASS zcl_abaptags_adt_res_tags IMPLEMENTATION.
           EXPORTING textid = zcx_abaptags_adt_error=>tag_parent_tag_already_exists
                     msgv1  = |{ tag-name }|
                     msgv2  = |{ tag-owner }|
-                    msgv3  = |{ tags[ tag_id = tag-parent_tag_id ]-name }|.
+                    msgv3  = |{ tags[ KEY tag_id
+                                      tag_id = tag-parent_tag_id ]-name }|.
       ELSE.
         RAISE EXCEPTION TYPE zcx_abaptags_adt_error
           EXPORTING textid = zcx_abaptags_adt_error=>tag_no_longer_exists

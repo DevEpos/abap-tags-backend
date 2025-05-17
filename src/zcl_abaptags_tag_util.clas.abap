@@ -84,7 +84,8 @@ CLASS zcl_abaptags_tag_util IMPLEMENTATION.
 
     LOOP AT tags_hier ASSIGNING FIELD-SYMBOL(<tag>) WHERE parent_tag_id IS NOT INITIAL.
       " Find your parent in the current table
-      ASSIGN tags_hier[ tag_id = <tag>-parent_tag_id ] TO <parent>.
+      ASSIGN tags_hier[ KEY tag_id
+                        tag_id = <tag>-parent_tag_id ] TO <parent>.
       IF sy-subrc <> 0.
         " Maybe the tag was already removed and added to the map
         ASSIGN tmp_tag_map[ tag_id = <tag>-parent_tag_id ] TO FIELD-SYMBOL(<map_entry>).
@@ -150,7 +151,8 @@ CLASS zcl_abaptags_tag_util IMPLEMENTATION.
                                                          ( sign = 'I' option = 'EQ' low = parent-parent_tag_id ) ) ).
 
       LOOP AT parent_tags ASSIGNING <parent_tag>.
-        ASSIGN parent_tags_db[ tag_id = <parent_tag>-parent_tag_id ] TO FIELD-SYMBOL(<parent_tag_db>).
+        ASSIGN parent_tags_db[ KEY tag_id
+                               tag_id = <parent_tag>-parent_tag_id ] TO FIELD-SYMBOL(<parent_tag_db>).
         CHECK sy-subrc = 0.
 
         DATA(parent_tag_info) = VALUE ty_tag_parent_info( tag_id             = <parent_tag_db>-tag_id
