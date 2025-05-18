@@ -38,6 +38,9 @@ CLASS zcl_abaptags_adt_res_tagimport DEFINITION
     DATA objs_tadir_check TYPE REF TO zcl_abaptags_tadir.
     DATA parent_objs_tadir_check TYPE REF TO zcl_abaptags_tadir.
     DATA component_mapper TYPE REF TO zcl_abaptags_comp_adt_mapper.
+    DATA tags_to_unshare TYPE zif_abaptags_ty_global=>ty_tag_id_range.
+    DATA tags_to_update TYPE zif_abaptags_ty_global=>ty_db_tags.
+    DATA tags_to_insert TYPE zif_abaptags_ty_global=>ty_db_tags.
     DATA:
       BEGIN OF stats,
         tags_in_request    TYPE i,
@@ -51,7 +54,7 @@ CLASS zcl_abaptags_adt_res_tagimport DEFINITION
       RETURNING
         VALUE(result) TYPE REF TO if_adt_rest_content_handler.
 
-    METHODS import_tags
+    METHODS collect_tags_for_import
       RAISING
         cx_uuid_error.
 
@@ -91,9 +94,34 @@ CLASS zcl_abaptags_adt_res_tagimport DEFINITION
       RAISING
         cx_uuid_error.
 
+    METHODS is_tag_changed
+      IMPORTING
+        tag           TYPE zabaptags_tag_data
+        existing      TYPE zabaptags_tag_data
+      RETURNING
+        VALUE(result) TYPE abap_bool.
+
+    METHODS is_tag_to_be_unshared
+      IMPORTING
+        tag           TYPE zabaptags_tag_data
+        existing      TYPE zabaptags_tag_data
+      RETURNING
+        VALUE(result) TYPE abap_bool.
+
     METHODS set_response
       IMPORTING
         !response TYPE REF TO if_adt_rest_response.
+
+    METHODS persist_tag_changes.
+
+    METHODS import_tags
+      RAISING
+        cx_uuid_error.
+
+    METHODS update_existing_tag
+      IMPORTING
+        pending_tag  TYPE REF TO zabaptags_tag_data
+        existing_tag TYPE REF TO zabaptags_tag_data.
 ENDCLASS.
 
 
@@ -104,7 +132,6 @@ CLASS zcl_abaptags_adt_res_tagimport IMPLEMENTATION.
 
     TRY.
         import_tags( ).
-        import_shared_tags( ).
         import_tagged_objects( ).
         set_response( response ).
       CATCH cx_uuid_error INTO DATA(uuid_error).
@@ -132,10 +159,14 @@ CLASS zcl_abaptags_adt_res_tagimport IMPLEMENTATION.
   ENDMETHOD.
 
   METHOD import_tags.
+    collect_tags_for_import( ).
+    persist_tag_changes( ).
+    import_shared_tags( ).
+  ENDMETHOD.
+
+  METHOD collect_tags_for_import.
     DATA temp_tags LIKE import_request-tags.
     DATA existing_tags LIKE import_request-tags.
-    DATA tags_to_update TYPE zif_abaptags_ty_global=>ty_db_tags.
-    DATA tags_to_insert TYPE zif_abaptags_ty_global=>ty_db_tags.
 
     DATA(pending_tags) = import_request-tags.
 
@@ -163,24 +194,7 @@ CLASS zcl_abaptags_adt_res_tagimport IMPLEMENTATION.
                                                       owner         = pending_tag->owner
                                                       parent_tag_id = pending_tag->parent_tag_id ] OPTIONAL ).
         IF by_semantic_key IS NOT INITIAL.
-          " check if tag id matches as well
-          IF by_semantic_key->tag_id = pending_tag->tag_id.
-            " check if update is really required
-            IF pending_tag->description <> by_semantic_key->description.
-              APPEND CORRESPONDING #( pending_tag->* ) TO tags_to_update.
-            ENDIF.
-          ELSE.
-            " we need to update the tag id of the pending tag
-            INSERT VALUE #( import_tag_id = pending_tag->tag_id
-                            db_tag_id     = by_semantic_key->tag_id ) INTO TABLE db_to_imp_tag_map.
-            pending_tag->tag_id = by_semantic_key->tag_id.
-            propagate_parent_tag_id( pending_tag->* ).
-
-            " check if update is really required
-            IF pending_tag->description <> by_semantic_key->description.
-              APPEND CORRESPONDING #( pending_tag->* ) TO tags_to_update.
-            ENDIF.
-          ENDIF.
+          update_existing_tag( pending_tag = pending_tag existing_tag = by_semantic_key ).
         ELSE.
           " check if the tag is already existing with the same UUID, then it is an update
           DATA(by_tag_id) = REF #( existing_tags[ KEY tag_id
@@ -205,7 +219,45 @@ CLASS zcl_abaptags_adt_res_tagimport IMPLEMENTATION.
       pending_tags = temp_tags.
       CLEAR temp_tags.
     ENDWHILE.
+  ENDMETHOD.
 
+  METHOD update_existing_tag.
+    IF existing_tag->tag_id = pending_tag->tag_id.
+      " check if update is really required
+      IF is_tag_changed( tag = pending_tag->* existing = existing_tag->* ).
+        IF is_tag_to_be_unshared( tag = pending_tag->* existing = existing_tag->* ).
+          tags_to_unshare = VALUE #( BASE tags_to_unshare
+                                     ( sign = 'I' option = 'EQ' low = pending_tag->tag_id ) ).
+        ENDIF.
+        APPEND CORRESPONDING #( pending_tag->* ) TO tags_to_update.
+      ENDIF.
+    ELSE.
+      " we need to update the tag id of the pending tag
+      INSERT VALUE #( import_tag_id = pending_tag->tag_id
+                      db_tag_id     = existing_tag->tag_id ) INTO TABLE db_to_imp_tag_map.
+      pending_tag->tag_id = existing_tag->tag_id.
+      propagate_parent_tag_id( pending_tag->* ).
+
+      " check if update is really required
+      IF is_tag_changed( tag = pending_tag->* existing = existing_tag->* ).
+        IF is_tag_to_be_unshared( tag = pending_tag->* existing = existing_tag->* ).
+          tags_to_unshare = VALUE #( BASE tags_to_unshare
+                                     ( sign = 'I' option = 'EQ' low = pending_tag->tag_id ) ).
+        ENDIF.
+        APPEND CORRESPONDING #( pending_tag->* ) TO tags_to_update.
+      ENDIF.
+    ENDIF.
+  ENDMETHOD.
+
+  METHOD is_tag_changed.
+    result = xsdbool( tag-description <> existing-description OR tag-is_shared <> existing-is_shared ).
+  ENDMETHOD.
+
+  METHOD is_tag_to_be_unshared.
+    result = xsdbool( tag-is_shared <> existing-is_shared AND tag-is_shared = abap_false ).
+  ENDMETHOD.
+
+  METHOD persist_tag_changes.
     IF tags_to_insert IS NOT INITIAL.
       DATA(root_mapper) = NEW zcl_abaptags_root_mapper( ).
       LOOP AT tags_to_insert REFERENCE INTO DATA(tag_to_insert).
@@ -227,6 +279,10 @@ CLASS zcl_abaptags_adt_res_tagimport IMPLEMENTATION.
 
       UPDATE zabaptags_tags FROM TABLE tags_to_update.
       stats-updated_tags = sy-dbcnt.
+    ENDIF.
+
+    IF tags_to_unshare IS NOT INITIAL.
+      zcl_abaptags_tags_dac=>get_instance( )->delete_shared_tags_by_id( tag_ids = tags_to_unshare  ).
     ENDIF.
   ENDMETHOD.
 
