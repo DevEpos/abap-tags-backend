@@ -15,21 +15,43 @@ CLASS zcl_abaptags_adt_res_tagimport DEFINITION
         import_tag_id TYPE zabaptags_tag_id,
         db_tag_id     TYPE zabaptags_tag_id,
       END OF ty_pers_to_imp_tag.
+    TYPES  BEGIN OF ty_tgobj_info_enh.
+             INCLUDE TYPE zabaptags_tgobj_info.
+    TYPES:   object_type_tadir        TYPE trobjtype,
+             parent_object_type_tadir TYPE trobjtype.
+    TYPES  END OF ty_tgobj_info_enh.
+
+    TYPES ty_tgobj_infos_sorted TYPE TABLE OF ty_tgobj_info_enh WITH EMPTY KEY
+      WITH NON-UNIQUE SORTED KEY semkey COMPONENTS tag_id
+                                                   object_type_tadir
+                                                   object_name
+                                                   parent_tag_id
+                                                   parent_object_type_tadir
+                                                   parent_object_name
+                                                   component_type
+                                                   component_name.
 
     DATA db_to_imp_tag_map TYPE HASHED TABLE OF ty_pers_to_imp_tag WITH UNIQUE KEY import_tag_id.
-
+    DATA tgobjs_for_import TYPE ty_tgobj_infos_sorted.
+    DATA tgobjs_invalid TYPE ty_tgobj_infos_sorted.
     DATA import_request TYPE zabaptags_data_export.
+    DATA objs_tadir_check TYPE REF TO zcl_abaptags_tadir.
+    DATA parent_objs_tadir_check TYPE REF TO zcl_abaptags_tadir.
+    DATA component_mapper TYPE REF TO zcl_abaptags_comp_adt_mapper.
 
     METHODS get_request_content_handler
       RETURNING
         VALUE(result) TYPE REF TO if_adt_rest_content_handler.
 
-    METHODS import_tags.
-    METHODS import_tagged_objects.
+    METHODS import_tags
+      RAISING
+        cx_uuid_error.
+
+    METHODS import_tagged_objects
+      RAISING
+        cx_uuid_error.
+
     METHODS import_shared_tags.
-    METHODS validate_tagged_objects
-              RAISING
-                zcx_abaptags_adt_error.
 
     METHODS propagate_parent_tag_id
       IMPORTING
@@ -40,6 +62,26 @@ CLASS zcl_abaptags_adt_res_tagimport DEFINITION
         tag           TYPE zabaptags_tag_data
       RETURNING
         VALUE(result) TYPE zabaptags_tag_data_t.
+
+    METHODS update_tag_ids
+      IMPORTING
+        tgobj TYPE REF TO zabaptags_tgobj_info.
+
+    METHODS prepare_tgobj.
+    METHODS validate_objects.
+    METHODS filter_out_existing.
+
+    METHODS is_parent_obj_valid
+      IMPORTING
+        tgobj         TYPE REF TO ty_tgobj_info_enh
+      RETURNING
+        VALUE(result) TYPE abap_bool.
+
+    METHODS validate_tag_refs.
+
+    METHODS insert_new_tgobj
+      RAISING
+        cx_uuid_error.
 ENDCLASS.
 
 
@@ -48,11 +90,15 @@ CLASS zcl_abaptags_adt_res_tagimport IMPLEMENTATION.
     request->get_body_data( EXPORTING content_handler = get_request_content_handler( )
                             IMPORTING data            = import_request ).
 
-    validate_tagged_objects( ).
-
-    import_tags( ).
-    import_tagged_objects( ).
-    import_shared_tags( ).
+    TRY.
+        import_tags( ).
+        import_shared_tags( ).
+        import_tagged_objects( ).
+      CATCH cx_uuid_error INTO DATA(uuid_error).
+        ROLLBACK WORK.
+        RAISE EXCEPTION TYPE zcx_abaptags_adt_error
+          EXPORTING previous = uuid_error.
+    ENDTRY.
   ENDMETHOD.
 
   METHOD get_request_content_handler.
@@ -134,7 +180,6 @@ CLASS zcl_abaptags_adt_res_tagimport IMPLEMENTATION.
 
       pending_tags = temp_tags.
       CLEAR temp_tags.
-
     ENDWHILE.
 
     IF tags_to_insert IS NOT INITIAL.
@@ -159,38 +204,240 @@ CLASS zcl_abaptags_adt_res_tagimport IMPLEMENTATION.
     ENDIF.
   ENDMETHOD.
 
-  METHOD import_tagged_objects.
-    " Determination of correct TADIR type
-    " -------------------------------------
-    " Apart from a view exceptions we can just use the first 4 letters of the object or parent object type
-    " (exceptions: functions (fugr/ff)
-
-    " Sync tag id - if tags have been imported with new tag id
-
-  ENDMETHOD.
-
   METHOD import_shared_tags.
+    DATA shared_tags_to_insert TYPE TABLE OF zabaptags_shtags.
+
+    CHECK import_request-shared_tags IS NOT INITIAL.
+
     " Sync tag id - if tags have been imported with new tag id
-
-    " Update shared users (should this always be an overwrite???)
-  ENDMETHOD.
-
-  METHOD validate_tagged_objects.
-    " TODO: collect objects with errors so user knows what to fix
-    LOOP AT import_request-tagged_objects REFERENCE INTO DATA(tgobj).
-      IF tgobj->tag_id IS INITIAL.
-        RAISE EXCEPTION TYPE zcx_abaptags_adt_error
-          EXPORTING textid = zcx_abaptags_adt_error=>tgobj_with_missing_tag_id
-                    msgv1  = |[{ tgobj->object_type }]: { tgobj->object_name }|.
+    LOOP AT import_request-shared_tags REFERENCE INTO DATA(shared_tag).
+      DATA(updated_tag) = VALUE #( db_to_imp_tag_map[ import_tag_id = shared_tag->tag_id ] OPTIONAL ).
+      IF updated_tag IS NOT INITIAL.
+        shared_tag->tag_id = updated_tag-db_tag_id.
       ENDIF.
 
-      IF tgobj->parent_object_name IS NOT INITIAL AND tgobj->parent_tag_id IS INITIAL.
-        RAISE EXCEPTION TYPE zcx_abaptags_adt_error
-          EXPORTING textid = zcx_abaptags_adt_error=>tgobj_with_missing_par_tag_id
-                    msgv1  = |[{ tgobj->object_type }]: { tgobj->object_name }|
-                    msgv2  = |[{ tgobj->parent_object_type }]: { tgobj->parent_object_name }|.
+      shared_tags_to_insert = VALUE #( BASE shared_tags_to_insert FOR user IN shared_tag->users
+                                       ( tag_id = shared_tag->tag_id shared_user = user-name ) ).
+    ENDLOOP.
+
+    INSERT zabaptags_shtags FROM TABLE shared_tags_to_insert ACCEPTING DUPLICATE KEYS.
+  ENDMETHOD.
+
+  METHOD import_tagged_objects.
+    prepare_tgobj( ).
+    validate_objects( ).
+    validate_tag_refs( ).
+    filter_out_existing( ).
+    insert_new_tgobj( ).
+  ENDMETHOD.
+
+  METHOD prepare_tgobj.
+    DATA obj_keys TYPE zif_abaptags_ty_global=>ty_tadir_keys.
+    DATA parent_obj_keys TYPE zif_abaptags_ty_global=>ty_tadir_keys.
+    DATA comp_obj_infos TYPE zif_abaptags_ty_global=>ty_local_adt_obj_infos.
+    DATA msg TYPE string ##NEEDED.
+
+    LOOP AT import_request-tagged_objects REFERENCE INTO DATA(tgobj_pending).
+      IF tgobj_pending->tag_id IS INITIAL.
+        MESSAGE e014(zabaptags) WITH |[{ tgobj_pending->object_type }]: { tgobj_pending->object_name }| INTO msg.
+        tgobjs_invalid = VALUE #( BASE tgobjs_invalid ( CORRESPONDING #( tgobj_pending->* ) ) ).
+        CONTINUE.
+      ENDIF.
+
+      IF tgobj_pending->parent_object_name IS NOT INITIAL AND tgobj_pending->parent_tag_id IS INITIAL.
+        MESSAGE e015(zabaptags) WITH |[{ tgobj_pending->object_type }]: { tgobj_pending->object_name }|
+                                     |[{ tgobj_pending->parent_object_type }]: { tgobj_pending->parent_object_name }| INTO msg.
+        tgobjs_invalid = VALUE #( BASE tgobjs_invalid ( CORRESPONDING #( tgobj_pending->* ) ) ).
+        CONTINUE.
+      ENDIF.
+
+      IF db_to_imp_tag_map IS NOT INITIAL.
+        update_tag_ids( tgobj = tgobj_pending ).
+      ENDIF.
+
+      DATA(tgobj_for_import) = CORRESPONDING ty_tgobj_info_enh( tgobj_pending->* ).
+      tgobj_for_import-object_type_tadir = SWITCH #( tgobj_for_import-object_type
+                                                     WHEN zif_abaptags_c_global=>wb_object_types-function
+                                                     THEN zif_abaptags_c_global=>object_types-function
+                                                     ELSE tgobj_for_import-object_type ).
+
+      obj_keys = VALUE #( BASE obj_keys
+                          ( type = tgobj_for_import-object_type_tadir name = tgobj_for_import-object_name ) ).
+
+      IF tgobj_for_import-parent_object_type IS NOT INITIAL.
+        tgobj_for_import-parent_object_type_tadir = SWITCH trobjtype( tgobj_for_import-parent_object_type
+                                                                      WHEN zif_abaptags_c_global=>wb_object_types-function
+                                                                      THEN zif_abaptags_c_global=>object_types-function
+                                                                      ELSE tgobj_for_import-parent_object_type ).
+        parent_obj_keys = VALUE #(
+            BASE parent_obj_keys
+            ( type = tgobj_for_import-parent_object_type_tadir name = tgobj_for_import-parent_object_name ) ).
+      ENDIF.
+
+      IF tgobj_for_import-component_name IS NOT INITIAL.
+        comp_obj_infos = VALUE #( BASE comp_obj_infos
+                                  ( object_name    = tgobj_for_import-object_name
+                                    object_type    = tgobj_for_import-object_type_tadir
+                                    component_name = tgobj_for_import-component_name
+                                    component_type = tgobj_for_import-component_type ) ).
+      ENDIF.
+
+      tgobjs_for_import = VALUE #( BASE tgobjs_for_import ( tgobj_for_import ) ).
+    ENDLOOP.
+
+    CLEAR import_request-tagged_objects.
+
+    objs_tadir_check = NEW zcl_abaptags_tadir( obj_keys )->determine_tadir_entries( ).
+    parent_objs_tadir_check = NEW zcl_abaptags_tadir( parent_obj_keys )->determine_tadir_entries( ).
+    component_mapper = NEW #( ).
+    component_mapper->add_components( comp_obj_infos ).
+    component_mapper->determine_components( ).
+  ENDMETHOD.
+
+  METHOD validate_objects.
+    DATA adt_object_ref TYPE zcl_abaptags_adt_util=>ty_adt_obj_ref_info.
+
+    LOOP AT tgobjs_for_import REFERENCE INTO DATA(tgobj).
+      TRY.
+          objs_tadir_check->get_tadir_info( name = tgobj->object_name
+                                            type = tgobj->object_type_tadir  ).
+        CATCH cx_sy_itab_line_not_found.
+          tgobjs_invalid = VALUE #( BASE tgobjs_invalid ( tgobj->* ) ).
+          DELETE tgobjs_for_import.
+          CONTINUE.
+      ENDTRY.
+
+      IF tgobj->component_name IS NOT INITIAL.
+        adt_object_ref = component_mapper->get_adt_object( VALUE #( object_name    = tgobj->object_name
+                                                                    object_type    = tgobj->object_type
+                                                                    component_name = tgobj->component_name
+                                                                    component_type = tgobj->component_type ) ).
+
+      ELSE.
+        adt_object_ref = zcl_abaptags_adt_util=>get_adt_obj_ref_for_tadir_type( tadir_type = tgobj->object_type_tadir
+                                                                                name       = tgobj->object_name ).
+      ENDIF.
+
+      IF adt_object_ref-uri IS INITIAL.
+        " No URI means that the TADIR object or the component does not longer exist
+        tgobjs_invalid = VALUE #( BASE tgobjs_invalid ( tgobj->* ) ).
+        DELETE tgobjs_for_import.
+        CONTINUE.
+      ENDIF.
+
+      IF tgobj->parent_object_name IS NOT INITIAL AND NOT is_parent_obj_valid( tgobj ).
+        tgobjs_invalid = VALUE #( BASE tgobjs_invalid ( tgobj->* ) ).
+        DELETE tgobjs_for_import.
+        CONTINUE.
       ENDIF.
     ENDLOOP.
+  ENDMETHOD.
+
+  METHOD is_parent_obj_valid.
+    result = abap_true.
+
+    IF tgobj->parent_object_name IS INITIAL OR tgobj->parent_object_type IS INITIAL.
+      CLEAR tgobj->parent_tag_id. " not required during import/export
+      CLEAR tgobj->parent_tag_name.
+      RETURN.
+    ENDIF.
+
+    TRY.
+        parent_objs_tadir_check->get_tadir_info( name = tgobj->parent_object_name
+                                                 type = tgobj->parent_object_type_tadir ).
+        DATA(adt_object_ref) = zcl_abaptags_adt_util=>get_adt_obj_ref_for_tadir_type(
+                                   tadir_type = tgobj->parent_object_type_tadir
+                                   name       = tgobj->parent_object_name ).
+        IF adt_object_ref IS INITIAL.
+          result = abap_false.
+        ENDIF.
+      CATCH cx_sy_itab_line_not_found.
+        result = abap_false.
+    ENDTRY.
+  ENDMETHOD.
+
+  METHOD validate_tag_refs.
+    " REVISIT: currently only the existence of the tags is checked, not if the hierarchy is correct
+    CHECK tgobjs_for_import IS NOT INITIAL.
+
+    DATA tag_ids TYPE HASHED TABLE OF zabaptags_tag_id WITH UNIQUE KEY table_line.
+
+    SELECT tag_id FROM zabaptags_tags
+      FOR ALL ENTRIES IN @tgobjs_for_import
+      WHERE tag_id = @tgobjs_for_import-tag_id
+         OR tag_id = @tgobjs_for_import-parent_tag_id
+      INTO TABLE @tag_ids.
+
+    LOOP AT tgobjs_for_import REFERENCE INTO DATA(tgobj).
+      IF NOT line_exists( tag_ids[ table_line = tgobj->tag_id ] ).
+        tgobjs_invalid = VALUE #( BASE tgobjs_invalid ( tgobj->* ) ).
+        DELETE tgobjs_for_import.
+      ENDIF.
+
+      IF tgobj->parent_tag_id IS NOT INITIAL AND NOT line_exists( tag_ids[ table_line = tgobj->parent_tag_id ] ).
+        tgobjs_invalid = VALUE #( BASE tgobjs_invalid ( tgobj->* ) ).
+        DELETE tgobjs_for_import.
+      ENDIF.
+    ENDLOOP.
+  ENDMETHOD.
+
+  METHOD filter_out_existing.
+    DATA existing_entries TYPE ty_tgobj_infos_sorted.
+
+    CHECK tgobjs_for_import IS NOT INITIAL.
+
+    SELECT object_name,
+           object_type        AS object_type_tadir,
+           tag_id,
+           parent_object_name,
+           parent_object_type AS parent_object_type_tadir,
+           parent_tag_id,
+           component_type,
+           component_name
+      FROM zabaptags_tgobjn
+      FOR ALL ENTRIES IN @tgobjs_for_import
+      WHERE object_name        = @tgobjs_for_import-object_name
+        AND object_type        = @tgobjs_for_import-object_type_tadir
+        AND tag_id             = @tgobjs_for_import-tag_id
+        AND parent_tag_id      = @tgobjs_for_import-parent_tag_id
+        AND parent_object_type = @tgobjs_for_import-parent_object_type_tadir
+        AND parent_object_name = @tgobjs_for_import-parent_object_name
+        AND component_name     = @tgobjs_for_import-component_name
+        AND component_type     = @tgobjs_for_import-component_type
+      INTO CORRESPONDING FIELDS OF TABLE @existing_entries.
+
+    IF existing_entries IS INITIAL.
+      RETURN.
+    ENDIF.
+
+    LOOP AT tgobjs_for_import REFERENCE INTO DATA(tgobj).
+      IF line_exists( existing_entries[ KEY semkey
+                                        tag_id                   = tgobj->tag_id
+                                        object_type_tadir        = tgobj->object_type_tadir
+                                        object_name              = tgobj->object_name
+                                        parent_tag_id            = tgobj->parent_tag_id
+                                        parent_object_type_tadir = tgobj->parent_object_type_tadir
+                                        parent_object_name       = tgobj->parent_object_name
+                                        component_type           = tgobj->component_type
+                                        component_name           = tgobj->component_name ] ).
+        DELETE tgobjs_for_import.
+      ENDIF.
+    ENDLOOP.
+  ENDMETHOD.
+
+  METHOD insert_new_tgobj.
+    DATA tgobjs_db TYPE zif_abaptags_ty_global=>ty_db_tagged_objects.
+
+    CHECK tgobjs_for_import IS NOT INITIAL.
+
+    LOOP AT tgobjs_for_import REFERENCE INTO DATA(tgobj).
+      tgobj->id = cl_system_uuid=>create_uuid_x16_static( ).
+      tgobjs_db = VALUE #( BASE tgobjs_db
+                           ( CORRESPONDING #( tgobj->* MAPPING object_type = object_type_tadir
+                                                               parent_object_type = parent_object_type_tadir ) ) ).
+    ENDLOOP.
+
+    INSERT zabaptags_tgobjn FROM TABLE tgobjs_db.
   ENDMETHOD.
 
   METHOD propagate_parent_tag_id.
@@ -213,4 +460,17 @@ CLASS zcl_abaptags_adt_res_tagimport IMPLEMENTATION.
     result = <child_tags>.
   ENDMETHOD.
 
+  METHOD update_tag_ids.
+    DATA(db_tag) = VALUE #( db_to_imp_tag_map[ import_tag_id = tgobj->tag_id ] OPTIONAL ).
+    IF db_tag IS NOT INITIAL.
+      tgobj->tag_id = db_tag-db_tag_id.
+    ENDIF.
+
+    IF tgobj->parent_object_name IS NOT INITIAL.
+      db_tag = VALUE #( db_to_imp_tag_map[ import_tag_id = tgobj->parent_tag_id ] OPTIONAL ).
+      IF db_tag IS NOT INITIAL.
+        tgobj->parent_tag_id = db_tag-db_tag_id.
+      ENDIF.
+    ENDIF.
+  ENDMETHOD.
 ENDCLASS.
