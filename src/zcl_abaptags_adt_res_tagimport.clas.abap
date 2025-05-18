@@ -38,6 +38,14 @@ CLASS zcl_abaptags_adt_res_tagimport DEFINITION
     DATA objs_tadir_check TYPE REF TO zcl_abaptags_tadir.
     DATA parent_objs_tadir_check TYPE REF TO zcl_abaptags_tadir.
     DATA component_mapper TYPE REF TO zcl_abaptags_comp_adt_mapper.
+    DATA:
+      BEGIN OF stats,
+        tags_in_request    TYPE i,
+        objects_in_request TYPE i,
+        new_tags           TYPE i,
+        updated_tags       TYPE i,
+        imported_objects   TYPE i,
+      END OF stats.
 
     METHODS get_request_content_handler
       RETURNING
@@ -82,6 +90,10 @@ CLASS zcl_abaptags_adt_res_tagimport DEFINITION
     METHODS insert_new_tgobj
       RAISING
         cx_uuid_error.
+
+    METHODS set_response
+      IMPORTING
+        !response TYPE REF TO if_adt_rest_response.
 ENDCLASS.
 
 
@@ -94,11 +106,22 @@ CLASS zcl_abaptags_adt_res_tagimport IMPLEMENTATION.
         import_tags( ).
         import_shared_tags( ).
         import_tagged_objects( ).
+        set_response( response ).
       CATCH cx_uuid_error INTO DATA(uuid_error).
         ROLLBACK WORK.
         RAISE EXCEPTION TYPE zcx_abaptags_adt_error
           EXPORTING previous = uuid_error.
     ENDTRY.
+  ENDMETHOD.
+
+  METHOD set_response.
+    DATA(response_text) = |Tags received:@@{ stats-tags_in_request };| &&
+                          |New Tags imported:@@{ stats-new_tags };| &&
+                          |Existing Tags updated:@@{ stats-updated_tags };| &&
+                          |Tagged Objects received:@@{ stats-objects_in_request };| &&
+                          |Tagged Objects imported:@@{ stats-imported_objects }|.
+    response->get_inner_rest_response( )->get_entity( )->set_content_type( 'text/plain;charset=utf-8' ).
+    response->get_inner_rest_response( )->get_entity( )->set_string_data( iv_data = response_text ).
   ENDMETHOD.
 
   METHOD get_request_content_handler.
@@ -117,6 +140,7 @@ CLASS zcl_abaptags_adt_res_tagimport IMPLEMENTATION.
     DATA(pending_tags) = import_request-tags.
 
     WHILE pending_tags IS NOT INITIAL.
+      stats-tags_in_request = stats-tags_in_request + lines( pending_tags ).
       " perform some pre data conversion to get save result from database query
       LOOP AT pending_tags REFERENCE INTO DATA(pending_tag).
         pending_tag->name_upper = to_upper( pending_tag->name ).
@@ -192,6 +216,7 @@ CLASS zcl_abaptags_adt_res_tagimport IMPLEMENTATION.
       ENDLOOP.
       root_mapper->map_tags_to_root( ).
       INSERT zabaptags_tags FROM TABLE tags_to_insert.
+      stats-new_tags = sy-dbcnt.
     ENDIF.
 
     IF tags_to_update IS NOT INITIAL.
@@ -201,6 +226,7 @@ CLASS zcl_abaptags_adt_res_tagimport IMPLEMENTATION.
       ENDLOOP.
 
       UPDATE zabaptags_tags FROM TABLE tags_to_update.
+      stats-updated_tags = sy-dbcnt.
     ENDIF.
   ENDMETHOD.
 
@@ -224,6 +250,8 @@ CLASS zcl_abaptags_adt_res_tagimport IMPLEMENTATION.
   ENDMETHOD.
 
   METHOD import_tagged_objects.
+    stats-objects_in_request = lines( import_request-tagged_objects ).
+
     prepare_tgobj( ).
     validate_objects( ).
     validate_tag_refs( ).
@@ -438,6 +466,7 @@ CLASS zcl_abaptags_adt_res_tagimport IMPLEMENTATION.
     ENDLOOP.
 
     INSERT zabaptags_tgobjn FROM TABLE tgobjs_db.
+    stats-imported_objects = sy-dbcnt.
   ENDMETHOD.
 
   METHOD propagate_parent_tag_id.
