@@ -40,7 +40,7 @@ CLASS zcl_abaptags_tadir_dac IMPLEMENTATION.
       FOR ALL ENTRIES IN @tadir_keys
       WHERE obj_name = @tadir_keys-name
         AND object   = @tadir_keys-type
+        AND delflag  = @abap_false
       INTO CORRESPONDING FIELDS OF TABLE @result.
   ENDMETHOD.
 ENDCLASS.
-

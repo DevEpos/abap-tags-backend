@@ -15,6 +15,7 @@ CLASS zcl_abaptags_tag_util DEFINITION
     CLASS-METHODS build_hierarchical_tags
       IMPORTING
         tags_flat              TYPE zabaptags_tag_data_t
+        create_missing_parents type abap_bool optional
         ignore_missing_parents TYPE abap_bool OPTIONAL
       RETURNING
         VALUE(tags_result)     TYPE zabaptags_tag_data_t.
@@ -75,44 +76,48 @@ CLASS zcl_abaptags_tag_util IMPLEMENTATION.
   METHOD build_hierarchical_tags.
     DATA tmp_tag_map TYPE zif_abaptags_ty_global=>ty_tag_data_map.
 
-    FIELD-SYMBOLS <parent> TYPE zabaptags_tag_data.
     FIELD-SYMBOLS <children> TYPE zabaptags_tag_data_t.
 
     CHECK tags_flat IS NOT INITIAL.
 
     DATA(tags_hier) = tags_flat.
 
-    LOOP AT tags_hier ASSIGNING FIELD-SYMBOL(<tag>) WHERE parent_tag_id IS NOT INITIAL.
+    LOOP AT tags_hier REFERENCE INTO DATA(tag) WHERE parent_tag_id IS NOT INITIAL.
       " Find your parent in the current table
-      ASSIGN tags_hier[ KEY tag_id
-                        tag_id = <tag>-parent_tag_id ] TO <parent>.
-      IF sy-subrc <> 0.
+      DATA(parent) = REF #( tags_hier[ KEY tag_id
+                                       tag_id = tag->parent_tag_id ] OPTIONAL ).
+      IF parent IS NOT BOUND.
         " Maybe the tag was already removed and added to the map
-        ASSIGN tmp_tag_map[ tag_id = <tag>-parent_tag_id ] TO FIELD-SYMBOL(<map_entry>).
-        IF sy-subrc = 0.
-          ASSIGN <map_entry>-data->* TO <parent>.
+        DATA(map_entry) = REF #( tmp_tag_map[ tag_id = tag->parent_tag_id ] OPTIONAL ).
+        IF map_entry IS BOUND.
+          parent = map_entry->data.
         ELSE.
-          IF ignore_missing_parents = abap_false.
-            DELETE tags_hier.
+          IF create_missing_parents = abap_true.
+            APPEND INITIAL LINE TO tags_hier REFERENCE INTO parent.
+            parent->tag_id = tag->parent_tag_id.
+          ELSE.
+            IF ignore_missing_parents = abap_false.
+              DELETE tags_hier.
+            ENDIF.
+            CONTINUE.
           ENDIF.
-          CONTINUE.
         ENDIF.
       ENDIF.
 
-      IF <parent>-child_tags IS NOT BOUND.
-        <parent>-child_tags = NEW zabaptags_tag_data_t( ).
+      IF parent->child_tags IS NOT BOUND.
+        parent->child_tags = NEW zabaptags_tag_data_t( ).
       ENDIF.
-      ASSIGN <parent>-child_tags->* TO <children>.
+      ASSIGN parent->child_tags->* TO <children>.
 
-      APPEND INITIAL LINE TO <children> ASSIGNING FIELD-SYMBOL(<ls_child>).
-      <ls_child> = <tag>.
+      APPEND INITIAL LINE TO <children> REFERENCE INTO DATA(child).
+      child->* = tag->*.
       SORT <children> BY name.
-      INSERT VALUE #( tag_id = <tag>-tag_id
-                      data   = REF #( <ls_child> ) ) INTO TABLE tmp_tag_map.
+      INSERT VALUE #( tag_id = tag->tag_id
+                      data   = child ) INTO TABLE tmp_tag_map.
 
       DELETE tags_hier.
 
-      UNASSIGN <parent>.
+      CLEAR parent.
     ENDLOOP.
 
     tags_result = tags_hier.

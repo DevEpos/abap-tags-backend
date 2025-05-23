@@ -33,7 +33,6 @@ CLASS zcl_abaptags_adt_res_tagimport DEFINITION
 
     DATA db_to_imp_tag_map TYPE HASHED TABLE OF ty_pers_to_imp_tag WITH UNIQUE KEY import_tag_id.
     DATA tgobjs_for_import TYPE ty_tgobj_infos_sorted.
-    DATA tgobjs_invalid TYPE ty_tgobj_infos_sorted.
     DATA import_request TYPE zabaptags_data_export.
     DATA objs_tadir_check TYPE REF TO zcl_abaptags_tadir.
     DATA parent_objs_tadir_check TYPE REF TO zcl_abaptags_tadir.
@@ -41,14 +40,15 @@ CLASS zcl_abaptags_adt_res_tagimport DEFINITION
     DATA tags_to_unshare TYPE zif_abaptags_ty_global=>ty_tag_id_range.
     DATA tags_to_update TYPE zif_abaptags_ty_global=>ty_db_tags.
     DATA tags_to_insert TYPE zif_abaptags_ty_global=>ty_db_tags.
-    DATA:
-      BEGIN OF stats,
-        tags_in_request    TYPE i,
-        objects_in_request TYPE i,
-        new_tags           TYPE i,
-        updated_tags       TYPE i,
-        imported_objects   TYPE i,
-      END OF stats.
+    DATA: BEGIN OF stats,
+            tags_in_request    TYPE i,
+            objects_in_request TYPE i,
+            invalid_objects    TYPE i,
+            new_tags           TYPE i,
+            updated_tags       TYPE i,
+            imported_objects   TYPE i,
+          END OF stats.
+    DATA root_mapper TYPE REF TO zcl_abaptags_root_mapper.
 
     METHODS get_request_content_handler
       RETURNING
@@ -146,6 +146,7 @@ CLASS zcl_abaptags_adt_res_tagimport IMPLEMENTATION.
                           |New Tags imported:@@{ stats-new_tags };| &&
                           |Existing Tags updated:@@{ stats-updated_tags };| &&
                           |Tagged Objects received:@@{ stats-objects_in_request };| &&
+                          |Tagged Objects invalid:@@{ stats-invalid_objects };| &&
                           |Tagged Objects imported:@@{ stats-imported_objects }|.
     response->get_inner_rest_response( )->get_entity( )->set_content_type( 'text/plain;charset=utf-8' ).
     response->get_inner_rest_response( )->get_entity( )->set_string_data( iv_data = response_text ).
@@ -159,6 +160,7 @@ CLASS zcl_abaptags_adt_res_tagimport IMPLEMENTATION.
   ENDMETHOD.
 
   METHOD import_tags.
+    root_mapper = NEW zcl_abaptags_root_mapper( resolve_hierarchies = abap_true ).
     collect_tags_for_import( ).
     persist_tag_changes( ).
     import_shared_tags( ).
@@ -176,6 +178,9 @@ CLASS zcl_abaptags_adt_res_tagimport IMPLEMENTATION.
       LOOP AT pending_tags REFERENCE INTO DATA(pending_tag).
         pending_tag->name_upper = to_upper( pending_tag->name ).
         pending_tag->owner      = to_upper( pending_tag->owner ).
+
+*        root_mapper->collect_parent( tag_id        = pending_tag->tag_id
+*                                     parent_tag_id = pending_tag->parent_tag_id ).
       ENDLOOP.
 
       SELECT * FROM zabaptags_tags
@@ -194,7 +199,8 @@ CLASS zcl_abaptags_adt_res_tagimport IMPLEMENTATION.
                                                       owner         = pending_tag->owner
                                                       parent_tag_id = pending_tag->parent_tag_id ] OPTIONAL ).
         IF by_semantic_key IS NOT INITIAL.
-          update_existing_tag( pending_tag = pending_tag existing_tag = by_semantic_key ).
+          update_existing_tag( pending_tag  = pending_tag
+                               existing_tag = by_semantic_key ).
         ELSE.
           " check if the tag is already existing with the same UUID, then it is an update
           DATA(by_tag_id) = REF #( existing_tags[ KEY tag_id
@@ -213,7 +219,8 @@ CLASS zcl_abaptags_adt_res_tagimport IMPLEMENTATION.
         ENDIF.
 
         " collect children if existing
-        temp_tags = VALUE #( BASE temp_tags ( LINES OF get_child_tags( pending_tag->* ) ) ).
+        temp_tags = VALUE #( BASE temp_tags
+                             ( LINES OF get_child_tags( pending_tag->* ) ) ).
       ENDLOOP.
 
       pending_tags = temp_tags.
@@ -224,8 +231,10 @@ CLASS zcl_abaptags_adt_res_tagimport IMPLEMENTATION.
   METHOD update_existing_tag.
     IF existing_tag->tag_id = pending_tag->tag_id.
       " check if update is really required
-      IF is_tag_changed( tag = pending_tag->* existing = existing_tag->* ).
-        IF is_tag_to_be_unshared( tag = pending_tag->* existing = existing_tag->* ).
+      IF is_tag_changed( tag      = pending_tag->*
+                         existing = existing_tag->* ).
+        IF is_tag_to_be_unshared( tag      = pending_tag->*
+                                  existing = existing_tag->* ).
           tags_to_unshare = VALUE #( BASE tags_to_unshare
                                      ( sign = 'I' option = 'EQ' low = pending_tag->tag_id ) ).
         ENDIF.
@@ -239,8 +248,10 @@ CLASS zcl_abaptags_adt_res_tagimport IMPLEMENTATION.
       propagate_parent_tag_id( pending_tag->* ).
 
       " check if update is really required
-      IF is_tag_changed( tag = pending_tag->* existing = existing_tag->* ).
-        IF is_tag_to_be_unshared( tag = pending_tag->* existing = existing_tag->* ).
+      IF is_tag_changed( tag      = pending_tag->*
+                         existing = existing_tag->* ).
+        IF is_tag_to_be_unshared( tag      = pending_tag->*
+                                  existing = existing_tag->* ).
           tags_to_unshare = VALUE #( BASE tags_to_unshare
                                      ( sign = 'I' option = 'EQ' low = pending_tag->tag_id ) ).
         ENDIF.
@@ -259,9 +270,9 @@ CLASS zcl_abaptags_adt_res_tagimport IMPLEMENTATION.
 
   METHOD persist_tag_changes.
     IF tags_to_insert IS NOT INITIAL.
-      DATA(root_mapper) = NEW zcl_abaptags_root_mapper( ).
       LOOP AT tags_to_insert REFERENCE INTO DATA(tag_to_insert).
-        root_mapper->collect_parent( tag_id = tag_to_insert->tag_id parent_tag_id = tag_to_insert->parent_tag_id ).
+        root_mapper->collect_parent( tag_id        = tag_to_insert->tag_id
+                                     parent_tag_id = tag_to_insert->parent_tag_id ).
         CLEAR tag_to_insert->admin_data.
         tag_to_insert->created_by = sy-uname.
         GET TIME STAMP FIELD tag_to_insert->created_date_time.
@@ -323,15 +334,15 @@ CLASS zcl_abaptags_adt_res_tagimport IMPLEMENTATION.
 
     LOOP AT import_request-tagged_objects REFERENCE INTO DATA(tgobj_pending).
       IF tgobj_pending->tag_id IS INITIAL.
-        MESSAGE e014(zabaptags) WITH |[{ tgobj_pending->object_type }]: { tgobj_pending->object_name }| INTO msg.
-        tgobjs_invalid = VALUE #( BASE tgobjs_invalid ( CORRESPONDING #( tgobj_pending->* ) ) ).
+        " MESSAGE e014(zabaptags) WITH |[{ tgobj_pending->object_type }]: { tgobj_pending->object_name }| INTO msg.
+        stats-invalid_objects = stats-invalid_objects + 1.
         CONTINUE.
       ENDIF.
 
       IF tgobj_pending->parent_object_name IS NOT INITIAL AND tgobj_pending->parent_tag_id IS INITIAL.
-        MESSAGE e015(zabaptags) WITH |[{ tgobj_pending->object_type }]: { tgobj_pending->object_name }|
-                                     |[{ tgobj_pending->parent_object_type }]: { tgobj_pending->parent_object_name }| INTO msg.
-        tgobjs_invalid = VALUE #( BASE tgobjs_invalid ( CORRESPONDING #( tgobj_pending->* ) ) ).
+        " MESSAGE e015(zabaptags) WITH |[{ tgobj_pending->object_type }]: { tgobj_pending->object_name }|
+        "                              |[{ tgobj_pending->parent_object_type }]: { tgobj_pending->parent_object_name }| INTO msg.
+        stats-invalid_objects = stats-invalid_objects + 1.
         CONTINUE.
       ENDIF.
 
@@ -366,7 +377,8 @@ CLASS zcl_abaptags_adt_res_tagimport IMPLEMENTATION.
                                     component_type = tgobj_for_import-component_type ) ).
       ENDIF.
 
-      tgobjs_for_import = VALUE #( BASE tgobjs_for_import ( tgobj_for_import ) ).
+      tgobjs_for_import = VALUE #( BASE tgobjs_for_import
+                                   ( tgobj_for_import ) ).
     ENDLOOP.
 
     CLEAR import_request-tagged_objects.
@@ -386,7 +398,7 @@ CLASS zcl_abaptags_adt_res_tagimport IMPLEMENTATION.
           objs_tadir_check->get_tadir_info( name = tgobj->object_name
                                             type = tgobj->object_type_tadir  ).
         CATCH cx_sy_itab_line_not_found.
-          tgobjs_invalid = VALUE #( BASE tgobjs_invalid ( tgobj->* ) ).
+          stats-invalid_objects = stats-invalid_objects + 1.
           DELETE tgobjs_for_import.
           CONTINUE.
       ENDTRY.
@@ -404,13 +416,13 @@ CLASS zcl_abaptags_adt_res_tagimport IMPLEMENTATION.
 
       IF adt_object_ref-uri IS INITIAL.
         " No URI means that the TADIR object or the component does not longer exist
-        tgobjs_invalid = VALUE #( BASE tgobjs_invalid ( tgobj->* ) ).
+        stats-invalid_objects = stats-invalid_objects + 1.
         DELETE tgobjs_for_import.
         CONTINUE.
       ENDIF.
 
       IF tgobj->parent_object_name IS NOT INITIAL AND NOT is_parent_obj_valid( tgobj ).
-        tgobjs_invalid = VALUE #( BASE tgobjs_invalid ( tgobj->* ) ).
+        stats-invalid_objects = stats-invalid_objects + 1.
         DELETE tgobjs_for_import.
         CONTINUE.
       ENDIF.
@@ -454,12 +466,12 @@ CLASS zcl_abaptags_adt_res_tagimport IMPLEMENTATION.
 
     LOOP AT tgobjs_for_import REFERENCE INTO DATA(tgobj).
       IF NOT line_exists( tag_ids[ table_line = tgobj->tag_id ] ).
-        tgobjs_invalid = VALUE #( BASE tgobjs_invalid ( tgobj->* ) ).
+        stats-invalid_objects = stats-invalid_objects + 1.
         DELETE tgobjs_for_import.
       ENDIF.
 
       IF tgobj->parent_tag_id IS NOT INITIAL AND NOT line_exists( tag_ids[ table_line = tgobj->parent_tag_id ] ).
-        tgobjs_invalid = VALUE #( BASE tgobjs_invalid ( tgobj->* ) ).
+        stats-invalid_objects = stats-invalid_objects + 1.
         DELETE tgobjs_for_import.
       ENDIF.
     ENDLOOP.

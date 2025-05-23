@@ -72,7 +72,8 @@ CLASS zcl_abaptags_tadir IMPLEMENTATION.
         DELETE tadir_keys.
       ELSEIF     <key>-type  = zif_abaptags_c_global=>object_types-package
              AND <key>-name CP '$*'.
-        local_package_range = VALUE #( BASE local_package_range ( sign = 'I' option = 'EQ' low = <key>-name ) ).
+        local_package_range = VALUE #( BASE local_package_range
+                                       ( sign = 'I' option = 'EQ' low = <key>-name ) ).
         DELETE tadir_keys.
       ENDIF.
     ENDLOOP.
@@ -124,7 +125,8 @@ CLASS zcl_abaptags_tadir IMPLEMENTATION.
       EXCEPTIONS delimiter_error         = 0.
 
     IF is_fugr_include = abap_true.
-      INSERT VALUE #( include = obj_name group = namespace && function_group ) INTO TABLE fugr_includes.
+      INSERT VALUE #( include = obj_name
+                      group   = namespace && function_group ) INTO TABLE fugr_includes.
       INSERT VALUE #( name = namespace && function_group
                       type = zif_abaptags_c_global=>object_types-function_group ) INTO TABLE tadir_keys.
     ELSE.
