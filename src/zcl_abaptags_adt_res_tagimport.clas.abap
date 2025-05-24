@@ -444,7 +444,11 @@ CLASS zcl_abaptags_adt_res_tagimport IMPLEMENTATION.
         DATA(adt_object_ref) = zcl_abaptags_adt_util=>get_adt_obj_ref_for_tadir_type(
                                    tadir_type = tgobj->parent_object_type_tadir
                                    name       = tgobj->parent_object_name ).
-        IF adt_object_ref IS INITIAL.
+        IF adt_object_ref IS INITIAL OR NOT line_exists( tgobjs_for_import[
+                                                             KEY semkey
+                                                             tag_id      = tgobj->parent_tag_id
+                                                             object_type = tgobj->parent_object_type_tadir
+                                                             object_name = tgobj->parent_object_name ] ).
           result = abap_false.
         ENDIF.
       CATCH cx_sy_itab_line_not_found.
