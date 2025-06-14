@@ -567,7 +567,7 @@ CLASS zcl_abaptags_adt_res_tagimport IMPLEMENTATION.
       tgobj->tag_id = db_tag-db_tag_id.
     ENDIF.
 
-    IF tgobj->parent_object_name IS NOT INITIAL.
+    IF tgobj->parent_tag_id IS NOT INITIAL.
       db_tag = VALUE #( db_to_imp_tag_map[ import_tag_id = tgobj->parent_tag_id ] OPTIONAL ).
       IF db_tag IS NOT INITIAL.
         tgobj->parent_tag_id = db_tag-db_tag_id.
