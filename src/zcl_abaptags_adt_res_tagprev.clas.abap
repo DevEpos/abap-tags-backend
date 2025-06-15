@@ -116,10 +116,11 @@ CLASS zcl_abaptags_adt_res_tagprev IMPLEMENTATION.
   ENDMETHOD.
 
   METHOD read_tags_flat.
-    tags_raw = VALUE #( ( LINES OF tags_dac->find_tags( owner_range = VALUE #( sign   = 'I'
-                                                                               option = 'EQ'
-                                                                               ( low = sy-uname )
-                                                                               ( low = space  ) ) ) )
+    tags_raw = VALUE #( ( LINES OF
+                          tags_dac->find_tags( owner_range = VALUE #( sign   = 'I'
+                                                                      option = 'EQ'
+                                                                      ( low = sy-uname )
+                                                                      ( low = space  ) ) ) )
                         ( LINES OF zcl_abaptags_tag_util=>get_shared_tags( abap_true ) ) ).
   ENDMETHOD.
 

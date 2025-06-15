@@ -15,7 +15,7 @@ CLASS zcl_abaptags_tag_util DEFINITION
     CLASS-METHODS build_hierarchical_tags
       IMPORTING
         tags_flat              TYPE zabaptags_tag_data_t
-        create_missing_parents type abap_bool optional
+        create_missing_parents TYPE abap_bool OPTIONAL
         ignore_missing_parents TYPE abap_bool OPTIONAL
       RETURNING
         VALUE(tags_result)     TYPE zabaptags_tag_data_t.

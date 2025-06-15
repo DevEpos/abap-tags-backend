@@ -145,7 +145,8 @@ CLASS zcl_abaptags_adt_res_tags IMPLEMENTATION.
     DATA(tags) = tags_dac->find_tags( owner_range      = owner_range
                                       name_upper_range = tag_name_range ).
 
-    IF line_exists( scopes[ table_line = zif_abaptags_c_global=>scopes-all ] ).
+    IF    line_exists( scopes[ table_line = zif_abaptags_c_global=>scopes-all ] )
+       OR line_exists( scopes[ table_line = zif_abaptags_c_global=>scopes-shared ] ).
       tags = VALUE #( BASE tags
                       ( LINES OF zcl_abaptags_tag_util=>get_shared_tags( abap_true ) ) ).
     ENDIF.

@@ -5,7 +5,7 @@ CLASS zcl_abaptags_root_mapper DEFINITION
   PUBLIC SECTION.
     METHODS constructor
       IMPORTING
-        resolve_hierarchies TYPE abap_bool optional.
+        resolve_hierarchies TYPE abap_bool OPTIONAL.
 
     METHODS collect_parent
       IMPORTING

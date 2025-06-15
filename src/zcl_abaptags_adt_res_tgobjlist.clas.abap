@@ -56,8 +56,6 @@ CLASS zcl_abaptags_adt_res_tgobjlist DEFINITION
 
     METHODS get_tagged_objects.
 
-
-
     METHODS get_tgobj_infos_by_sem_keys.
     METHODS post_process_found_objects.
     METHODS fill_semantic_key_tables.
