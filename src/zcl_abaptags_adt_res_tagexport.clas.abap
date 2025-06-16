@@ -187,8 +187,6 @@ CLASS zcl_abaptags_adt_res_tagexport IMPLEMENTATION.
     DATA adt_object_ref TYPE zcl_abaptags_adt_util=>ty_adt_obj_ref_info.
 
     IF tgobj_info-parent_object_name IS INITIAL OR tgobj_info-parent_object_type IS INITIAL.
-      CLEAR tgobj_info-parent_tag_id. " not required during import/export
-      CLEAR tgobj_info-parent_tag_name.
       RETURN.
     ENDIF.
 
@@ -210,9 +208,7 @@ CLASS zcl_abaptags_adt_res_tagexport IMPLEMENTATION.
 
     IF clear_parent = abap_true.
       CLEAR: tgobj_info-parent_object_name,
-             tgobj_info-parent_object_type,
-             tgobj_info-parent_tag_id,
-             tgobj_info-parent_tag_name.
+             tgobj_info-parent_object_type.
     ENDIF.
   ENDMETHOD.
 ENDCLASS.
