@@ -101,13 +101,6 @@ CLASS zcl_abaptags_adt_res_tagimport DEFINITION
       RETURNING
         VALUE(result) TYPE abap_bool.
 
-    METHODS is_tag_to_be_unshared
-      IMPORTING
-        tag           TYPE zabaptags_tag_data
-        existing      TYPE zabaptags_tag_data
-      RETURNING
-        VALUE(result) TYPE abap_bool.
-
     METHODS set_response
       IMPORTING
         !response TYPE REF TO if_adt_rest_response.
@@ -233,11 +226,6 @@ CLASS zcl_abaptags_adt_res_tagimport IMPLEMENTATION.
       " check if update is really required
       IF is_tag_changed( tag      = pending_tag->*
                          existing = existing_tag->* ).
-        IF is_tag_to_be_unshared( tag      = pending_tag->*
-                                  existing = existing_tag->* ).
-          tags_to_unshare = VALUE #( BASE tags_to_unshare
-                                     ( sign = 'I' option = 'EQ' low = pending_tag->tag_id ) ).
-        ENDIF.
         APPEND CORRESPONDING #( pending_tag->* ) TO tags_to_update.
       ENDIF.
     ELSE.
@@ -250,22 +238,13 @@ CLASS zcl_abaptags_adt_res_tagimport IMPLEMENTATION.
       " check if update is really required
       IF is_tag_changed( tag      = pending_tag->*
                          existing = existing_tag->* ).
-        IF is_tag_to_be_unshared( tag      = pending_tag->*
-                                  existing = existing_tag->* ).
-          tags_to_unshare = VALUE #( BASE tags_to_unshare
-                                     ( sign = 'I' option = 'EQ' low = pending_tag->tag_id ) ).
-        ENDIF.
         APPEND CORRESPONDING #( pending_tag->* ) TO tags_to_update.
       ENDIF.
     ENDIF.
   ENDMETHOD.
 
   METHOD is_tag_changed.
-    result = xsdbool( tag-description <> existing-description OR tag-is_shared <> existing-is_shared ).
-  ENDMETHOD.
-
-  METHOD is_tag_to_be_unshared.
-    result = xsdbool( tag-is_shared <> existing-is_shared AND tag-is_shared = abap_false ).
+    result = xsdbool( tag-description <> existing-description OR ( existing-is_shared = abap_false AND tag-is_shared = abap_true ) ).
   ENDMETHOD.
 
   METHOD persist_tag_changes.
