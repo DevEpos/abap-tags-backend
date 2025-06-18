@@ -510,10 +510,13 @@ CLASS zcl_abaptags_adt_res_tagimport IMPLEMENTATION.
     CHECK tgobjs_for_import IS NOT INITIAL.
 
     LOOP AT tgobjs_for_import REFERENCE INTO DATA(tgobj).
-      tgobj->id = cl_system_uuid=>create_uuid_x16_static( ).
-      tgobjs_db = VALUE #( BASE tgobjs_db
-                           ( CORRESPONDING #( tgobj->* MAPPING object_type = object_type_tadir
-                                                               parent_object_type = parent_object_type_tadir ) ) ).
+      DATA(tgobj_db) = CORRESPONDING zabaptags_tgobjn( tgobj->* MAPPING object_type = object_type_tadir
+                                                                        parent_object_type = parent_object_type_tadir ).
+      tgobj_db-id          = cl_system_uuid=>create_uuid_x16_static( ).
+      tgobj_db-tagged_by   = sy-uname.
+      tgobj_db-tagged_date = sy-datum.
+
+      tgobjs_db = VALUE #( BASE tgobjs_db ( tgobj_db ) ).
     ENDLOOP.
 
     INSERT zabaptags_tgobjn FROM TABLE tgobjs_db.
