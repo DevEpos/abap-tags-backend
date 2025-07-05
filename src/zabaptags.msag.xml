@@ -92,6 +92,18 @@
      <MSGNR>013</MSGNR>
      <TEXT>Unknown Action &amp;1 for Tagged Objects Resource</TEXT>
     </T100>
+    <T100>
+     <SPRSL>E</SPRSL>
+     <ARBGB>ZABAPTAGS</ARBGB>
+     <MSGNR>014</MSGNR>
+     <TEXT>Tagged Object &amp;1 with missing Tag Id detected</TEXT>
+    </T100>
+    <T100>
+     <SPRSL>E</SPRSL>
+     <ARBGB>ZABAPTAGS</ARBGB>
+     <MSGNR>015</MSGNR>
+     <TEXT>Tagged Object &amp;1 with parent Obj. &amp;2 with missing Parent Tag Id detected</TEXT>
+    </T100>
    </T100>
   </asx:values>
  </asx:abap>

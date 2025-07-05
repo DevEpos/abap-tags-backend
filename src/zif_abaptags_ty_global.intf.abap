@@ -39,6 +39,25 @@ INTERFACE zif_abaptags_ty_global
   TYPES ty_func_module_range TYPE RANGE OF tfdir-funcname.
 
   TYPES:
+    BEGIN OF ty_tagged_object,
+      id                 TYPE sysuuid_x16,
+      tag_id             TYPE zabaptags_tag_id,
+      tag_name           TYPE zabaptags_tag_name,
+      owner              TYPE zabaptags_tags-owner,
+      object_name        TYPE sobj_name,
+      object_type        TYPE trobjtype,
+      component_name     TYPE zabaptags_obj_comp_name,
+      component_type     TYPE swo_objtyp,
+      parent_tag_id      TYPE zabaptags_tag_id,
+      parent_tag_name    TYPE zabaptags_tag_name,
+      parent_object_name TYPE sobj_name,
+      parent_object_type TYPE trobjtype,
+    END OF ty_tagged_object,
+
+    ty_tagged_objects TYPE STANDARD TABLE OF ty_tagged_object WITH EMPTY KEY
+                                                              WITH UNIQUE HASHED KEY tag_id COMPONENTS tag_id.
+
+  TYPES:
     "! <p class="shorttext synchronized" lang="en">Function module info</p>
     BEGIN OF ty_func_module_info,
       function TYPE tfdir-funcname,

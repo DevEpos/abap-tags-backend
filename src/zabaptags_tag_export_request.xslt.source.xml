@@ -1,0 +1,27 @@
+<?sap.transform simple?>
+<tt:transform xmlns:tt="http://www.sap.com/transformation-templates"
+              xmlns:ddic="http://www.sap.com/abapxml/types/dictionary"
+              xmlns:atm="http://www.devepos.com/adt/atm">
+
+  <tt:root name="request" type="ddic:zabaptags_tag_export_request"/>
+
+  <tt:template>
+    <atm:tagExportRequest tt:extensible="deep">
+      <tt:cond check="not-initial(request.include_shared_tags_info)">
+        <tt:attribute name="atm:includeSharedTagsInfo" option="format(boolean)" value-ref="request.include_shared_tags_info"/>
+      </tt:cond>
+
+      <!-- Handle list of TagIds -->
+      <tt:cond check="exist(request.tag_ids)">
+        <tt:cond check="not-initial(request.tag_ids)">
+          <tt:loop name="tag" ref="request.tag_ids">
+            <atm:tagId>
+              <tt:value option="format(guid)" ref="$tag"/>
+            </atm:tagId>
+          </tt:loop>
+        </tt:cond>
+      </tt:cond>
+    </atm:tagExportRequest>
+  </tt:template>
+
+</tt:transform>

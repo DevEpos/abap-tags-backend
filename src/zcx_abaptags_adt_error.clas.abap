@@ -125,6 +125,26 @@ CLASS zcx_abaptags_adt_error DEFINITION
         attr4 TYPE scx_attrname VALUE '',
       END OF tag_already_exists.
 
+    CONSTANTS:
+      BEGIN OF tgobj_with_missing_tag_id,
+        msgid TYPE symsgid VALUE 'ZABAPTAGS',
+        msgno TYPE symsgno VALUE '014',
+        attr1 TYPE scx_attrname VALUE 'MSGV1',
+        attr2 TYPE scx_attrname VALUE '',
+        attr3 TYPE scx_attrname VALUE '',
+        attr4 TYPE scx_attrname VALUE '',
+      END OF tgobj_with_missing_tag_id.
+
+    CONSTANTS:
+      BEGIN OF tgobj_with_missing_par_tag_id,
+        msgid TYPE symsgid VALUE 'ZABAPTAGS',
+        msgno TYPE symsgno VALUE '015',
+        attr1 TYPE scx_attrname VALUE 'MSGV1',
+        attr2 TYPE scx_attrname VALUE 'MSGV2',
+        attr3 TYPE scx_attrname VALUE '',
+        attr4 TYPE scx_attrname VALUE '',
+      END OF tgobj_with_missing_par_tag_id.
+
     "! <p class="shorttext synchronized">CONSTRUCTOR</p>
     METHODS constructor
       IMPORTING

@@ -189,9 +189,6 @@ CLASS zcl_abaptags_tags_dac IMPLEMENTATION.
           changed_by        = @sy-uname,
           changed_date_time = @changed_datetime
       WHERE tag_id IN @tag_ids.
-    IF sy-subrc = 0.
-      COMMIT WORK.
-    ENDIF.
   ENDMETHOD.
 
   METHOD count_tags.
@@ -219,16 +216,12 @@ CLASS zcl_abaptags_tags_dac IMPLEMENTATION.
             changed_by = @sy-uname
         WHERE tag_id IN @tag_ids.
     ENDIF.
-    COMMIT WORK.
   ENDMETHOD.
 
   METHOD delete_shared_tags.
     CHECK shared_tags_db IS NOT INITIAL.
 
     DELETE zabaptags_shtags FROM TABLE shared_tags_db.
-    IF sy-subrc = 0.
-      COMMIT WORK.
-    ENDIF.
   ENDMETHOD.
 
   METHOD delete_tag_by_id.
@@ -239,8 +232,6 @@ CLASS zcl_abaptags_tags_dac IMPLEMENTATION.
     DELETE FROM zabaptags_shtags WHERE tag_id IN id_range.
     DELETE FROM zabaptags_tagsrm WHERE tag_id      IN id_range
                                     OR root_tag_id IN id_range.
-
-    COMMIT WORK.
   ENDMETHOD.
 
   METHOD exists_tag.
@@ -501,9 +492,6 @@ CLASS zcl_abaptags_tags_dac IMPLEMENTATION.
     CHECK new_tagged_objects IS NOT INITIAL.
 
     INSERT zabaptags_tgobjn FROM TABLE new_tagged_objects.
-    IF sy-dbcnt > 0.
-      COMMIT WORK.
-    ENDIF.
   ENDMETHOD.
 
   METHOD insert_tags.
@@ -512,7 +500,6 @@ CLASS zcl_abaptags_tags_dac IMPLEMENTATION.
     INSERT zabaptags_tags FROM TABLE tags.
     IF sy-subrc = 0.
       result = abap_true.
-      COMMIT WORK.
     ENDIF.
   ENDMETHOD.
 
@@ -520,9 +507,6 @@ CLASS zcl_abaptags_tags_dac IMPLEMENTATION.
     CHECK tags IS NOT INITIAL.
 
     MODIFY zabaptags_tags FROM TABLE tags.
-    IF sy-subrc = 0.
-      COMMIT WORK.
-    ENDIF.
   ENDMETHOD.
 
   METHOD share_tags.
@@ -535,13 +519,13 @@ CLASS zcl_abaptags_tags_dac IMPLEMENTATION.
 
     DATA(l_tag_ids) = tag_ids.
     IF l_tag_ids IS INITIAL.
-      l_tag_ids = VALUE #( FOR shared_tag IN tags_to_share ( sign = 'I' option = 'EQ' low = shared_tag-tag_id ) ).
+      l_tag_ids = VALUE #( FOR shared_tag IN tags_to_share
+                           ( sign = 'I' option = 'EQ' low = shared_tag-tag_id ) ).
     ENDIF.
 
     DELETE ADJACENT DUPLICATES FROM l_tag_ids.
     UPDATE zabaptags_tags
       SET is_shared = @abap_true
       WHERE tag_id IN @l_tag_ids.
-    COMMIT WORK.
   ENDMETHOD.
 ENDCLASS.

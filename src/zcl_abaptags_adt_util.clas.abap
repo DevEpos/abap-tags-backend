@@ -9,7 +9,7 @@ CLASS zcl_abaptags_adt_util DEFINITION
     TYPES:   parent_name TYPE string.
     TYPES: END OF ty_adt_obj_ref_info.
 
-    "! <p class="shorttext synchronized">Retrieve adt object and names</p>
+    "! Retrieve adt object and names
     CLASS-METHODS get_adt_objects_and_names
       IMPORTING
         object_name     TYPE tadir-obj_name
@@ -23,7 +23,7 @@ CLASS zcl_abaptags_adt_util DEFINITION
       RAISING
         zcx_abaptags_exception.
 
-    "! <p class="shorttext synchronized">Retrieve ADT Object Reference for the given name/type</p>
+    "! Retrieve ADT Object Reference for the given name/type
     CLASS-METHODS get_adt_obj_ref
       IMPORTING
         !name               TYPE seu_objkey
@@ -33,7 +33,15 @@ CLASS zcl_abaptags_adt_util DEFINITION
       RETURNING
         VALUE(adt_obj_info) TYPE ty_adt_obj_ref_info.
 
-    "! <p class="shorttext synchronized">Retrieve ADT Object Ref for the given name/tadir type</p>
+    "! Retrieves ADT type (workbench type) for the given object/type combination
+    CLASS-METHODS get_adt_type_for_object
+      IMPORTING
+        !name         TYPE sobj_name
+        !type         TYPE trobjtype
+      RETURNING
+        VALUE(result) TYPE swo_objtyp.
+
+    "! Retrieve ADT Object Ref for the given name/tadir type
     CLASS-METHODS get_adt_obj_ref_for_tadir_type
       IMPORTING
         tadir_type          TYPE tadir-object
@@ -43,7 +51,7 @@ CLASS zcl_abaptags_adt_util DEFINITION
       RETURNING
         VALUE(adt_obj_info) TYPE ty_adt_obj_ref_info.
 
-    "! <p class="shorttext synchronized">Maps wb object to ADT object reference</p>
+    "! Maps wb object to ADT object reference
     CLASS-METHODS map_tadir_obj_to_object_ref
       IMPORTING
         !name               TYPE seu_objkey
@@ -52,7 +60,7 @@ CLASS zcl_abaptags_adt_util DEFINITION
       RETURNING
         VALUE(adt_obj_info) TYPE ty_adt_obj_ref_info.
 
-    "! <p class="shorttext synchronized">Maps the given URI to a workbench object</p>
+    "! Maps the given URI to a workbench object
     CLASS-METHODS map_uri_to_wb_object
       IMPORTING
         VALUE(uri)         TYPE string
@@ -63,7 +71,7 @@ CLASS zcl_abaptags_adt_util DEFINITION
       RAISING
         cx_adt_uri_mapping.
 
-    "! <p class="shorttext synchronized">Retrieves</p>
+    "! Retrieves ADT object references for local class/intf component
     CLASS-METHODS get_local_adt_obj_ref
       IMPORTING
         local_obj_ref TYPE zif_abaptags_ty_global=>ty_object_comp_info
@@ -203,6 +211,24 @@ CLASS zcl_abaptags_adt_util IMPLEMENTATION.
       ENDIF.
     ELSE.
       adt_obj_info = <adt_obj_info>-adt_object.
+    ENDIF.
+  ENDMETHOD.
+
+  METHOD get_adt_type_for_object.
+    DATA(adt_obj_info) = get_adt_obj_ref_for_tadir_type( tadir_type = type
+                                                         name       = name ).
+
+    IF adt_obj_info-type IS NOT INITIAL.
+      result = adt_obj_info-type.
+      RETURN.
+    ENDIF.
+
+    DATA(wb_object_type) = cl_wb_object_type=>create_from_exttype( p_external_id = type ).
+    DATA(main_global_type) = wb_object_type->get_r3tr_global_type( ).
+    IF main_global_type-subtype_wb IS NOT INITIAL.
+      result = |{ main_global_type-objtype_tr }/{ main_global_type-subtype_wb }|.
+    ELSE.
+      result = main_global_type-objtype_tr.
     ENDIF.
   ENDMETHOD.
 

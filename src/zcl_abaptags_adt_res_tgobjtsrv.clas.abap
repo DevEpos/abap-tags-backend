@@ -257,7 +257,6 @@ CLASS zcl_abaptags_adt_res_tgobjtsrv IMPLEMENTATION.
           DATA(tadir_info) = tadir_info_reader->get_tadir_info( name = <matching_obj>-name
                                                                 type = <matching_obj>-type ).
         CATCH cx_sy_itab_line_not_found.
-          " TODO: handle some edge cases, like $-packages
           CONTINUE.
       ENDTRY.
 

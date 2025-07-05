@@ -4,27 +4,28 @@ CLASS zcl_abaptags_tag_util DEFINITION
   CREATE PUBLIC.
 
   PUBLIC SECTION.
-    "! <p class="shorttext synchronized">Retrieves shared tags of other users</p>
+    "! Retrieves shared tags of other users
     CLASS-METHODS get_shared_tags
       IMPORTING
         consider_children_as_shared TYPE abap_bool OPTIONAL
       RETURNING
         VALUE(result)               TYPE zabaptags_tag_data_t.
 
-    "! <p class="shorttext synchronized">Builds hierarchical tags from flat tags table</p>
+    "! Builds hierarchical tags from flat tags table
     CLASS-METHODS build_hierarchical_tags
       IMPORTING
         tags_flat              TYPE zabaptags_tag_data_t
+        create_missing_parents TYPE abap_bool OPTIONAL
         ignore_missing_parents TYPE abap_bool OPTIONAL
       RETURNING
         VALUE(tags_result)     TYPE zabaptags_tag_data_t.
 
-    "! <p class="shorttext synchronized">Unlocks tags</p>
+    "! Unlocks tags
     CLASS-METHODS unlock_tags
       IMPORTING
         lock_owner TYPE uname.
 
-    "! <p class="shorttext synchronized">Locks Tags against foreign access</p>
+    "! Locks Tags against foreign access
     CLASS-METHODS lock_tags
       IMPORTING
         lock_owner  TYPE uname
@@ -32,7 +33,7 @@ CLASS zcl_abaptags_tag_util DEFINITION
       RAISING
         cx_adt_res_no_access.
 
-    "! <p class="shorttext synchronized">Retrieves Lock Entry for Tags</p>
+    "! Retrieves Lock Entry for Tags
     CLASS-METHODS get_tags_lock_entry
       IMPORTING
         owner            TYPE uname
@@ -43,12 +44,21 @@ CLASS zcl_abaptags_tag_util DEFINITION
       CHANGING
         tag_info TYPE zif_abaptags_ty_global=>ty_tag_infos.
 
-    "! <p class="shorttext synchronized">Determines all child tags for the given tags</p>
+    "! Determines all child tags for the given tags
     CLASS-METHODS determine_all_child_tags
       IMPORTING
         tag_id_only TYPE abap_bool OPTIONAL
       CHANGING
         tags        TYPE zabaptags_tag_data_t.
+
+    "! Gets adjusted objects types for the object type / parent object type
+    "! of the given tagged object
+    CLASS-METHODS get_adt_types_for_tgobj
+      IMPORTING
+        tagged_object      TYPE zif_abaptags_ty_global=>ty_tagged_object
+      EXPORTING
+        object_type        TYPE swo_objtyp
+        parent_object_type TYPE swo_objtyp.
 
   PRIVATE SECTION.
     TYPES:
@@ -66,43 +76,48 @@ CLASS zcl_abaptags_tag_util IMPLEMENTATION.
   METHOD build_hierarchical_tags.
     DATA tmp_tag_map TYPE zif_abaptags_ty_global=>ty_tag_data_map.
 
-    FIELD-SYMBOLS <parent> TYPE zabaptags_tag_data.
     FIELD-SYMBOLS <children> TYPE zabaptags_tag_data_t.
 
     CHECK tags_flat IS NOT INITIAL.
 
     DATA(tags_hier) = tags_flat.
 
-    LOOP AT tags_hier ASSIGNING FIELD-SYMBOL(<tag>) WHERE parent_tag_id IS NOT INITIAL.
+    LOOP AT tags_hier REFERENCE INTO DATA(tag) WHERE parent_tag_id IS NOT INITIAL.
       " Find your parent in the current table
-      ASSIGN tags_hier[ tag_id = <tag>-parent_tag_id ] TO <parent>.
-      IF sy-subrc <> 0.
+      DATA(parent) = REF #( tags_hier[ KEY tag_id
+                                       tag_id = tag->parent_tag_id ] OPTIONAL ).
+      IF parent IS NOT BOUND.
         " Maybe the tag was already removed and added to the map
-        ASSIGN tmp_tag_map[ tag_id = <tag>-parent_tag_id ] TO FIELD-SYMBOL(<map_entry>).
-        IF sy-subrc = 0.
-          ASSIGN <map_entry>-data->* TO <parent>.
+        DATA(map_entry) = REF #( tmp_tag_map[ tag_id = tag->parent_tag_id ] OPTIONAL ).
+        IF map_entry IS BOUND.
+          parent = map_entry->data.
         ELSE.
-          IF ignore_missing_parents = abap_false.
-            DELETE tags_hier.
+          IF create_missing_parents = abap_true.
+            APPEND INITIAL LINE TO tags_hier REFERENCE INTO parent.
+            parent->tag_id = tag->parent_tag_id.
+          ELSE.
+            IF ignore_missing_parents = abap_false.
+              DELETE tags_hier.
+            ENDIF.
+            CONTINUE.
           ENDIF.
-          CONTINUE.
         ENDIF.
       ENDIF.
 
-      IF <parent>-child_tags IS NOT BOUND.
-        <parent>-child_tags = NEW zabaptags_tag_data_t( ).
+      IF parent->child_tags IS NOT BOUND.
+        parent->child_tags = NEW zabaptags_tag_data_t( ).
       ENDIF.
-      ASSIGN <parent>-child_tags->* TO <children>.
+      ASSIGN parent->child_tags->* TO <children>.
 
-      APPEND INITIAL LINE TO <children> ASSIGNING FIELD-SYMBOL(<ls_child>).
-      <ls_child> = <tag>.
+      APPEND INITIAL LINE TO <children> REFERENCE INTO DATA(child).
+      child->* = tag->*.
       SORT <children> BY name.
-      INSERT VALUE #( tag_id = <tag>-tag_id
-                      data   = REF #( <ls_child> ) ) INTO TABLE tmp_tag_map.
+      INSERT VALUE #( tag_id = tag->tag_id
+                      data   = child ) INTO TABLE tmp_tag_map.
 
       DELETE tags_hier.
 
-      UNASSIGN <parent>.
+      CLEAR parent.
     ENDLOOP.
 
     tags_result = tags_hier.
@@ -141,7 +156,8 @@ CLASS zcl_abaptags_tag_util IMPLEMENTATION.
                                                          ( sign = 'I' option = 'EQ' low = parent-parent_tag_id ) ) ).
 
       LOOP AT parent_tags ASSIGNING <parent_tag>.
-        ASSIGN parent_tags_db[ tag_id = <parent_tag>-parent_tag_id ] TO FIELD-SYMBOL(<parent_tag_db>).
+        ASSIGN parent_tags_db[ KEY tag_id
+                               tag_id = <parent_tag>-parent_tag_id ] TO FIELD-SYMBOL(<parent_tag_db>).
         CHECK sy-subrc = 0.
 
         DATA(parent_tag_info) = VALUE ty_tag_parent_info( tag_id             = <parent_tag_db>-tag_id
@@ -258,5 +274,16 @@ CLASS zcl_abaptags_tag_util IMPLEMENTATION.
     CALL FUNCTION 'DEQUEUE_EZABAPTAGS_TAG'
       EXPORTING _scope = '1'
                 owner  = lock_owner.
+  ENDMETHOD.
+
+  METHOD get_adt_types_for_tgobj.
+    object_type = zcl_abaptags_adt_util=>get_adt_type_for_object( name = tagged_object-object_name
+                                                                  type = tagged_object-object_type ).
+
+    IF     tagged_object-parent_object_type IS NOT INITIAL
+       AND tagged_object-parent_object_name IS NOT INITIAL.
+      parent_object_type = zcl_abaptags_adt_util=>get_adt_type_for_object( name = tagged_object-parent_object_name
+                                                                           type = tagged_object-parent_object_type ).
+    ENDIF.
   ENDMETHOD.
 ENDCLASS.
