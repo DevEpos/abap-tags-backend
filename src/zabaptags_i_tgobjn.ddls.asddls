@@ -1,13 +1,17 @@
-@AbapCatalog.sqlViewName: 'ZABAPTAGSITGOBN'
 @AbapCatalog.compiler.compareFilter: true
 @AbapCatalog.preserveKey: true
+@AbapCatalog.sqlViewName: 'ZABAPTAGSITGOBN'
+
 @AccessControl.authorizationCheck: #NOT_REQUIRED
+
 @EndUserText.label: 'Tagged Objects'
 
 define view ZAbapTags_I_TgObjn
   as select from zabaptags_tgobjn
+
 {
   key id                 as Id,
+
       object_type        as ObjectType,
       object_name        as ObjectName,
       component_name     as ComponentName,

@@ -392,6 +392,7 @@ CLASS zcl_abaptags_adt_res_tgobjlist IMPLEMENTATION.
       zcl_abaptags_tag_util=>get_adt_types_for_tgobj( EXPORTING tagged_object      = found_obj->*
                                                       IMPORTING object_type        = new_tgobj-object_type
                                                                 parent_object_type = new_tgobj-parent_object_type ).
+
       IF list_request-deleted_objects_only = abap_true AND is_object_deleted( tgobj      = found_obj
                                                                               tgobj_info = new_tgobj ) = abap_false.
         CONTINUE.
