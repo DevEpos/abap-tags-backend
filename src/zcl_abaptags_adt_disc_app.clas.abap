@@ -8,6 +8,7 @@ CLASS zcl_abaptags_adt_disc_app DEFINITION
     CLASS-DATA:
       BEGIN OF uris,
         tagged_object_info_list TYPE string,
+        tags                    TYPE string,
       END OF uris.
 
     CONSTANTS c_root_scheme TYPE string VALUE 'http://www.devepos.com/adt/atm'.
@@ -70,6 +71,7 @@ ENDCLASS.
 CLASS zcl_abaptags_adt_disc_app IMPLEMENTATION.
   METHOD class_constructor.
     uris-tagged_object_info_list = |{ c_static_uri }{ c_tagged_object_info_list_uri }|.
+    uris-tags                    = |{ c_static_uri }{ c_tags_uri }|.
   ENDMETHOD.
 
   METHOD fill_router.

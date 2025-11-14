@@ -18,7 +18,8 @@ CLASS zcl_abaptags_adt_res_features DEFINITION
 
     CONSTANTS:
       BEGIN OF c_feature_categories,
-        request_attribute TYPE string VALUE 'RequestAttribute',
+        request_attribute  TYPE string VALUE 'RequestAttribute',
+        response_attribute TYPE string VALUE 'ResponseAttribute',
       END OF c_feature_categories.
 ENDCLASS.
 
@@ -26,11 +27,15 @@ ENDCLASS.
 CLASS zcl_abaptags_adt_res_features IMPLEMENTATION.
   METHOD get.
     DATA(features) = VALUE zif_abaptags_ty_adt_types=>ty_adt_plugin_features(
-                               category = c_feature_categories-request_attribute
-                               ( endpoint    = zcl_abaptags_adt_disc_app=>uris-tagged_object_info_list
+                               enabled = abap_true
+                               type    = c_feature_value_type-boolean
+                               ( category    = c_feature_categories-response_attribute
+                                 endpoint    = zcl_abaptags_adt_disc_app=>uris-tags
+                                 name        = 'createUpdateHasResponse'
+                                 description = 'Create/Update Tag API returns tag' )
+                               ( category    = c_feature_categories-request_attribute
+                                 endpoint    = zcl_abaptags_adt_disc_app=>uris-tagged_object_info_list
                                  name        = 'considerOnlyDeletedObjects'
-                                 type        = c_feature_value_type-boolean
-                                 enabled     = abap_true
                                  description = 'Flag to return only deleted TADIR objects' ) ).
 
     response->set_body_data(

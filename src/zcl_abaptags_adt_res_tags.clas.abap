@@ -62,6 +62,8 @@ CLASS zcl_abaptags_adt_res_tags DEFINITION
     METHODS delete_tags.
 
     METHODS create_or_update_tags
+      IMPORTING
+        !response TYPE REF TO if_adt_rest_response
       RAISING
         cx_adt_rest.
 
@@ -104,7 +106,7 @@ CLASS zcl_abaptags_adt_res_tags IMPLEMENTATION.
     get_parameters( request ).
 
     IF action_name IS INITIAL.
-      create_or_update_tags( ).
+      create_or_update_tags( response ).
     ELSE.
       CASE action_name.
 
@@ -275,6 +277,9 @@ CLASS zcl_abaptags_adt_res_tags IMPLEMENTATION.
     root_mapper->map_tags_to_root( ).
 
     tags_dac->modify_tags( tags_to_update ).
+
+    response->set_body_data( data            = CORRESPONDING zabaptags_tag_data_t( tags_to_update )
+                             content_handler = get_tags_content_handler( ) ).
   ENDMETHOD.
 
   METHOD set_result.
