@@ -9,6 +9,11 @@ Legend
 + : added
 - : removed
 
+2026-01-02 v2.8.0
+-------------------
+
+! Update tags endpoint returns the updated tag
+
 2025-07-04 v2.7.0
 -------------------
  

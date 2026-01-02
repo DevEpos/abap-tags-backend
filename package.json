@@ -1,6 +1,6 @@
 {
   "name": "abap-tags-backend",
-  "version": "2.7.0",
+  "version": "2.8.0",
   "description": "ABAP Tags",
   "scripts": {
     "lint": "abaplint -f summary",
